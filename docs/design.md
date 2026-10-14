@@ -45,8 +45,8 @@ says otherwise.
   Those have their own users, uptime needs, and release schedules.
 - The tools don't share domain data. Each tool owns its models; a shared app holds only
   supporting code such as authentication and common views.
-- We don't keep the standalone AS and CSS deployments running once their tools have
-  moved here.
+- We don't keep the standalone AS deployment running once the AS has moved here. The
+  standalone CSS was never deployed to production.
 
 ## Design
 
@@ -63,7 +63,10 @@ Each tool keeps the external integrations it had as a standalone service:
   links to affiliations by UUID.
 - **CSS**: ClinGen clients send submissions through its API, and the CSS forwards them
   to the NCBI ClinVar Submission API.
-- **ETS**: to be described when its design is settled.
+- **ETS**: reads and changes user accounts in the Gene Curation Interface (GCI) and
+  the Variant Curation Interface (VCI). Those accounts live in two places: an AWS
+  Cognito user pool, which handles sign-in, and the `GeneVariantCuration` DynamoDB
+  table, which holds each user's record. The ETS calls both through boto3.
 
 ### Application Architecture
 
@@ -81,10 +84,14 @@ are the UI, with HTMX where a page needs a little interactivity.
 - **Error monitoring**: Sentry
 - **Frontend CSS**: Bulma
 - **Partial page updates**: HTMX
+- **Authentication**: Clerk + custom `ClerkBackend`
+- **API framework**: Django Ninja
+- **AWS client (ETS)**: boto3
 
-The AS's REST API uses Django REST Framework and the CSS's API uses Django Ninja. Before
-porting the second of them, we should pick one API framework for both, so the project
-carries one set of API conventions.
+Every tool's API uses Django Ninja, as the CSS's already does. The standalone AS used
+Django REST Framework, so porting it means rewriting its API in Ninja. Its URLs and
+response formats, including the legacy JSON format, must stay the same apart from the
+new `/as/` prefix, so that clients only have to change their base URL.
 
 ### URL Layout
 
@@ -118,7 +125,7 @@ Shared apps:
 
 Tool apps:
 
-- `src/affiliations-service/`: the AS.
+- `src/affiliations_service/`: the AS.
 - `src/clinvar_submission_service/`: the CSS, including its `poll_clinvar` command.
 - `src/email_transfer_service/`: the ETS.
 
@@ -141,13 +148,58 @@ Staff sign in once and can then use every tool they've been granted. Permissions
 per tool: being able to manage affiliations doesn't mean being able to resend ClinVar
 submissions. Each tool's views check its own permission through the mixins in `auth_`.
 
-The standalone tools didn't agree on how users sign in: the CSS uses Clerk, the HCI uses
-WorkOS, and the AS's UI relies on Django's staff logins. ClinGen Tools needs one
-identity provider. That choice is open.
+Staff sign in with Clerk, the identity provider every ClinGen app is moving to. `auth_`
+follows the CSS: sign-in uses Clerk's embedded widget, and a custom `ClerkBackend`
+verifies the Clerk session on each request. The Django admin keeps Django's own staff
+logins.
 
 Machine clients use API keys, as they did with the standalone services. A key belongs to
 one tool: an AS key can't call the CSS API. Keys are hashed at rest, and staff manage
 them in the Django admin.
+
+### The Email Transfer Service
+
+Sometimes a GCI or VCI user needs to move their account from an old email to a new one.
+By then, they've usually signed in with the new email, so both emails have a Cognito
+user. The old email also has a DynamoDB user record, which holds the user's history. The
+new email has either no record or one with `user_status` set to
+`requested activation`. The transfer keeps the old record and points it at the new
+email.
+
+Before the ETS, a developer ran a script by hand to do this. The ETS turns that script
+into a form ClinGen staff can use on their own. A transfer has three steps:
+
+1. Staff enter the old and new emails.
+2. The ETS checks the preconditions and shows the changes it would make, without making
+   them. The preconditions are:
+   - The old email has a Cognito user and a DynamoDB record.
+   - The new email has a Cognito user.
+   - The new email has no DynamoDB record, or one with `user_status` set to
+     `requested activation`.
+3. If staff confirm, the ETS makes the changes, in this order:
+   1. If the new email has a `requested activation` record, retire it: set its `email`
+      to `email.do.not.match`, its `user_status` to `inactive`, and its `status` to
+      `deleted`.
+   2. Set the `email` on the old email's DynamoDB record to the new email.
+   3. Disable the old email's Cognito user.
+   4. Enable the new email's Cognito user, if it isn't already enabled.
+
+If a precondition fails, the ETS shows why and makes no changes. There's no override:
+the script's `--force` flag, which skipped the `requested activation` check, has no
+equivalent in the ETS. A transfer that doesn't meet the preconditions needs a
+developer.
+
+Cognito and DynamoDB can't be changed in one transaction, so a transfer can fail
+partway through. The ETS saves each transfer as an `EmailTransfer` record before it
+starts, and records each step's result as it goes. When a step fails, the ETS stops and
+the record shows which steps finished, so staff can see what's left to fix. Like every
+model, `EmailTransfer` keeps its change history, so there's a record of who transferred
+which email and when.
+
+The ETS reads its AWS credentials, region, user pool ID, and table name from the
+environment, never from code. The credentials should belong to an IAM user that can do
+only what a transfer needs: list, enable, and disable users in the one user pool, and
+query and update items in the one table.
 
 ### Processes
 
@@ -160,9 +212,13 @@ management command run by systemd, not a task queue.
 ### Moving the Standalone Tools
 
 Moving a standalone tool here means porting its code into its app, moving its data into
-the shared database, and pointing its clients at the new base URL. Its old subdomain
-should redirect to the new prefix for long enough that clients have time to switch.
-Each move is its own epic.
+the shared database, and pointing its clients at the new base URL. Each move is its own
+epic.
+
+The AS is in production at as.clinicalgenome.org, so its clients need time to switch.
+For six months after the move, as.clinicalgenome.org redirects each request to the same
+path under tools.clinicalgenome.org/as/. The CSS was never in production, so it has no
+old URLs to redirect.
 
 ## Alternatives Considered
 
@@ -208,11 +264,3 @@ Sentry captures unhandled exceptions from every tool in one Sentry project. Each
 is tagged with the tool that raised it, so we can filter by tool. UptimeRobot monitors
 the landing page and each tool's prefix separately, so an alert names the tool that's
 down.
-
-## Open Questions
-
-- Which identity provider do staff sign in with?
-- Which API framework do the AS and the CSS share: Django REST Framework or Django
-  Ninja?
-- What does the ETS do, and what does it integrate with?
-- How long do the old AS and CSS URLs keep redirecting?

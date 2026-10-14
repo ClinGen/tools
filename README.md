@@ -18,7 +18,8 @@ of one of each per tool.
   ClinGen clients through an API, forwards them to ClinVar, and tracks each one until
   ClinVar has processed it.
 - **Email Transfer Service (ETS)**, at [`/ets/`](https://tools.clinicalgenome.org/ets/):
-  transfers user emails for the ClinGen team.
+  moves a Gene Curation Interface or Variant Curation Interface user's account from an
+  old email to a new one.
 
 The landing page at [tools.clinicalgenome.org](https://tools.clinicalgenome.org/) links
 to each tool. `docs/design.md` describes the design.
@@ -31,7 +32,8 @@ ClinGen Tools is maintained by the Stanford contingent of
 - Install [uv](https://github.com/astral-sh/uv).
 - Install [Node.js](https://nodejs.org) (see `.nvmrc` for the version).
 - Install [just](https://github.com/casey/just).
-- Install [bd (Beads)](https://github.com/gastownhall/beads), which we use to track work.
+- Install [bd (Beads)](https://github.com/gastownhall/beads), which we use to track
+  work.
 - Clone the repository.
 - Install JavaScript dependencies: `npm ci`.
 - Install Python dependencies: `uv sync`.

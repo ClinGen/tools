@@ -76,7 +76,8 @@ internal tools. Each tool is mounted under its own path on tools.clinicalgenome.
 - `/as/`: the Affiliations Service (AS), the source of truth for ClinGen affiliations.
 - `/css/`: the ClinVar Submission Service (CSS), which forwards submissions to ClinVar
   and tracks them.
-- `/ets/`: the Email Transfer Service (ETS).
+- `/ets/`: the Email Transfer Service (ETS), which moves a GCI or VCI user's account
+  from an old email to a new one.
 - `/`: a landing page that links to each tool.
 
 The AS and the CSS are ports of the standalone `affiliations-service` and
@@ -116,7 +117,9 @@ anything in `docs/` inaccurate, update that too.
 ## Our Beads Workflow
 
 Beads are the only place we plan and track work. Don't write plan or ticket files in
-`docs/`, and don't use `--spec-id`.
+`docs/`, don't add open-questions or to-do sections to any doc, and don't use
+`--spec-id`. Docs describe decisions that have been made; questions go in `decision`
+beads.
 
 1. `docs/prompts/04-break-down-into-beads.md` turns a description of work (a GitHub
    issue, notes, or a plan approved in plan mode) into an epic with child beads, or a
