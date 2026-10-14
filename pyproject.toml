@@ -1,0 +1,157 @@
+[project]
+name = "tools"
+version = "0.1.0"
+description = "ClinGen Tools houses the Stanford ClinGen team's internal tools in one Django app."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "django>=5.2",
+    "gunicorn>=26.2.0",
+    "python-dotenv>=1.2.4",
+    "whitenoise[brotli]>=6.12.0",
+]
+
+[dependency-groups]
+dev = [
+    "ansible>=14.5.0",
+    "ansible-lint>=26.10.1",
+    "coverage>=7.16.2",
+    "django-stubs>=6.1.2",
+    "mdformat>=1.0.0",
+    "pytest>=9.1.1",
+    "pytest-django>=4.14.0",
+    "pytest-dotenv>=0.5.2",
+    "pytest-randomly>=5.0.0",
+    "pytest-xdist>=3.8.0",
+    "ruff>=0.17.0",
+    "ty>=0.0.87",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+exclude = [
+    "__pycache__",
+    "docs",
+    "migrations",
+]
+
+[tool.ruff.lint]
+preview = true  # Use Ruff's "preview" (beta) features.
+select = [
+    # Basics:
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes rules
+    "N",    # pep8-naming rules (enforce PEP8 naming conventions)
+    "C90",  # mccabe (don't allow high cyclomatic complexity)
+
+    # Imports:
+    "I",    # isort rules (sort imports)
+
+    # Docstrings:
+    "D",    # pydocstyle (enforce style for docstrings)
+    "DOC",  # pydoclint (lint docstrings)
+
+    # flake8 plugins:
+    "ANN",   # flake8-annotations........... use PEP 3107 function annotations
+    "S",     # flake8-bandit................ perform security-focused static analysis
+    "FBT",   # flake8-boolean-trap.......... don't use boolean trap antipattern
+    "B",     # flake8-bugbear............... provide an opinionated set of lint rules
+    "A",     # flake8-builtins.............. provide a set of lint rules for builtins
+    "COM",   # flake8-commas................ provide a set of lint rules for commas
+    "C4",    # flake8-comprehensions........ provide a set of lint rules for comprehensions
+    "DTZ",   # flake8-datetimez............. use the datetime library safely
+    "T10",   # flake8-debugger.............. don't allow debugging code
+    "DJ",    # flake8-django................ provide a set of lint rules for Django
+    "EM",    # flake8-errmsg................ provide a set of rules for error messages
+    "EXE",   # flake8-executable............ provide a set of lint rules for Python scripts
+    "ISC",   # flake8-implicit-string-concat provide a set of lint rules for string concatenation
+    "LOG",   # flake8-logging............... provide a set of lint rules for logging
+    "G",     # flake8-logging-format........ provide a set of lint rules for the format of log strings)
+    "INP",   # flake8-no-pep420............. don't allow implicit namespaces
+    "PIE",   # flake8-pie................... provide a set of miscellaneous lint rules
+    "T20",   # flake8-print................. don't allow print statements; use logs instead
+    "Q",     # flake8-quotes................ provide a set of lint rules about quotes
+    "RSE",   # flake8-raise................. provide a set of lint rules for the raise statement
+    "RET",   # flake8-return................ provide a set of lint rules for the return statement
+    "SLF",   # flake8-self.................. don't allow access to private members
+    "SIM",   # flake8-simplify.............. provide a set of lint rules for simplifying various expressions
+    "TID",   # flake8-tidy-imports.......... provide a set of lint rules for imports
+    "TD",    # flake8-todos................. provide a set of lint rules for to-do comments
+    "ARG",   # flake8-unused-arguments...... provide a set of lint rules for unused arguments
+    "PTH",   # flake8-use-pathlib........... use the new pathlib library
+
+    # Other:
+    "PERF",  # Perflint (provide a set of lint rules for performance)
+    "UP",    # pyupgrade (use new Python syntax)
+    "RUF",   # Ruff-specific rules (provide a set of miscellaneous lint rules)
+    "TRY",   # tryceratops (provide a set of lint rules for try-except statements)
+]
+ignore = [
+    "missing-trailing-comma", # This rule clashes with Ruff.
+    "logging-f-string",   # Not using f-strings in logs seems like a premature optimization.
+    "mutable-class-default", # Django models be like that.
+    "unused-noqa", # With Ruff 0.11.5, I'm seeing false positives.
+    "suspicious-xml-element-tree-usage",   # While I agree with this rule, it suggests using an outdated third-party package.
+    "suspicious-xml-etree-import",   # While I agree with this rule, it suggests using an outdated third-party package.
+    "missing-type-args",  # I almost always ignore these checks when overriding a method on a Django class.
+    "missing-type-kwargs",  # I almost always ignore these checks when overriding a method on a Django class.
+    "undocumented-public-module",  # Django projects have modules that are self-explanatory.
+    "undocumented-public-class",  # Django projects have classes that are self-explanatory.
+    "undocumented-public-method",  # Django projects have methods that are self-explanatory.
+    "undocumented-magic-method",  # Django projects require you to implement magic methods (e.g. `__str__`) that don't need docstrings.
+    "undocumented-public-nested-class",  # Django projects have nested classes that are self-explanatory.
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = [
+    "undocumented-public-package", # Docstrings in these files are overkill.
+]
+"test*.py" = [
+    "missing-return-type-undocumented-public-function", # Tests should always return `None`.
+    "undocumented-public-method", # Tests should be obvious enough not to require docstrings.
+    "mixed-case-variable-in-class-scope", # Django TestCase methods are mixedCase; mixin stubs must match.
+    "assert", # Asserts are fine in test code.
+]
+"*test.py" = [
+    "missing-return-type-undocumented-public-function",
+    "undocumented-public-method",
+    "mixed-case-variable-in-class-scope",
+    "assert",
+]
+"views.py" = [
+    "unused-function-argument", # Sometimes you need a default parameter that goes unused.
+]
+"docs.py" = [
+    "print", # CLI tool: print is the intended output mechanism.
+]
+
+[tool.coverage.run]
+data_file = "coverage.db"
+omit = [
+    "*/apps.py",
+    "*/manage.py",
+    "*/migrations/*",
+    "*/settings.py",
+    "*/templates.py",
+    "*/tests.py",
+    "*/urls.py",
+    "*/wsgi.py",
+    ".venv/*",
+]
+
+[tool.coverage.html]
+directory = "coverage"
+
+[tool.pytest.ini_options]
+addopts = "--ds=config.settings.test"
+pythonpath = ["src"]
+env_files = [".env"]
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+
+[tool.django-stubs]
+django_settings_module = "config.settings.dev"
