@@ -1,0 +1,11 @@
+# Run this before the Git pull, so it reads the SHA of the code being replaced. A
+# server that has never been deployed has no version.txt, so the SHA is "unknown".
+- name: Read the Git SHA of the code being replaced
+  ansible.builtin.slurp:
+    src: "{{ repo_dir }}/src/version.txt"
+  register: previous_version_file
+  failed_when: false
+
+- name: Remember the Git SHA of the code being replaced
+  ansible.builtin.set_fact:
+    previous_sha: "{{ previous_version_file.content | b64decode | trim if previous_version_file.content is defined else 'unknown' }}"

@@ -1,0 +1,12 @@
+- name: Place the fail2ban filter
+  become: true
+  ansible.builtin.copy:
+    src: "files/filter.d/caddy-blocked.conf"
+    dest: /etc/fail2ban/filter.d/caddy-blocked.conf
+    mode: "644"
+- name: Place the fail2ban jail config
+  become: true
+  ansible.builtin.copy:
+    src: "files/jail.d/caddy.conf"
+    dest: /etc/fail2ban/jail.d/caddy.conf
+    mode: "644"

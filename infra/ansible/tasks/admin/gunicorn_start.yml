@@ -1,0 +1,12 @@
+- name: Ensure the Gunicorn systemd socket is enabled and started
+  become: true
+  ansible.builtin.systemd:
+    name: gunicorn.socket
+    enabled: true
+    state: started
+- name: Ensure the Gunicorn systemd service is enabled and started
+  become: true
+  ansible.builtin.systemd:
+    name: gunicorn.service
+    enabled: true
+    state: started

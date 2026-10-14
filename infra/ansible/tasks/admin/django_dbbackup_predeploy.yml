@@ -1,0 +1,25 @@
+# Back up the database as the old code left it, before migrate changes it. The name
+# says which code matches the data, which is what reverting a deploy needs. If the
+# backup fails, the play stops before migrate.
+- name: Read the Git SHA of the code being deployed
+  ansible.builtin.slurp:
+    src: "{{ repo_dir }}/src/version.txt"
+  register: current_version_file
+
+- name: Name the pre-deployment backup
+  ansible.builtin.set_fact:
+    predeploy_backup_name: "pre-deployment/{{ subdomain }}-{{ previous_sha }}-to-{{ current_sha }}-{{ backup_timestamp }}.sqlite3.gz"
+  vars:
+    current_sha: "{{ current_version_file.content | b64decode | trim }}"
+    backup_timestamp: "{{ now(utc=true, fmt='%Y-%m-%dT%H%M%SZ') }}"
+
+- name: Back up the database before migrating
+  ansible.builtin.command:
+    chdir: "{{ repo_dir }}/src"
+    cmd: "~/.local/bin/uv run manage.py dbbackup --noinput --compress -o {{ predeploy_backup_name }}"
+  tags:
+    - skip_ansible_lint
+
+- name: Show the pre-deployment backup's name
+  ansible.builtin.debug:
+    msg: "Pre-deployment backup: {{ predeploy_backup_name }}"

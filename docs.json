@@ -1,0 +1,11 @@
+{
+  "directories": [],
+  "ignore": [
+    "*.bak",
+    ".venv",
+    "__pycache__",
+    "migrations",
+    "node_modules",
+    "public"
+  ]
+}

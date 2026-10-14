@@ -1,0 +1,5 @@
+- name: Install fail2ban
+  become: true
+  ansible.builtin.package:
+    name: fail2ban
+    state: present

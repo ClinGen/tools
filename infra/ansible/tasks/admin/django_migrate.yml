@@ -1,0 +1,6 @@
+- name: Migrate the database
+  ansible.builtin.command:
+    chdir: "{{ repo_dir }}/src"
+    cmd: "~/.local/bin/uv run manage.py migrate"
+  tags:
+    - skip_ansible_lint

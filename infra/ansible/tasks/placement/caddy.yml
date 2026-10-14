@@ -1,0 +1,6 @@
+- name: Place the Caddyfile
+  become: true
+  ansible.builtin.template:
+    src: "files/templates/Caddyfile"
+    dest: /etc/caddy/Caddyfile
+    mode: "644"

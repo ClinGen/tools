@@ -1,0 +1,6 @@
+- name: Ensure our JavaScript dependencies are updated
+  ansible.builtin.command:
+    chdir: "{{ repo_dir }}"
+    cmd: "npm ci"
+  tags:
+    - skip_ansible_lint

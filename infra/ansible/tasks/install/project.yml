@@ -1,0 +1,17 @@
+- name: Ensure the source code is downloaded
+  ansible.builtin.git:
+    repo: "{{ repo_url }}"
+    version: "{{ repo_branch }}"
+    dest: "{{ repo_dir }}"
+- name: Ensure the Python dependencies are installed
+  ansible.builtin.command:
+    chdir: "{{ repo_dir }}"
+    cmd: "~/.local/bin/uv sync"
+  args:
+    creates: "{{ repo_dir }}/.venv"
+- name: Ensure the JavaScript dependencies are installed
+  ansible.builtin.command:
+    chdir: "{{ repo_dir }}"
+    cmd: "npm ci"
+  args:
+    creates: "{{ repo_dir }}/node_modules"

@@ -1,0 +1,4 @@
+---
+# Keep this in sync with the .nvmrc file in the root of the repository so that
+# local development, CI, and the servers all run the same major version of Node.
+node_major_version: 26

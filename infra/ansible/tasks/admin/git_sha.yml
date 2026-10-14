@@ -1,0 +1,6 @@
+- name: Generate shortened Git SHA
+  ansible.builtin.shell:
+    chdir: "{{ repo_dir }}/src"
+    cmd: "git rev-parse --short HEAD > version.txt"
+  tags:
+    - skip_ansible_lint

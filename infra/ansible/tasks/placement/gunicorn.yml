@@ -1,0 +1,12 @@
+- name: Place the Gunicorn socket systemd file
+  become: true
+  ansible.builtin.copy:
+    src: "files/gunicorn.socket"
+    dest: /etc/systemd/system/gunicorn.socket
+    mode: "644"
+- name: Place the Gunicorn service systemd file
+  become: true
+  ansible.builtin.template:
+    src: "files/templates/gunicorn.service"
+    dest: /etc/systemd/system/gunicorn.service
+    mode: "644"

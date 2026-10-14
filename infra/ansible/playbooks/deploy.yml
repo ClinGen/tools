@@ -1,0 +1,28 @@
+- name: Deploy the latest changes to the server
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Admin | apt update
+      ansible.builtin.include_tasks: ../tasks/admin/apt_update.yml
+    - name: Admin | apt upgrade
+      ansible.builtin.include_tasks: ../tasks/admin/apt_upgrade.yml
+    - name: Admin | Git SHA of the code being replaced
+      ansible.builtin.include_tasks: ../tasks/admin/git_sha_previous.yml
+    - name: Admin | Git pull
+      ansible.builtin.include_tasks: ../tasks/admin/git_pull.yml
+    - name: Admin | Git SHA
+      ansible.builtin.include_tasks: ../tasks/admin/git_sha.yml
+    - name: Admin | uv sync
+      ansible.builtin.include_tasks: ../tasks/admin/uv_sync.yml
+    - name: Install | Node.js
+      ansible.builtin.include_tasks: ../tasks/install/node.yml
+    - name: Admin | npm install
+      ansible.builtin.include_tasks: ../tasks/admin/npm_install.yml
+    - name: Admin | Django pre-deployment backup
+      ansible.builtin.include_tasks: ../tasks/admin/django_dbbackup_predeploy.yml
+    - name: Admin | Django migrate
+      ansible.builtin.include_tasks: ../tasks/admin/django_migrate.yml
+    - name: Admin | Django collectstatic
+      ansible.builtin.include_tasks: ../tasks/admin/django_collectstatic.yml
+    - name: Admin | Gunicorn restart
+      ansible.builtin.include_tasks: ../tasks/admin/gunicorn_restart.yml

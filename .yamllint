@@ -1,0 +1,6 @@
+extends: default
+
+rules:
+  truthy: disable       # Produces false positives with GitHub Actions YAML.
+  brackets: disable     # Produces false positives with GitHub Actions YAML.
+  line-length: disable  # Don't care.

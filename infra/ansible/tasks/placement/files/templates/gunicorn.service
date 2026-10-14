@@ -1,0 +1,13 @@
+[Unit]
+Description=Gunicorn service
+Requires=gunicorn.socket
+After=network.target
+
+[Service]
+Type=simple
+User={{ ansible_user }}
+WorkingDirectory={{ repo_dir }}/src
+ExecStart={{ repo_dir }}/.venv/bin/gunicorn config.wsgi:application
+
+[Install]
+WantedBy=multi-user.target

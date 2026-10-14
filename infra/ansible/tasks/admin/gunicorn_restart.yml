@@ -1,0 +1,5 @@
+- name: Ensure the Gunicorn systemd service is restarted
+  become: true
+  ansible.builtin.systemd:
+    name: gunicorn.service
+    state: restarted

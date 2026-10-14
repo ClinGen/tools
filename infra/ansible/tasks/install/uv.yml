@@ -1,0 +1,6 @@
+- name: Ensure uv is installed
+  ansible.builtin.command:
+    cmd: "curl -LsSf https://astral.sh/uv/install.sh | sh" # noqa: command-instead-of-module
+  args:
+    creates: "{{ ansible_env.HOME }}/.local/bin/uv"
+  become: false

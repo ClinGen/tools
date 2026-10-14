@@ -1,0 +1,27 @@
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/
+*.gate.lock*
+
+# Project files
+*.db
+.env
+.env.*
+coverage.xml
+inventory.ini
+src/version.txt
+
+.ansible/
+.ruff_cache/
+.terraform/
+.venv/
+__pycache__/
+build/
+coverage/
+logs/
+backups/
+node_modules/
+public/

@@ -1,0 +1,17 @@
+{{ subdomain }}.clinicalgenome.org {
+        log {
+                output file /var/log/caddy/access.log
+                format json
+        }
+
+        @blocked {
+                # PHP files (biggest category — this is a Django app, zero legitimate PHP)
+                # .env files at any path depth (/.env, /backend/.env, /vendor/foo/.env, etc.)
+                # .git directories at any depth, WordPress, Swagger/actuator probes,
+                # cloud credential dirs, archive/dump files, and IIS/system file probes.
+                path_regexp (?i)(\.php\d*$|\.zip$|\.sql$|\.tar\.gz$|\.(bak|swp|backup)$|/\.env|/\.git|/\.(aws|azure|docker|ssh)/|/wp-|/wordpress|/xmlrpc\.php|/swagger|/api-docs|/apidocs|/actuator|/webjars|/node_modules/|/cgi-bin/|web\.config|/\.DS_Store|/\.bash)
+        }
+        respond @blocked 403
+
+        reverse_proxy unix//run/gunicorn.sock
+}

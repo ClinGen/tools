@@ -1,0 +1,6 @@
+- name: Ensure our Python dependencies are updated
+  ansible.builtin.command:
+    chdir: "{{ repo_dir }}"
+    cmd: "~/.local/bin/uv sync"
+  tags:
+    - skip_ansible_lint

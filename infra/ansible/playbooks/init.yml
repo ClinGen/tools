@@ -1,0 +1,34 @@
+- name: Set up the server for the first time
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Admin | apt update
+      ansible.builtin.include_tasks: ../tasks/admin/apt_update.yml
+    - name: Admin | apt upgrade
+      ansible.builtin.include_tasks: ../tasks/admin/apt_upgrade.yml
+    - name: Install | uv
+      ansible.builtin.include_tasks: ../tasks/install/uv.yml
+    - name: Install | Node.js
+      ansible.builtin.include_tasks: ../tasks/install/node.yml
+    - name: Install | project
+      ansible.builtin.include_tasks: ../tasks/install/project.yml
+    - name: Admin | Django migrate
+      ansible.builtin.include_tasks: ../tasks/admin/django_migrate.yml
+    - name: Admin | Django collectstatic
+      ansible.builtin.include_tasks: ../tasks/admin/django_collectstatic.yml
+    - name: Placement | Gunicorn files
+      ansible.builtin.include_tasks: ../tasks/placement/gunicorn.yml
+    - name: Admin | Gunicorn start
+      ansible.builtin.include_tasks: ../tasks/admin/gunicorn_start.yml
+    - name: Install | Caddy
+      ansible.builtin.include_tasks: ../tasks/install/caddy.yml
+    - name: Placement | Caddy files
+      ansible.builtin.include_tasks: ../tasks/placement/caddy.yml
+    - name: Admin | Caddy start
+      ansible.builtin.include_tasks: ../tasks/admin/caddy_start.yml
+    - name: Install | fail2ban
+      ansible.builtin.include_tasks: ../tasks/install/fail2ban.yml
+    - name: Placement | fail2ban files
+      ansible.builtin.include_tasks: ../tasks/placement/fail2ban.yml
+    - name: Admin | fail2ban start
+      ansible.builtin.include_tasks: ../tasks/admin/fail2ban_start.yml

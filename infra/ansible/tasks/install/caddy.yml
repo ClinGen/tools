@@ -1,0 +1,48 @@
+- name: Ensure we have the right deps to add Cloudsmith's package repo
+  become: true
+  ansible.builtin.package:
+    name:
+      - debian-keyring
+      - debian-archive-keyring
+      - apt-transport-https
+      - curl
+    state: present
+- name: Check if we have Cloudsmith's GPG key
+  become: true
+  ansible.builtin.stat:
+    path: /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+  register: caddy_gpg_key
+- name: Get Caddy's GPG key if we don't have it
+  become: true
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+    executable: /bin/bash
+  when: not caddy_gpg_key.stat.exists
+  tags:
+    - skip_ansible_lint
+- name: Check if Caddy has a list file
+  become: true
+  ansible.builtin.stat:
+    path: /etc/apt/sources.list.d/caddy-stable.list
+  register: caddy_list
+- name: Create Caddy's list file if we don't have it
+  become: true
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+    executable: /bin/bash
+  when: not caddy_list.stat.exists
+  tags:
+    - skip_ansible_lint
+- name: Ensure packages are updated
+  become: true
+  ansible.builtin.apt:
+    update_cache: true
+- name: Install Caddy
+  become: true
+  ansible.builtin.package:
+    name: caddy
+    state: present
