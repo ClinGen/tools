@@ -1,7 +1,5 @@
 {
-  "directories": [
-    "src/config"
-  ],
+  "directories": ["src/config"],
   "ignore": [
     "*.bak",
     ".venv",
