@@ -1,0 +1,21 @@
+{% extends "layouts/base.html" %}
+{% block title %}Home{% endblock %}
+{% block description %}The Stanford ClinGen team's internal tools.{% endblock %}
+{% block main %}
+    <div class="box mt-6 mb-6">
+        <h1 class="title">ClinGen Tools</h1>
+        <p class="subtitle">The Stanford ClinGen team's internal tools.</p>
+        {% if tools %}
+            <ul>
+                {% for tool, url in tools %}
+                    <li class="block">
+                        <a href="{{ url }}"><strong>{{ tool.name }} ({{ tool.abbreviation }})</strong></a>:
+                        {{ tool.description }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No tools are available yet.</p>
+        {% endif %}
+    </div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% load static %}
+<!doctype html>
+<html lang="en" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' data-theme="light">
+<head>
+    <title>ClinGen Tools | {% block title %}{% endblock %}</title>
+    <meta name="description" content="{% block description %}{% endblock %}">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <link type="text/css" rel="stylesheet" href="{% static 'tools/css/bulma.css' %}">
+    <link type="text/css" rel="stylesheet" href="{% static 'tools/css/bootstrap-icons.css' %}">
+    <script src="{% static 'tools/js/htmx.js' %}"></script>
+</head>
+<body>
+<header>
+    <div class="container mt-2 mb-2">
+        {% include "partials/env_banner.html" %}
+    </div>
+    <div class="container">
+        {% include "partials/navbar.html" %}
+    </div>
+</header>
+<main>
+    <div class="container">
+        <div id="message-container">
+            {% include "partials/messages.html" %}
+        </div>
+        {% block main %}{% endblock %}
+    </div>
+</main>
+<footer>
+    <div class="container">
+        {% include "partials/footer.html" %}
+    </div>
+</footer>
+</body>
+</html>

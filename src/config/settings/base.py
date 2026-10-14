@@ -25,6 +25,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "whitenoise.runserver_nostatic",
     "django.contrib.staticfiles",
+    "common",
+    "core",
 ]
 
 MIDDLEWARE = [
@@ -50,6 +52,8 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "common.context_processors.git_sha",
+                "common.context_processors.env",
             ],
         },
     },
