@@ -1,0 +1,5 @@
+{% if ENV and ENV != 'prod' %}
+    <div class="notification is-warning">
+        <strong>Note:</strong> This is the {{ ENV }} site, not production.
+    </div>
+{% endif %}

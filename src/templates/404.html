@@ -1,0 +1,17 @@
+{% extends "layouts/base.html" %}
+{% block title %}404 Not Found{% endblock %}
+{% block description %}A 404 error occurred in ClinGen Tools.{% endblock %}
+{% block main %}
+    <article class="message is-warning mt-6 mb-6">
+        <div class="message-header">
+            <h1 class="title">
+                {% include "common/icon.html" with icon_name="exclamation-triangle" %}
+                404 Not Found
+            </h1>
+        </div>
+        <div class="message-body">
+            Oops, that page doesn't exist.
+            Return to the <a href="{% url 'home' %}">home page</a>.
+        </div>
+    </article>
+{% endblock %}

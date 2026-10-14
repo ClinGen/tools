@@ -1,0 +1,17 @@
+{% extends "layouts/base.html" %}
+{% block title %}500 Internal Server Error{% endblock %}
+{% block description %}A 500 error occurred in ClinGen Tools.{% endblock %}
+{% block main %}
+    <article class="message is-danger mt-6 mb-6">
+        <div class="message-header">
+            <h1 class="title">
+                {% include "common/icon.html" with icon_name="exclamation-octagon" %}
+                500 Internal Server Error
+            </h1>
+        </div>
+        <div class="message-body">
+            Oops, an error occurred. Please try again later.
+            Return to the <a href="{% url 'home' %}">home page</a>.
+        </div>
+    </article>
+{% endblock %}

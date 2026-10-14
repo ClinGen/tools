@@ -1,5 +1,11 @@
 {
-  "directories": ["src/config"],
+  "directories": [
+    "src/common",
+    "src/config",
+    "src/core",
+    "src/static",
+    "src/templates"
+  ],
   "ignore": [
     "*.bak",
     ".venv",
