@@ -8,8 +8,11 @@
 
 # Project files
 *.db
+*.db-shm
+*.db-wal
 .env
 .env.*
+!.env.example
 coverage.xml
 inventory.ini
 src/version.txt
