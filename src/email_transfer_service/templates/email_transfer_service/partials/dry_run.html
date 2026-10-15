@@ -1,0 +1,6 @@
+{% if dry_run %}
+    <div class="notification is-warning is-light block">
+        <span class="has-text-weight-bold">Dry run.</span>
+        Confirmed transfers record each step but don't change Cognito or DynamoDB.
+    </div>
+{% endif %}
