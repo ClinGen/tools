@@ -39,11 +39,11 @@
             </div>
         {% elif preview.plan %}
             <div class="box block">
-                <p class="has-text-weight-bold mb-2">The transfer will run these steps:</p>
+                <p class="has-text-weight-bold mb-2">The transfer will do the following:</p>
                 <ol class="ml-5 mb-4">
                     {% for step in preview.plan.steps %}
                         <li>
-                            {{ step.description }}
+                            {{ step.summary }}
                             {% if step.skip_reason %}
                                 <span class="tag is-light">Skipped</span> {{ step.skip_reason }}
                             {% endif %}

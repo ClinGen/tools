@@ -15,6 +15,18 @@ from email_transfer_service.transfers import Plan, check_preconditions, run_tran
 OLD = "old@example.com"
 NEW = "new@example.com"
 
+# Words that only developers understand, which the ETS's pages shouldn't show.
+TECHNICAL_WORDS = [
+    "Cognito",
+    "DynamoDB",
+    "user_status",
+    "requested activation",
+    "old-pk",
+    "new-pk",
+    "old-user",
+    "new-user",
+]
+
 
 def _client(
     *,
@@ -60,12 +72,23 @@ class CheckPreconditionsTest(TestCase):
         steps = preview.plan.steps()  # type: ignore
         self.assertEqual(steps[0].name, "retire_new_record")
         self.assertIn("new-pk", steps[0].description)
+        self.assertEqual(
+            steps[0].summary,
+            f"Remove the empty GCI/VCI profile that was made for {NEW}.",
+        )
 
     def test_any_other_new_record_status_fails(self):
         preview = check_preconditions(_client(new_record_status="active"), OLD, NEW)
         self.assertIsNone(preview.plan)
-        self.assertEqual(len(preview.failures), 1)
-        self.assertIn('user_status "active"', preview.failures[0])
+        self.assertEqual(
+            preview.failures,
+            [
+                (
+                    f"{NEW} already has its own GCI/VCI profile, so the ETS can't move "
+                    "another one onto it. Ask a developer for help."
+                ),
+            ],
+        )
 
     def test_reports_every_failure(self):
         preview = check_preconditions(
@@ -77,9 +100,12 @@ class CheckPreconditionsTest(TestCase):
         self.assertEqual(
             preview.failures,
             [
-                f"The old email ({OLD}) has no Cognito user.",
-                f"The old email ({OLD}) has no DynamoDB user record.",
-                f"The new email ({NEW}) has no Cognito user.",
+                f"{OLD} has no sign-in account.",
+                f"{OLD} has no GCI/VCI profile.",
+                (
+                    f"{NEW} has no sign-in account. The user needs to sign in to the "
+                    "GCI or VCI with it once before the transfer."
+                ),
             ],
         )
 
@@ -87,16 +113,40 @@ class CheckPreconditionsTest(TestCase):
         preview = check_preconditions(_client(new_enabled=True), OLD, NEW)
         enable = preview.plan.steps()[-1]  # type: ignore
         self.assertEqual(enable.name, "enable_new_user")
-        self.assertEqual(enable.skip_reason, "The new user is already enabled.")
+        self.assertEqual(enable.skip_reason, "Sign-in is already on for this email.")
 
-    def test_steps_name_the_users_and_records(self):
-        preview = check_preconditions(_client(), OLD, NEW)
+    def test_descriptions_name_the_users_and_records(self):
+        preview = check_preconditions(
+            _client(new_record_status="requested activation"),
+            OLD,
+            NEW,
+        )
         descriptions = " ".join(
             step.description
             for step in preview.plan.steps()  # type: ignore
         )
-        for name in ["old-pk", "old-user", "new-user", NEW]:
+        for name in ["new-pk", "old-pk", "old-user", "new-user", NEW]:
             self.assertIn(name, descriptions)
+
+    def test_summaries_and_failures_have_no_technical_details(self):
+        plan = check_preconditions(
+            _client(new_record_status="requested activation", new_enabled=True),
+            OLD,
+            NEW,
+        ).plan
+        failures = check_preconditions(
+            _client(old_user=False, new_user=False, new_record_status="active"),
+            OLD,
+            NEW,
+        ).failures
+        plain = [
+            *[step.summary for step in plan.steps()],  # type: ignore
+            *[step.skip_reason for step in plan.steps()],  # type: ignore
+            *failures,
+        ]
+        for text in plain:
+            for word in TECHNICAL_WORDS:
+                self.assertNotIn(word, text)
 
 
 def _sign_in(client: object) -> None:
@@ -126,7 +176,7 @@ class PreviewViewTest(TestCase):
             reverse("ets:index"),
             {"old_email": OLD, "new_email": NEW},
         )
-        self.assertContains(response, "has no DynamoDB user record")
+        self.assertContains(response, "has no GCI/VCI profile")
         self.assertNotContains(response, "Confirm Transfer")
 
     def test_valid_preview_lists_the_steps(self):
@@ -137,9 +187,11 @@ class PreviewViewTest(TestCase):
             reverse("ets:index"),
             {"old_email": OLD, "new_email": NEW},
         )
-        self.assertContains(response, "Retire the new email&#x27;s DynamoDB record")
-        self.assertContains(response, "Disable Cognito user old-user")
+        self.assertContains(response, "Remove the empty GCI/VCI profile")
+        self.assertContains(response, f"Turn off sign-in for {OLD}.")
         self.assertContains(response, "Confirm Transfer")
+        for word in TECHNICAL_WORDS:
+            self.assertNotContains(response, word)
 
     def test_aws_errors_are_flashed(self):
         self.from_settings.side_effect = ImproperlyConfigured("no user pool")
@@ -147,13 +199,18 @@ class PreviewViewTest(TestCase):
             reverse("ets:index"),
             {"old_email": OLD, "new_email": NEW},
         )
-        self.assertContains(response, "Couldn&#x27;t check the preconditions")
+        self.assertContains(
+            response,
+            "The ETS couldn&#x27;t look up these emails. Try again in a few minutes, "
+            "or ask a developer for help.",
+        )
+        self.assertNotContains(response, "no user pool")
         self.assertNotContains(response, "Confirm Transfer")
 
     @override_settings(ETS_DRY_RUN=True)
     def test_dry_run_banner(self):
         response = self.client.get(reverse("ets:index"))
-        self.assertContains(response, "Dry run")
+        self.assertContains(response, "Dry-run mode is on.")
 
 
 def _plan(client: FakeEtsClient) -> Plan:
@@ -185,11 +242,17 @@ class RunTransferTest(TestCase):
             ],
         )
         self.assertEqual(self._results(transfer), ["succeeded"] * 3)
+        self.assertEqual(transfer.old_username, "old-user")
+        self.assertEqual(transfer.new_username, "new-user")
+        self.assertEqual(transfer.old_record_pk, "old-pk")
+        self.assertEqual(transfer.retired_record_pk, "")
+        self.assertIn("old-pk", transfer.steps[0]["description"])
 
     def test_requested_activation_record_is_retired_first(self):
         client = _client(new_record_status="requested activation")
         transfer = run_transfer(client, _plan(client), ran_by=self.staff, dry_run=False)
         self.assertEqual(client.calls[0], ("retire_record", "new-pk"))
+        self.assertEqual(transfer.retired_record_pk, "new-pk")
         self.assertEqual(self._results(transfer), ["succeeded"] * 4)
 
     def test_already_enabled_new_user_is_skipped(self):
@@ -220,6 +283,7 @@ class RunTransferTest(TestCase):
                 )
                 self.assertEqual(transfer.status, EmailTransfer.Status.FAILED)
                 self.assertEqual(transfer.error, f"{write} failed")
+                self.assertEqual(transfer.steps[index]["error"], f"{write} failed")
                 self.assertEqual(
                     self._results(transfer),
                     ["succeeded"] * index + ["failed"] + ["not run"] * (3 - index),
@@ -235,7 +299,10 @@ class RunTransferTest(TestCase):
         self.assertTrue(transfer.dry_run)
         self.assertEqual(transfer.status, EmailTransfer.Status.SUCCEEDED)
         self.assertEqual(self._results(transfer), ["skipped"] * 4)
-        self.assertEqual(transfer.steps[0]["detail"], "Dry run.")
+        self.assertEqual(
+            transfer.steps[0]["detail"],
+            "Skipped because this was a dry run.",
+        )
 
 
 class ConfirmViewTest(TestCase):
@@ -261,14 +328,16 @@ class ConfirmViewTest(TestCase):
         self.assertEqual(len(client.calls), 3)
         detail = self.client.get(transfer.get_absolute_url())
         self.assertContains(detail, transfer.slug)
-        self.assertContains(detail, "Disable Cognito user old-user")
+        self.assertContains(detail, f"Turn off sign-in for {OLD}.")
+        for word in TECHNICAL_WORDS:
+            self.assertNotContains(detail, word)
 
     def test_preconditions_are_rechecked_on_confirm(self):
         # The new email gained an active record after the preview.
         client = _client(new_record_status="active")
         self.from_settings.return_value = client
         response = self._confirm()
-        self.assertContains(response, "user_status &quot;active&quot;")
+        self.assertContains(response, "already has its own GCI/VCI profile")
         self.assertFalse(EmailTransfer.objects.exists())
         self.assertEqual(client.calls, [])
 
@@ -302,3 +371,13 @@ class ConfirmViewTest(TestCase):
         self.client.force_login(User.objects.create_user(username="other@example.com"))
         for url in [reverse("ets:list"), transfer.get_absolute_url()]:
             self.assertEqual(self.client.get(url).status_code, 403)
+
+
+class FailedTransferPageTest(TestCase):
+    def test_detail_page_hides_the_raw_error(self):
+        _sign_in(self.client)
+        client = _client(fail_on="disable_cognito_user")
+        transfer = run_transfer(client, _plan(client), ran_by=None, dry_run=False)
+        response = self.client.get(transfer.get_absolute_url())
+        self.assertNotContains(response, "disable_cognito_user failed")
+        self.assertContains(response, "The transfer stopped partway.")

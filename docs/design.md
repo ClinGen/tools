@@ -194,6 +194,12 @@ shows which steps finished, so staff can see what's left to fix. Like every mode
 `EmailTransfer` keeps its change history, so there's a record of who transferred which
 email and when.
 
+The staff who use the ETS aren't technical, so its pages describe a transfer in plain
+language: a "sign-in account" instead of a Cognito user, and a "GCI/VCI profile" instead
+of a DynamoDB user record. They never show PKs, Cognito usernames, attribute names, or
+raw AWS errors. The `EmailTransfer` still saves those details, and developers see them
+in the Django admin and in the logs.
+
 The ETS reads its AWS credentials, region, user pool ID, and table name from the
 environment, never from code. The credentials should belong to an IAM user that can do
 only what a transfer needs: list, enable, and disable users in the one user pool, and

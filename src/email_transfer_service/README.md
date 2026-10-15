@@ -12,7 +12,8 @@ Empty file that marks `email_transfer_service` as a Python package.
 
 ### `admin.py`
 
-Registers `EmailTransfer` in the Django admin, with its history.
+Registers `EmailTransfer` in the Django admin, with its history. The admin is where
+developers see a transfer's technical details, which the ETS's pages leave out.
 
 ### `apps.py`
 
@@ -38,13 +39,16 @@ differ, and can't contain quotes or backslashes, which would break Cognito's fil
 ### `models.py`
 
 Defines `EmailTransfer`, one run of a transfer: the old and new emails, who ran it,
-whether it was a dry run, its status, each step's result, and any error. Its slug is `T`
-and a zero-padded number, such as `T000001`, and it keeps its change history.
+whether it was a dry run, its status, each step's result, and any error. It also saves
+the technical details staff don't see: the Cognito usernames, the PKs of the moved and
+retired DynamoDB records, each step's technical description, and the raw error. Its slug
+is `T` and a zero-padded number, such as `T000001`, and it keeps its change history.
 
 ### `templates/email_transfer_service/detail.html`
 
-A transfer's page: its emails, status, who ran it, and each step's result, plus the
-error if a step failed.
+A transfer's page, in plain language: its emails, status, who ran it, and each step's
+summary and result. If a step failed, it asks staff to give a developer the transfer's
+ID instead of showing the raw error.
 
 ### `templates/email_transfer_service/index.html`
 
@@ -72,7 +76,9 @@ A transfer's status tag, plus a Dry Run tag if it was one.
 Tests the preconditions (each failure, the `requested activation` record, other
 statuses, and an already-enabled new user) and the preview page; running a transfer
 (full success, the `requested activation` path, a failure at each step, and a dry run);
-and confirming one, which re-checks the preconditions and records who ran it.
+and confirming one, which re-checks the preconditions and records who ran it. Also
+checks that the summaries, failures, and pages name no Cognito users, DynamoDB records,
+or attribute names, while the saved transfer keeps them.
 
 ### `tests.py`
 
@@ -83,10 +89,12 @@ with ETS permissions can open the home page.
 ### `transfers.py`
 
 Checks a transfer's preconditions with `check_preconditions()`, which returns a
-`Preview`: every failure, or a `Plan` whose `steps()` lists what the transfer will
-change, naming the Cognito usernames and DynamoDB PKs. `run_transfer()` saves an
-`EmailTransfer`, runs the plan's steps in order, and records each result as it finishes.
-It stops at the first failure, and in a dry run it skips every write.
+`Preview`: every failure, in plain language, or a `Plan` whose `steps()` lists what the
+transfer will change. Each step has a plain summary for staff and a technical
+description, naming the Cognito usernames and DynamoDB PKs, for developers.
+`run_transfer()` saves an `EmailTransfer`, runs the plan's steps in order, and records
+each result as it finishes. It stops at the first failure, and in a dry run it skips
+every write.
 
 ### `urls.py`
 
@@ -97,4 +105,5 @@ Routes the ETS's pages under the `ets` namespace: the home page, past transfers 
 
 Serves the ETS's pages to users with ETS permissions. On the home page, submitting the
 form previews the transfer, and confirming re-checks the preconditions and runs it. AWS
-errors become error flash messages. The list and detail pages show past transfers.
+errors are logged and become a plain error flash message. The list and detail pages show
+past transfers.
