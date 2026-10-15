@@ -23,7 +23,7 @@ processes write to it alongside the web process. Backups go to the S3 bucket nam
 start with `SUBDOMAIN`. Reads `SECRET_KEY`, `ENV`, the Sentry settings, and the backup
 settings from the environment, and, as in the HCI, requires `CLERK_SECRET_KEY` and
 `CLERK_PUBLISHABLE_KEY` in every environment. Also reads the ETS's AWS settings and
-`ETS_DRY_RUN`, which is on unless it's set to `false`.
+`ETS_DRY_RUN`, which is on unless it's set to `0`.
 
 ### `settings/dev.py`
 
