@@ -18,30 +18,29 @@
         </div>
         {% if transfer.error %}
             <div class="notification is-danger is-light block">
-                <p class="has-text-weight-bold">The transfer stopped at a failed step:</p>
-                <p>{{ transfer.error }}</p>
-                <p>The steps before it ran and weren't undone. A developer needs to finish
-                    or reverse the transfer by hand.</p>
+                <p class="has-text-weight-bold">The transfer stopped partway.</p>
+                <p>The steps marked Done weren't undone. Ask a developer to finish the
+                    transfer, and give them its ID, {{ transfer.slug }}.</p>
             </div>
         {% endif %}
         <div class="block table-container">
             <table class="table">
                 <thead>
-                    <tr><th>Step</th><th>Result</th><th>Detail</th></tr>
+                    <tr><th>Step</th><th>Result</th><th>Note</th></tr>
                 </thead>
                 <tbody>
                     {% for step in transfer.steps %}
                         <tr>
-                            <td>{{ step.description }}</td>
+                            <td>{{ step.summary }}</td>
                             <td>
                                 {% if step.result == "succeeded" %}
-                                    <span class="tag is-success is-light">Succeeded</span>
+                                    <span class="tag is-success is-light">Done</span>
                                 {% elif step.result == "failed" %}
                                     <span class="tag is-danger is-light">Failed</span>
                                 {% elif step.result == "skipped" %}
                                     <span class="tag is-light">Skipped</span>
                                 {% else %}
-                                    <span class="tag is-light">Not Run</span>
+                                    <span class="tag is-light">Not Done</span>
                                 {% endif %}
                             </td>
                             <td>{{ step.detail }}</td>

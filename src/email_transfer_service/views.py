@@ -1,3 +1,5 @@
+import logging
+
 from botocore.exceptions import BotoCoreError, ClientError
 from django.conf import settings
 from django.contrib import messages
@@ -11,8 +13,15 @@ from email_transfer_service.forms import TransferForm
 from email_transfer_service.models import EmailTransfer
 from email_transfer_service.transfers import check_preconditions, run_transfer
 
+logger = logging.getLogger(__name__)
+
 # What can go wrong while talking to AWS: missing settings, or a failed call.
 AWS_ERRORS = (BotoCoreError, ClientError, ImproperlyConfigured)
+
+LOOKUP_ERROR_MESSAGE = (
+    "The ETS couldn't look up these emails. Try again in a few minutes, or ask a "
+    "developer for help."
+)
 
 
 @tool_permission_required("has_ets_permissions")
@@ -36,8 +45,9 @@ def index(request: HttpRequest) -> HttpResponse:
                 form.cleaned_data["old_email"],
                 form.cleaned_data["new_email"],
             )
-        except AWS_ERRORS as error:
-            messages.error(request, f"Couldn't check the preconditions: {error}")
+        except AWS_ERRORS:
+            logger.exception("Couldn't check the preconditions.")
+            messages.error(request, LOOKUP_ERROR_MESSAGE)
         else:
             if preview.plan and request.POST.get("confirm") == "true":
                 transfer = run_transfer(

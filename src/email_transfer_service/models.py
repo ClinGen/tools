@@ -14,7 +14,7 @@ class EmailTransfer(models.Model):
     """
 
     class Status(models.TextChoices):
-        PENDING = "pending", "Pending"
+        PENDING = "pending", "In Progress"
         SUCCEEDED = "succeeded", "Succeeded"
         FAILED = "failed", "Failed"
 
@@ -41,6 +41,37 @@ class EmailTransfer(models.Model):
         verbose_name="Ran By",
         help_text="The staff member who ran the transfer.",
     )
+    old_username = models.CharField(
+        blank=True,
+        default="",
+        max_length=128,
+        verbose_name="Old Cognito Username",
+        help_text="The Cognito username of the old email's user, which is disabled.",
+    )
+    new_username = models.CharField(
+        blank=True,
+        default="",
+        max_length=128,
+        verbose_name="New Cognito Username",
+        help_text="The Cognito username of the new email's user, which is enabled.",
+    )
+    old_record_pk = models.CharField(
+        blank=True,
+        default="",
+        max_length=128,
+        verbose_name="Old Record PK",
+        help_text="The PK of the DynamoDB user record that moves to the new email.",
+    )
+    retired_record_pk = models.CharField(
+        blank=True,
+        default="",
+        max_length=128,
+        verbose_name="Retired Record PK",
+        help_text=(
+            "The PK of the new email's 'requested activation' record, if it had one "
+            "and it was retired."
+        ),
+    )
     dry_run = models.BooleanField(
         default=True,
         verbose_name="Dry Run",
@@ -57,13 +88,16 @@ class EmailTransfer(models.Model):
         default=list,
         blank=True,
         verbose_name="Steps",
-        help_text="Each step of the transfer and its result.",
+        help_text=(
+            "Each step of the transfer: a summary for staff, a technical description, "
+            "its result, and any error."
+        ),
     )
     error = models.TextField(
         blank=True,
         default="",
         verbose_name="Error",
-        help_text="Why the transfer failed, if it did.",
+        help_text="The error from the step that failed, if one did.",
     )
     added_at = models.DateTimeField(
         auto_now_add=True,

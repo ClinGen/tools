@@ -60,11 +60,15 @@ class Step:
 
     Attributes:
         name: What the step does, such as "disable_old_user".
-        description: A sentence for staff that says what will change.
-        skip_reason: Why the step won't run, or "" if it will.
+        summary: A plain sentence for staff that says what will change.
+        description: A technical sentence for developers, naming the Cognito users
+            and DynamoDB records.
+        skip_reason: A plain sentence for staff that says why the step won't run, or
+            "" if it will.
     """
 
     name: str
+    summary: str
     description: str
     skip_reason: str = ""
 
@@ -87,6 +91,10 @@ class Plan:
             steps.append(
                 Step(
                     name="retire_new_record",
+                    summary=(
+                        "Remove the empty GCI/VCI profile that was made for "
+                        f"{self.new_email}."
+                    ),
                     description=(
                         f"Retire the new email's DynamoDB record {self.new_record.pk}: "
                         f"set its email to {RETIRED_EMAIL}, its user_status to "
@@ -97,6 +105,10 @@ class Plan:
         steps += [
             Step(
                 name="update_old_record",
+                summary=(
+                    f"Move the GCI/VCI profile from {self.old_email} to "
+                    f"{self.new_email}, keeping the user's history."
+                ),
                 description=(
                     f"Set the email on DynamoDB record {self.old_record.pk} to "
                     f"{self.new_email}."
@@ -104,17 +116,21 @@ class Plan:
             ),
             Step(
                 name="disable_old_user",
+                summary=f"Turn off sign-in for {self.old_email}.",
                 description=(
                     f"Disable Cognito user {self.old_user.username} ({self.old_email})."
                 ),
             ),
             Step(
                 name="enable_new_user",
+                summary=f"Turn on sign-in for {self.new_email}.",
                 description=(
                     f"Enable Cognito user {self.new_user.username} ({self.new_email})."
                 ),
                 skip_reason=(
-                    "The new user is already enabled." if self.new_user.enabled else ""
+                    "Sign-in is already on for this email."
+                    if self.new_user.enabled
+                    else ""
                 ),
             ),
         ]
@@ -126,7 +142,7 @@ class Preview:
     """The result of checking a transfer's preconditions.
 
     Attributes:
-        failures: Each precondition that failed, as a sentence for staff.
+        failures: Each precondition that failed, as a plain sentence for staff.
         plan: The transfer's plan, or None if any precondition failed.
     """
 
@@ -152,17 +168,22 @@ def check_preconditions(client: Lookups, old_email: str, new_email: str) -> Prev
 
     failures = []
     if not old_user:
-        failures.append(f"The old email ({old_email}) has no Cognito user.")
+        failures.append(f"{old_email} has no sign-in account.")
     if not old_record:
-        failures.append(f"The old email ({old_email}) has no DynamoDB user record.")
+        failures.append(f"{old_email} has no GCI/VCI profile.")
     if not new_user:
-        failures.append(f"The new email ({new_email}) has no Cognito user.")
-    if new_record and new_record.user_status != REQUESTED_ACTIVATION:
         failures.append(
-            f"The new email ({new_email}) has DynamoDB user record {new_record.pk} "
-            f'with user_status "{new_record.user_status}". The ETS can only replace '
-            f'a record with user_status "{REQUESTED_ACTIVATION}", so a developer '
-            "needs to look at this one.",
+            f"{new_email} has no sign-in account. The user needs to sign in to the "
+            "GCI or VCI with it once before the transfer.",
+        )
+    if new_record and new_record.user_status != REQUESTED_ACTIVATION:
+        logger.info(
+            f"Can't transfer {old_email} to {new_email}: the new email has DynamoDB "
+            f"user record {new_record.pk} with user_status {new_record.user_status!r}.",
+        )
+        failures.append(
+            f"{new_email} already has its own GCI/VCI profile, so the ETS can't move "
+            "another one onto it. Ask a developer for help.",
         )
     if failures or not (old_user and old_record and new_user):
         return Preview(failures=failures)
@@ -221,13 +242,19 @@ def run_transfer(
         old_email=plan.old_email,
         new_email=plan.new_email,
         ran_by=ran_by,
+        old_username=plan.old_user.username,
+        new_username=plan.new_user.username,
+        old_record_pk=plan.old_record.pk,
+        retired_record_pk=plan.new_record.pk if plan.new_record else "",
         dry_run=dry_run,
         steps=[
             {
                 "name": step.name,
+                "summary": step.summary,
                 "description": step.description,
                 "result": "not run",
                 "detail": "",
+                "error": "",
             }
             for step in steps
         ],
@@ -236,14 +263,14 @@ def run_transfer(
     for record, step in zip(transfer.steps, steps, strict=True):
         if step.skip_reason or dry_run:
             record["result"] = "skipped"
-            record["detail"] = step.skip_reason or "Dry run."
+            record["detail"] = step.skip_reason or "Skipped because this was a dry run."
         else:
             try:
                 actions[step.name]()
             except Exception as error:
                 logger.exception(f"Transfer {transfer.slug} failed at {step.name}.")
                 record["result"] = "failed"
-                record["detail"] = str(error)
+                record["error"] = str(error)
                 transfer.status = EmailTransfer.Status.FAILED
                 transfer.error = str(error)
                 transfer.save()
