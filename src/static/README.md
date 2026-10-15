@@ -2,8 +2,8 @@
 
 This directory holds the static files Django serves. The files under `tools/` are
 vendored from `node_modules` or bundled from `src/auth_/js/` by `build.js`
-(`just js-build`); don't edit them by hand.
-To upgrade one, update `package.json` and rerun `just js-build`.
+(`just js-build`); don't edit them by hand. To upgrade one, update `package.json` and
+rerun `just js-build`.
 
 ### `tools/css/bootstrap-icons.css`
 

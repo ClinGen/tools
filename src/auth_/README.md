@@ -14,8 +14,8 @@ Empty file that marks `auth_` as a Python package.
 
 ### `admin.py`
 
-Registers `UserProfile` in the Django admin, with its change history, so staff can
-grant tool permissions. Unregisters Django's groups, which we don't use.
+Registers `UserProfile` in the Django admin, with its change history, so staff can grant
+tool permissions. Unregisters Django's groups, which we don't use.
 
 ### `apps.py`
 

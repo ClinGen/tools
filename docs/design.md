@@ -25,8 +25,8 @@ This document is for engineers who are new to the codebase and for product owner
 want to understand the system's architecture and key design decisions. It covers what
 the tools share and how they're kept apart. Each tool's own domain design (the AS's
 affiliation model and legacy JSON format, the CSS's submission lifecycle and poller)
-carries over from its standalone repository's `docs/design.md` unless this document
-says otherwise.
+carries over from its standalone repository's `docs/design.md` unless this document says
+otherwise.
 
 ## Goals
 
@@ -63,15 +63,15 @@ Each tool keeps the external integrations it had as a standalone service:
   links to affiliations by UUID.
 - **CSS**: ClinGen clients send submissions through its API, and the CSS forwards them
   to the NCBI ClinVar Submission API.
-- **ETS**: reads and changes user accounts in the Gene Curation Interface (GCI) and
-  the Variant Curation Interface (VCI). Those accounts live in two places: an AWS
-  Cognito user pool, which handles sign-in, and the `GeneVariantCuration` DynamoDB
-  table, which holds each user's record. The ETS calls both through boto3.
+- **ETS**: reads and changes user accounts in the Gene Curation Interface (GCI) and the
+  Variant Curation Interface (VCI). Those accounts live in two places: an AWS Cognito
+  user pool, which handles sign-in, and the `GeneVariantCuration` DynamoDB table, which
+  holds each user's record. The ETS calls both through boto3.
 
 ### Application Architecture
 
-ClinGen Tools is a standard Django monolith, like the HCI. Server-rendered templates
-are the UI, with HTMX where a page needs a little interactivity.
+ClinGen Tools is a standard Django monolith, like the HCI. Server-rendered templates are
+the UI, with HTMX where a page needs a little interactivity.
 
 **Key libraries:**
 
@@ -137,15 +137,15 @@ app. If two tools need the same code, move it into a shared app.
 
 All tools share one SQLite database. Each tool's tables are prefixed with its app label,
 so they can't collide. No tool has a foreign key to another tool's models. If that ever
-seems necessary, the data probably belongs in a shared app, and that's a design
-decision worth recording here first.
+seems necessary, the data probably belongs in a shared app, and that's a design decision
+worth recording here first.
 
 Every model carries full change history via `django-simple-history`.
 
 ### Authentication and Authorization
 
-Staff sign in once and can then use every tool they've been granted. Permissions are
-per tool: being able to manage affiliations doesn't mean being able to resend ClinVar
+Staff sign in once and can then use every tool they've been granted. Permissions are per
+tool: being able to manage affiliations doesn't mean being able to resend ClinVar
 submissions. Each tool's views check its own permission through the mixins in `auth_`.
 
 Staff sign in with Clerk, the identity provider every ClinGen app is moving to. `auth_`
@@ -162,9 +162,8 @@ them in the Django admin.
 Sometimes a GCI or VCI user needs to move their account from an old email to a new one.
 By then, they've usually signed in with the new email, so both emails have a Cognito
 user. The old email also has a DynamoDB user record, which holds the user's history. The
-new email has either no record or one with `user_status` set to
-`requested activation`. The transfer keeps the old record and points it at the new
-email.
+new email has either no record or one with `user_status` set to `requested activation`.
+The transfer keeps the old record and points it at the new email.
 
 Before the ETS, a developer ran a script by hand to do this. The ETS turns that script
 into a form ClinGen staff can use on their own. A transfer has three steps:
@@ -186,15 +185,14 @@ into a form ClinGen staff can use on their own. A transfer has three steps:
 
 If a precondition fails, the ETS shows why and makes no changes. There's no override:
 the script's `--force` flag, which skipped the `requested activation` check, has no
-equivalent in the ETS. A transfer that doesn't meet the preconditions needs a
-developer.
+equivalent in the ETS. A transfer that doesn't meet the preconditions needs a developer.
 
-Cognito and DynamoDB can't be changed in one transaction, so a transfer can fail
-partway through. The ETS saves each transfer as an `EmailTransfer` record before it
-starts, and records each step's result as it goes. When a step fails, the ETS stops and
-the record shows which steps finished, so staff can see what's left to fix. Like every
-model, `EmailTransfer` keeps its change history, so there's a record of who transferred
-which email and when.
+Cognito and DynamoDB can't be changed in one transaction, so a transfer can fail partway
+through. The ETS saves each transfer as an `EmailTransfer` record before it starts, and
+records each step's result as it goes. When a step fails, the ETS stops and the record
+shows which steps finished, so staff can see what's left to fix. Like every model,
+`EmailTransfer` keeps its change history, so there's a record of who transferred which
+email and when.
 
 The ETS reads its AWS credentials, region, user pool ID, and table name from the
 environment, never from code. The credentials should belong to an IAM user that can do
@@ -234,8 +232,8 @@ deploy or an outage now affects every tool at once.
 
 Each tool could stay its own Django project on one shared server, with Caddy routing
 each path prefix to that tool's Gunicorn. This saves on servers but not on maintenance:
-there'd still be one set of dependencies, settings, and migrations per tool. One
-project gets us the savings we want.
+there'd still be one set of dependencies, settings, and migrations per tool. One project
+gets us the savings we want.
 
 ### Subdomains Instead of Path Prefixes
 
@@ -249,8 +247,8 @@ once for every tool, so we chose them.
 
 Every tool runs in the same process and shares one database, so a slow query or a crash
 in one tool affects the others. Tests for each tool must pass on their own, and
-`just ci` runs every tool's tests on every change, including changes that touch only
-one tool.
+`just ci` runs every tool's tests on every change, including changes that touch only one
+tool.
 
 ### Backups
 

@@ -23,8 +23,7 @@ beads by doing the following tasks.
      anything its children share. This goes in the epic's `--design` field.
    - Child beads, each small enough to finish in one session and land as one pull
      request: one conceptual change, ideally about 150 changed lines or fewer. Prefer
-     vertical slices (model, view, template, and tests together) over horizontal
-     layers.
+     vertical slices (model, view, template, and tests together) over horizontal layers.
    - An order for the children, bottom of the stack first. A bead may depend only on
      beads below it, so make each bead's blockers the beads it builds on.
    - For each bead: a title, a description, acceptance criteria, its blockers, and a
@@ -39,11 +38,12 @@ beads by doing the following tasks.
      the beads waiting on it.
 5. Revise the breakdown until I approve it.
 6. Create the beads:
-   - Epic: `bd create --type epic --title "..." --description "..." --design "..."
-     --labels <tool>`.
-   - Children: `bd create --parent <epic-id> --title "..." --description "..."
-     --acceptance "..." --labels <tool>`. Use `--type` (`task`, `feature`, `bug`,
-     `chore`, `decision`) and `--priority` where they differ from the defaults.
+   - Epic:
+     `bd create --type epic --title "..." --description "..." --design "..." --labels <tool>`.
+   - Children:
+     `bd create --parent <epic-id> --title "..." --description "..." --acceptance "..." --labels <tool>`.
+     Use `--type` (`task`, `feature`, `bug`, `chore`, `decision`) and `--priority` where
+     they differ from the defaults.
    - Blockers: `bd dep add <blocked-id> <blocker-id>`.
 7. Verify the result: `bd dep cycles` finds no cycles, and `bd ready --parent <epic-id>`
    lists only the beads that should be startable first.
