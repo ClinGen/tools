@@ -4,6 +4,17 @@ import os
 from pathlib import Path
 from typing import Any
 
+import sentry_sdk
+
+# We use Sentry for error monitoring and tracing. Events from a tool's pages are tagged
+# with the tool by common.middleware.ToolTagMiddleware.
+sentry_sdk.init(
+    dsn=os.getenv("SENTRY_DSN"),
+    environment=os.getenv("SENTRY_ENV"),
+    send_default_pii=True,
+    traces_sample_rate=1.0,
+)
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 try:
@@ -26,6 +37,7 @@ INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
     "django.contrib.staticfiles",
     "simple_history",
+    "dbbackup",
     "auth_",
     "common",
     "core",
@@ -41,6 +53,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "simple_history.middleware.HistoryRequestMiddleware",
+    "common.middleware.ToolTagMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -122,8 +135,40 @@ STATIC_ROOT = BASE_DIR / "public"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Servers keep database backups in S3. Without a bucket, as in dev and CI, backups go
+# to a backups/ directory next to src/. boto3 reads the AWS_ACCESS_KEY_ID and
+# AWS_SECRET_ACCESS_KEY environment variables itself.
+DBBACKUP_BUCKET_NAME = os.getenv("DBBACKUP_BUCKET_NAME")
+
+if DBBACKUP_BUCKET_NAME:
+    BACKUP_STORAGE = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": DBBACKUP_BUCKET_NAME,
+            "region_name": "us-west-2",
+            "default_acl": None,
+        },
+    }
+else:
+    BACKUP_STORAGE = {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {"location": BASE_DIR.parent / "backups"},
+    }
+
 STORAGES = {
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
+    "dbbackup": BACKUP_STORAGE,
 }
+
+# The server's subdomain: tools, tools-test, or dev on a developer's machine. Backup
+# names use it, so you can tell prod and test apart. An empty value, as in a .env copied
+# from .env.example, means dev too.
+SUBDOMAIN = os.getenv("SUBDOMAIN") or "dev"
+
+# Backups named by django-dbbackup go under daily/. Other backups, such as the one each
+# deploy takes before it migrates, pass their own name with -o.
+DBBACKUP_HOSTNAME = SUBDOMAIN
+
+DBBACKUP_FILENAME_TEMPLATE = "daily/{servername}-{datetime}.{extension}"
