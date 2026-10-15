@@ -5,8 +5,10 @@ from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpResponseBase
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils.html import escape
 
 from auth_.models import UserProfile
+from core.tools import get_tool
 from email_transfer_service.clients import CognitoUser, UserRecord
 from email_transfer_service.fakes import FakeEtsClient
 from email_transfer_service.models import EmailTransfer
@@ -381,3 +383,27 @@ class FailedTransferPageTest(TestCase):
         response = self.client.get(transfer.get_absolute_url())
         self.assertNotContains(response, "disable_cognito_user failed")
         self.assertContains(response, "The transfer stopped partway.")
+
+
+class TabsTest(TestCase):
+    def test_each_page_has_the_header_and_the_right_tab_active(self):
+        _sign_in(self.client)
+        transfer = EmailTransfer.objects.create(old_email=OLD, new_email=NEW)
+        pages = {
+            reverse("ets:index"): "New Transfer",
+            reverse("ets:list"): "Past Transfers",
+            transfer.get_absolute_url(): "Past Transfers",
+        }
+        for url, active in pages.items():
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertContains(
+                    response, '<h1 class="title">Email Transfer Service'
+                )
+                self.assertContains(response, escape(get_tool("ets").description))
+                self.assertContains(response, '<div class="tabs is-boxed">')
+                self.assertContains(response, 'aria-current="page"', count=1)
+                html = response.content.decode()
+                active_link = html.split('aria-current="page"')[1].split("</a>")[0]
+                self.assertIn(active, active_link)
+                self.assertNotContains(response, 'class="button is-link is-light"')

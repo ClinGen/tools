@@ -3,8 +3,7 @@
 {% block description %}See the email transfers the ETS has run.{% endblock %}
 {% block main %}
     <div class="block mt-6 mb-6">
-        <h1 class="title">Past Transfers</h1>
-        {% include "email_transfer_service/partials/nav.html" %}
+        {% include "email_transfer_service/partials/header.html" with active_tab="past" %}
         {% if transfers %}
             <div class="block table-container">
                 <table class="table is-hoverable">

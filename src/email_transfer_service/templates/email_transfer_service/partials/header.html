@@ -1,0 +1,18 @@
+<h1 class="title">{{ tool.name }}</h1>
+<h2 class="subtitle">{{ tool.description }}</h2>
+<div class="tabs is-boxed">
+    <ul>
+        <li{% if active_tab == "new" %} class="is-active"{% endif %}>
+            <a href="{% url 'ets:index' %}"{% if active_tab == "new" %} aria-current="page"{% endif %}>
+                {% include "common/icon.html" with icon_name="envelope-arrow-up" %}
+                <span>New Transfer</span>
+            </a>
+        </li>
+        <li{% if active_tab == "past" %} class="is-active"{% endif %}>
+            <a href="{% url 'ets:list' %}"{% if active_tab == "past" %} aria-current="page"{% endif %}>
+                {% include "common/icon.html" with icon_name="clock-history" %}
+                <span>Past Transfers</span>
+            </a>
+        </li>
+    </ul>
+</div>
