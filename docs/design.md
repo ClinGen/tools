@@ -199,6 +199,26 @@ environment, never from code. The credentials should belong to an IAM user that 
 only what a transfer needs: list, enable, and disable users in the one user pool, and
 query and update items in the one table.
 
+### Color Key
+
+Each Bulma color has one meaning, the same one it has in the HCI. Every tool follows
+this key, so a color means the same thing wherever staff see it.
+
+- **Grey** (no modifier): not finished, or neutral. Examples: debug flash messages.
+- **Yellow** (`is-warning`): waiting on someone else, or caution. Examples: the
+  environment banner on tools-test, the 403 and 404 pages, and warning flash messages.
+- **Red** (`is-danger`): something needs fixing. Examples: form errors, error flash
+  messages, and the 500 page.
+- **Green** (`is-success`): done or approved. Examples: a granted permission on the
+  profile page.
+- **Info blue** (`is-info`): published or public. No page uses it yet, though
+  `partials/messages.html` renders info flash messages in it.
+- **Link blue** (`is-link`): something you can click. Examples: every button; secondary
+  buttons, such as the navbar's, add `is-light`.
+
+Status tags always render `is-light`. Don't use `is-primary`. The base layout sets
+`data-theme="light"`, so there is no dark theme to check.
+
 ### Processes
 
 Gunicorn serves every tool. The CSS also needs its poller, a long-running management
