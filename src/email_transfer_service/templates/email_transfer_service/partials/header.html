@@ -14,5 +14,13 @@
                 <span>Past Transfers</span>
             </a>
         </li>
+        {% if active_tab == "detail" %}
+            <li class="is-active">
+                <a href="{{ transfer.get_absolute_url }}" aria-current="page">
+                    {% include "common/icon.html" with icon_name="journal-text" %}
+                    <span>Transfer {{ transfer.slug }}</span>
+                </a>
+            </li>
+        {% endif %}
     </ul>
 </div>

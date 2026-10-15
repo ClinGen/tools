@@ -3,8 +3,7 @@
 {% block description %}See the steps of transfer {{ transfer.slug }}.{% endblock %}
 {% block main %}
     <div class="block mt-6 mb-6">
-        {% include "email_transfer_service/partials/header.html" with active_tab="past" %}
-        <h3 class="title is-4">Transfer {{ transfer.slug }}</h3>
+        {% include "email_transfer_service/partials/header.html" with active_tab="detail" %}
         <div class="block table-container">
             <table class="table">
                 <tbody>
