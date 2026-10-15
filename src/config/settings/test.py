@@ -1,7 +1,12 @@
 """Provides test settings."""
 
+import sentry_sdk
+
 from .dev import *  # ruff: ignore[undefined-local-with-import-star]
-from .dev import BASE_DIR, DATABASES
+from .dev import BASE_DIR, DATABASES, STORAGES
+
+# Disable Sentry during tests so they never send events or flush in the background.
+sentry_sdk.init()
 
 # Django gives SQLite an in-memory test database by default, and an in-memory database
 # can't use WAL mode. A file-backed test database runs with the same journal mode as the
@@ -10,6 +15,7 @@ DATABASES["default"]["TEST"] = {"NAME": BASE_DIR / "test_tools.db"}
 
 # Tests don't need the manifest that collectstatic builds.
 STORAGES = {
+    **STORAGES,
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
