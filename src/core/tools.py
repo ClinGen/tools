@@ -60,3 +60,16 @@ TOOLS = [
 def mounted_tools() -> list[tuple[Tool, str]]:
     """Returns each tool whose URLconf is mounted, with its index URL."""
     return [(tool, url) for tool in TOOLS if (url := tool.url())]
+
+
+def get_tool(namespace: str) -> Tool:
+    """Returns the tool with the given URL namespace.
+
+    Raises:
+        LookupError: If no tool has that namespace.
+    """
+    for tool in TOOLS:
+        if tool.namespace == namespace:
+            return tool
+    error_message = f"No tool has the namespace {namespace!r}."
+    raise LookupError(error_message)

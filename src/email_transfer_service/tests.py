@@ -246,6 +246,10 @@ class IndexViewTest(TestCase):
         response = self.client.get(reverse("ets:index"))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "email_transfer_service/index.html")
+        self.assertContains(
+            response,
+            "Moves a GCI/VCI user&#x27;s account from an old email to a new one.",
+        )
 
     def test_landing_page_lists_the_ets(self):
         response = self.client.get(reverse("home"))

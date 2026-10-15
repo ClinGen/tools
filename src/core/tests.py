@@ -4,7 +4,7 @@ from django.urls import include, path, reverse
 from django.views.defaults import server_error
 
 from config import urls as project_urls
-from core.tools import TOOLS
+from core.tools import TOOLS, get_tool
 
 
 def fake_ets_index(request: HttpRequest) -> HttpResponse:  # ruff: ignore[unused-function-argument]
@@ -78,3 +78,12 @@ class ErrorPageTest(TestCase):
         response = server_error(RequestFactory().get("/"))
         self.assertEqual(response.status_code, 500)
         self.assertIn(b"500 Internal Server Error", response.content)
+
+
+class GetToolTest(TestCase):
+    def test_returns_the_tool_with_the_namespace(self):
+        self.assertEqual(get_tool("ets").abbreviation, "ETS")
+
+    def test_unknown_namespace_is_an_error(self):
+        with self.assertRaises(LookupError):
+            get_tool("nope")

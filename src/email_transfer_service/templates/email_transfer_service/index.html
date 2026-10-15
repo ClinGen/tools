@@ -1,10 +1,10 @@
 {% extends "layouts/base.html" %}
 {% block title %}Email Transfer Service{% endblock %}
-{% block description %}Move a GCI/VCI user's account from an old email to a new one.{% endblock %}
+{% block description %}{{ tool.description }}{% endblock %}
 {% block main %}
     <div class="block mt-6 mb-6">
         <h1 class="title">Email Transfer Service</h1>
-        <h2 class="subtitle">Move a GCI/VCI user's account from an old email to a new one.</h2>
+        <h2 class="subtitle">{{ tool.description }}</h2>
 
         {% include "email_transfer_service/partials/nav.html" %}
         {% include "email_transfer_service/partials/dry_run.html" %}

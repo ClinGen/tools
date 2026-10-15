@@ -8,6 +8,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from auth_.permissions import tool_permission_required
+from core.tools import get_tool
 from email_transfer_service.clients import EtsClient
 from email_transfer_service.forms import TransferForm
 from email_transfer_service.models import EmailTransfer
@@ -60,7 +61,12 @@ def index(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "email_transfer_service/index.html",
-        {"form": form, "preview": preview, "dry_run": settings.ETS_DRY_RUN},
+        {
+            "tool": get_tool("ets"),
+            "form": form,
+            "preview": preview,
+            "dry_run": settings.ETS_DRY_RUN,
+        },
     )
 
 
