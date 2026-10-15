@@ -81,7 +81,7 @@ def transfer_list(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "email_transfer_service/list.html",
-        {"transfers": transfers},
+        {"tool": get_tool("ets"), "transfers": transfers},
     )
 
 
@@ -96,5 +96,5 @@ def transfer_detail(request: HttpRequest, slug: str) -> HttpResponse:
     return render(
         request,
         "email_transfer_service/detail.html",
-        {"transfer": transfer},
+        {"tool": get_tool("ets"), "transfer": transfer},
     )

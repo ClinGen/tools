@@ -52,9 +52,8 @@ ID instead of showing the raw error.
 
 ### `templates/email_transfer_service/index.html`
 
-The ETS's home page, whose subtitle is the ETS's description from `core.tools`: the
-transfer form, and after a preview, either every failed precondition or the steps the
-transfer will run and a button to confirm it.
+The ETS's home page: the transfer form, and after a preview, either every failed
+precondition or the steps the transfer will run and a button to confirm it.
 
 ### `templates/email_transfer_service/list.html`
 
@@ -64,9 +63,10 @@ Lists past transfers, newest first, with links to each one's page.
 
 The banner that says the ETS is in dry-run mode, shown while `ETS_DRY_RUN` is on.
 
-### `templates/email_transfer_service/partials/nav.html`
+### `templates/email_transfer_service/partials/header.html`
 
-The New Transfer and Past Transfers buttons at the top of each ETS page.
+The top of every ETS page: the ETS's name and description from `core.tools`, and boxed
+tabs for New Transfer and Past Transfers, with the current page's tab active.
 
 ### `templates/email_transfer_service/partials/status.html`
 
@@ -79,7 +79,8 @@ statuses, and an already-enabled new user) and the preview page; running a trans
 (full success, the `requested activation` path, a failure at each step, and a dry run);
 and confirming one, which re-checks the preconditions and records who ran it. Also
 checks that the summaries, failures, and pages name no Cognito users, DynamoDB records,
-or attribute names, while the saved transfer keeps them.
+or attribute names, while the saved transfer keeps them, and that every page has the
+header with the right tab active.
 
 ### `tests.py`
 
