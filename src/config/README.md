@@ -32,8 +32,8 @@ suppresses noisy `httpcore` and `urllib3` debug output from Clerk and Sentry.
 
 ### `settings/prod.py`
 
-Extends `base.py` for the servers: refuses to start without `SECRET_KEY`, sets `DEBUG =
-False`, restricts `ALLOWED_HOSTS` to tools-test.clinicalgenome.org and
+Extends `base.py` for the servers: refuses to start without `SECRET_KEY`, sets
+`DEBUG = False`, restricts `ALLOWED_HOSTS` to tools-test.clinicalgenome.org and
 tools.clinicalgenome.org, marks the CSRF and session cookies secure, and logs to the
 console and a rotating file in `logs/` (5 MB, 5 backups).
 
@@ -57,5 +57,5 @@ and the sign-in views under `/auth/`.
 
 ### `wsgi.py`
 
-Configures the WSGI application entry point. Loads environment variables from the
-`.env` file via `python-dotenv` before initializing the Django application.
+Configures the WSGI application entry point. Loads environment variables from the `.env`
+file via `python-dotenv` before initializing the Django application.

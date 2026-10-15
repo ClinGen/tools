@@ -4,8 +4,8 @@
 
 - Configure your AWS credentials using the `~/.aws/credentials` file or using
   environment variables. ClinGen Tools uses two profiles: `stanford-clingen-projects`
-  for the server and backups, and `route-53` for the clinicalgenome.org DNS records.
-  See the AWS docs for more information.
+  for the server and backups, and `route-53` for the clinicalgenome.org DNS records. See
+  the AWS docs for more information.
 
 - Install [Terraform](https://developer.hashicorp.com/terraform) if you don't have it
   installed.
@@ -160,8 +160,8 @@ deployed at once; there's no way to deploy one tool on its own.
   just server-prod-deploy
   ```
 
-Every deploy backs up the database just before it migrates. The deploy output prints
-the backup's name, for example:
+Every deploy backs up the database just before it migrates. The deploy output prints the
+backup's name, for example:
 
 ```
 Pre-deployment backup: pre-deployment/tools-3f2a9c1-to-88c5e47-2026-09-25T180102Z.sqlite3.gz
