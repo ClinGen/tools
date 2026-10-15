@@ -219,6 +219,12 @@ this key, so a color means the same thing wherever staff see it.
 Status tags always render `is-light`. Don't use `is-primary`. The base layout sets
 `data-theme="light"`, so there is no dark theme to check.
 
+### Flash Messages
+
+Views queue flash messages only for warnings and errors. A successful action already
+lands on a page that shows its result, so there are no success or info messages unless
+someone explicitly asks for one.
+
 ### Processes
 
 Gunicorn serves every tool. The CSS also needs its poller, a long-running management
