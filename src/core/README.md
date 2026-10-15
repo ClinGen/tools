@@ -18,9 +18,9 @@ description, or says that no tools are available yet.
 
 ### `tests.py`
 
-Tests the landing page with no tools mounted and with a fake ETS mounted (through a test
-URLconf, defined in this file, that adds it to the project's URLconf), and tests that
-the 404 and 500 pages render their templates.
+Tests the landing page with no tools mounted and with a fake ETS mounted (through test
+URLconfs, defined in this file, that take the project's URLconf without its tools), and
+tests that the 404 and 500 pages render their templates.
 
 ### `tools.py`
 

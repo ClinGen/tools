@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "auth_",
     "common",
     "core",
+    "email_transfer_service",
 ]
 
 MIDDLEWARE = [
@@ -172,3 +173,14 @@ SUBDOMAIN = os.getenv("SUBDOMAIN") or "dev"
 DBBACKUP_HOSTNAME = SUBDOMAIN
 
 DBBACKUP_FILENAME_TEMPLATE = "daily/{servername}-{datetime}.{extension}"
+
+# The ETS's AWS access, for the GCI and VCI user pool and table. Empty values, as in a
+# .env copied from .env.example, leave the ETS unable to look users up. With
+# ETS_DRY_RUN on, which it is unless it's set to false, a confirmed transfer records
+# each step but skips the AWS writes.
+ETS_AWS_ACCESS_KEY_ID = os.getenv("ETS_AWS_ACCESS_KEY_ID", "")
+ETS_AWS_SECRET_ACCESS_KEY = os.getenv("ETS_AWS_SECRET_ACCESS_KEY", "")
+ETS_AWS_REGION = os.getenv("ETS_AWS_REGION", "")
+ETS_COGNITO_USER_POOL_ID = os.getenv("ETS_COGNITO_USER_POOL_ID", "")
+ETS_DYNAMODB_TABLE_NAME = os.getenv("ETS_DYNAMODB_TABLE_NAME", "")
+ETS_DRY_RUN = os.getenv("ETS_DRY_RUN", "").lower() != "false"

@@ -11,6 +11,9 @@ from django.test import SimpleTestCase
 
 
 class SettingsTest(SimpleTestCase):
+    # The system check asks the database whether it supports JSON fields.
+    databases = {"default"}
+
     def test_test_settings_are_loaded(self):
         assert settings.SETTINGS_MODULE == "config.settings.test"
         assert settings.SECRET_KEY
