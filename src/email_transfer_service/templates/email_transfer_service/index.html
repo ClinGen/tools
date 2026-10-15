@@ -5,5 +5,57 @@
     <div class="block mt-6 mb-6">
         <h1 class="title">Email Transfer Service</h1>
         <h2 class="subtitle">Move a GCI or VCI user's account to a new email.</h2>
+
+        {% include "email_transfer_service/partials/dry_run.html" %}
+
+        <form method="post" class="block">{% csrf_token %}
+            <div class="has-text-danger">{{ form.non_field_errors }}</div>
+            {% for field in form %}
+                <div class="field">
+                    <label class="label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    <div class="has-text-danger">{{ field.errors }}</div>
+                    <p class="help">{{ field.help_text }}</p>
+                    <div class="control">
+                        <input class="input column is-half"
+                               id="{{ field.id_for_label }}"
+                               name="{{ field.html_name }}"
+                               type="email"
+                               {% if field.value %}value="{{ field.value }}"{% endif %}>
+                    </div>
+                </div>
+            {% endfor %}
+            <button type="submit" class="button is-link">Preview Transfer</button>
+        </form>
+
+        {% if preview.failures %}
+            <div class="notification is-danger is-light block">
+                <p class="has-text-weight-bold">This transfer can't run:</p>
+                <ul>
+                    {% for failure in preview.failures %}
+                        <li>{{ failure }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% elif preview.plan %}
+            <div class="box block">
+                <p class="has-text-weight-bold mb-2">The transfer will run these steps:</p>
+                <ol class="ml-5 mb-4">
+                    {% for step in preview.plan.steps %}
+                        <li>
+                            {{ step.description }}
+                            {% if step.skip_reason %}
+                                <span class="tag is-light">Skipped</span> {{ step.skip_reason }}
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ol>
+                <form method="post">{% csrf_token %}
+                    <input type="hidden" name="old_email" value="{{ preview.plan.old_email }}">
+                    <input type="hidden" name="new_email" value="{{ preview.plan.new_email }}">
+                    <input type="hidden" name="confirm" value="true">
+                    <button type="submit" class="button is-link">Confirm Transfer</button>
+                </form>
+            </div>
+        {% endif %}
     </div>
 {% endblock %}
