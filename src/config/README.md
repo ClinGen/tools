@@ -22,7 +22,8 @@ processes write to it alongside the web process. Backups go to the S3 bucket nam
 `DBBACKUP_BUCKET_NAME`, or to `backups/` next to `src/` when it's empty, and their names
 start with `SUBDOMAIN`. Reads `SECRET_KEY`, `ENV`, the Sentry settings, and the backup
 settings from the environment, and, as in the HCI, requires `CLERK_SECRET_KEY` and
-`CLERK_PUBLISHABLE_KEY` in every environment.
+`CLERK_PUBLISHABLE_KEY` in every environment. Also reads the ETS's AWS settings and
+`ETS_DRY_RUN`, which is on unless it's set to `false`.
 
 ### `settings/dev.py`
 
@@ -53,7 +54,7 @@ bucket is set, and that the subdomain defaults to `dev`.
 ### `urls.py`
 
 Defines the project-level URL configuration. Routes the landing page, the Django admin,
-and the sign-in views under `/auth/`.
+the sign-in views under `/auth/`, and the ETS under `/ets/`.
 
 ### `wsgi.py`
 

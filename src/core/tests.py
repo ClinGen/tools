@@ -16,12 +16,25 @@ def fake_ets_index(request: HttpRequest) -> HttpResponse:  # ruff: ignore[unused
     return HttpResponse("ETS")
 
 
-# The project's URLconf with a fake ETS mounted, so the tests don't depend on which real
-# tools are.
+# The project's URLconf without its tools, so the tests don't depend on which real tools
+# are mounted.
+shared_urlpatterns = [
+    pattern
+    for pattern in project_urls.urlpatterns
+    if getattr(pattern, "namespace", None) not in {tool.namespace for tool in TOOLS}
+]
+
+# The shared URLconf with a fake ETS mounted.
 urlpatterns = [
-    *project_urls.urlpatterns,
+    *shared_urlpatterns,
     path("ets/", include(([path("", fake_ets_index, name="index")], "ets"))),
 ]
+
+
+class NoToolsUrlconf:
+    """The shared URLconf with no tools mounted."""
+
+    urlpatterns = shared_urlpatterns
 
 
 class HomeViewTest(TestCase):
@@ -32,6 +45,7 @@ class HomeViewTest(TestCase):
         self.assertTemplateUsed(response, "layouts/base.html")
         self.assertContains(response, "<title>ClinGen Tools | Home</title>", html=True)
 
+    @override_settings(ROOT_URLCONF=NoToolsUrlconf)
     def test_says_so_when_no_tools_are_mounted(self):
         response = self.client.get(reverse("home"))
         self.assertContains(response, "No tools are available yet.")

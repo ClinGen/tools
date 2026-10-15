@@ -1,0 +1,96 @@
+"""Houses database models for the email_transfer_service app."""
+
+from django.contrib.auth.models import User
+from django.db import models
+from simple_history.models import HistoricalRecords
+
+
+class EmailTransfer(models.Model):
+    """One run of a transfer from an old email to a new one.
+
+    It's saved before the first change to AWS, and each step's result is recorded as
+    the step finishes, so a transfer that fails partway shows which steps ran.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        SUCCEEDED = "succeeded", "Succeeded"
+        FAILED = "failed", "Failed"
+
+    slug = models.SlugField(
+        default="",
+        max_length=7,
+        verbose_name="Human-Readable ID",
+        help_text="The human-readable ID for the object.",
+    )
+    old_email = models.EmailField(
+        verbose_name="Old Email",
+        help_text="The email the user's account is moving from.",
+    )
+    new_email = models.EmailField(
+        verbose_name="New Email",
+        help_text="The email the user's account is moving to.",
+    )
+    ran_by = models.ForeignKey(
+        User,
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="email_transfers",
+        verbose_name="Ran By",
+        help_text="The staff member who ran the transfer.",
+    )
+    dry_run = models.BooleanField(
+        default=True,
+        verbose_name="Dry Run",
+        help_text="Whether the transfer skipped its changes to AWS.",
+    )
+    status = models.CharField(
+        choices=Status.choices,
+        default=Status.PENDING,
+        max_length=9,
+        verbose_name="Status",
+        help_text="Whether the transfer is running, finished, or stopped at a failure.",
+    )
+    steps = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Steps",
+        help_text="Each step of the transfer and its result.",
+    )
+    error = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Error",
+        help_text="Why the transfer failed, if it did.",
+    )
+    added_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Added At",
+        help_text="When the transfer started.",
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Updated At",
+        help_text="When the transfer was last updated.",
+    )
+    history = HistoricalRecords()
+
+    class Meta:
+        """Provides metadata."""
+
+        db_table = "email_transfer"
+        ordering = ["-added_at"]
+        verbose_name = "Email Transfer"
+        verbose_name_plural = "Email Transfers"
+
+    def __str__(self) -> str:
+        """Returns the transfer's human-readable ID."""
+        return self.slug
+
+    def save(self, *args, **kwargs) -> None:
+        """Adds a human-readable ID."""
+        super().save(*args, **kwargs)
+        if not self.slug:
+            self.slug = f"T{self.pk:06d}"
+            self.save(update_fields=["slug"])

@@ -5,6 +5,7 @@
     "src/common",
     "src/config",
     "src/core",
+    "src/email_transfer_service",
     "src/static",
     "src/templates"
   ],
