@@ -2,15 +2,12 @@
 {% load static %}
 
 {% block title %}Sign In{% endblock %}
-{% block description %}Sign in to ClinGen Tools.{% endblock %}
 
 {% block main %}
 <section class="section">
   <div class="columns is-centered">
     <div class="column is-narrow">
-      <div id="clerk-sign-in"
-           data-publishable-key="{{ clerk_publishable_key }}"
-           data-callback-url="{{ callback_url }}"></div>
+      <div id="clerk-sign-in" data-publishable-key="{{ clerk_publishable_key }}"></div>
     </div>
   </div>
 </section>

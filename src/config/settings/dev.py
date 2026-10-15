@@ -31,7 +31,10 @@ LOGGING = {
         },
     },
     "loggers": {
-        # urllib3 generates per-request DEBUG lines for every outgoing HTTP call.
+        # httpcore generates per-connection DEBUG noise for every Clerk and Sentry
+        # HTTP call (connect_tcp.started, start_tls.complete, etc.). Suppress it.
+        "httpcore": {"level": "WARNING"},
+        # urllib3 generates per-request DEBUG lines for every Sentry envelope POST.
         "urllib3": {"level": "WARNING"},
     },
     "root": {

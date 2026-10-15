@@ -1,8 +1,9 @@
 # `auth_`
 
-This app signs staff in with Clerk and checks each tool's permission. It's ported from
-the HCI's `auth_` app, without the HCI's PHI agreement and curation permissions. The
-Clerk application is shared with ClinGen's other apps.
+This app signs staff in with Clerk and checks each tool's permission. Its sign-in flow
+is the HCI's `auth_` app, copied as closely as possible, without the HCI's PHI
+agreement, curation permissions, and profile history pages. The Clerk application is
+shared with ClinGen's other apps.
 
 Each tool has a boolean permission flag on `UserProfile`. Staff grant flags in the
 Django admin, and every change is recorded in the profile's history.
@@ -22,19 +23,19 @@ Configures the `auth_` app.
 
 ### `backends.py`
 
-Defines `ClerkBackend`, which finds or creates the Django user for a verified Clerk user.
-It matches by Clerk user ID first, then links an existing user with the same email, and
-otherwise creates a new user with no tool permissions.
+Defines `ClerkBackend`, copied from the HCI, which finds or creates the Django user for
+a verified Clerk user. It matches by Clerk user ID first, then links an existing user
+with the same email, and otherwise creates a new user with no tool permissions.
 
 ### `js/callback.jsx`
 
 Loads Clerk on the callback page so it can exchange a URL-delivered token for a session
-cookie, then returns to the callback view. `build.js` bundles it into
+cookie, then returns to `/auth/callback`. `build.js` bundles it into
 `src/static/tools/js/callback.js`.
 
 ### `js/sign-in.jsx`
 
-Renders Clerk's sign-in widget and sends the user to the callback view once they've
+Renders Clerk's sign-in widget and sends the user to `/auth/callback` once they've
 signed in. `build.js` bundles it into `src/static/tools/js/sign-in.js`.
 
 ### `models.py`
@@ -58,19 +59,24 @@ A bare page that loads the Clerk token-exchange script.
 
 The sign-in page, which hosts Clerk's sign-in widget.
 
+### `templates/auth_/profile.html`
+
+The signed-in user's profile page, which lists each tool permission and whether it's
+granted.
+
 ### `tests.py`
 
-Tests the permission mixin and decorator, permission history, the Clerk backend, and
-the login, callback, and logout views. Clerk is mocked; no test calls Clerk's servers.
+Tests the permission mixin and decorator, permission history, the Clerk backend, and the
+login, callback, logout, and profile views. Clerk is mocked; no test calls Clerk's
+servers.
 
 ### `urls.py`
 
-Routes `login`, `callback`, and `logout` under `/auth/`.
+Routes `login`, `callback`, `logout`, and `profile` under `/auth/`.
 
 ### `views.py`
 
-Defines the sign-in, callback, and sign-out views. The login view remembers a local
-`next` URL so the callback can return the user to the page they asked for. The callback
-verifies Clerk's session token, looks up the user's primary email, and signs them in.
-Sign-out only accepts POST, and it revokes the Clerk session before ending the Django
-session.
+Defines the sign-in, callback, sign-out, and profile views, copied from the HCI. The
+callback verifies Clerk's session token, looks up the user's primary email, and signs
+them in. Sign-out revokes the Clerk session before ending the Django session. The
+profile page shows which tool permissions the user has.

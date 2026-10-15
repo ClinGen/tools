@@ -18,19 +18,20 @@ Defines settings shared across all environments: installed apps, middleware, tem
 the shared SQLite database (`tools.db`), static files served by WhiteNoise, and Clerk
 sign-in through `auth_.backends.ClerkBackend`. The database runs in WAL mode with a busy
 timeout and `IMMEDIATE` transactions, because background processes write to it alongside
-the web process. Reads `SECRET_KEY`, `ENV`, `CLERK_SECRET_KEY`, and
-`CLERK_PUBLISHABLE_KEY` from the environment.
+the web process. Reads `SECRET_KEY` and `ENV` from the environment, and, as in the HCI,
+requires `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` in every environment.
 
 ### `settings/dev.py`
 
 Extends `base.py` for local development: `DEBUG = True`, an insecure fallback
-`SECRET_KEY` when none is set, `MESSAGE_LEVEL` set to `DEBUG`, and console logging.
+`SECRET_KEY` when none is set, `MESSAGE_LEVEL` set to `DEBUG`, and console logging that
+suppresses noisy `httpcore` and `urllib3` debug output from Clerk and Sentry.
 
 ### `settings/prod.py`
 
-Extends `base.py` for the servers: refuses to start without `SECRET_KEY` or the Clerk
-keys, sets `DEBUG = False`, restricts `ALLOWED_HOSTS` to tools-test.clinicalgenome.org
-and tools.clinicalgenome.org, marks the CSRF and session cookies secure, and logs to the
+Extends `base.py` for the servers: refuses to start without `SECRET_KEY`, sets `DEBUG =
+False`, restricts `ALLOWED_HOSTS` to tools-test.clinicalgenome.org and
+tools.clinicalgenome.org, marks the CSRF and session cookies secure, and logs to the
 console and a rotating file in `logs/` (5 MB, 5 backups).
 
 ### `settings/test.py`
@@ -42,7 +43,7 @@ mode like the real database, uses plain static file storage so tests don't need
 ### `tests.py`
 
 Checks that the test settings load, that Django's system check passes, and that the
-production settings refuse to load without each of their secrets.
+production settings refuse to load without a `SECRET_KEY`.
 
 ### `urls.py`
 

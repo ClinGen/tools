@@ -5,7 +5,8 @@ partials, and the error pages.
 
 ### `403.html`
 
-The page shown when a user doesn't have permission to see a page.
+The page shown when a user doesn't have permission to see a page. Anonymous users are
+asked to log in.
 
 ### `404.html`
 
@@ -35,5 +36,5 @@ Renders Django's flash messages, one Bulma message per flash message.
 
 ### `partials/navbar.html`
 
-The navigation bar, with a link to the landing page and either the signed-in user's
-email and a sign-out button or a sign-in link.
+The navigation bar, with a link to the landing page and, as in the HCI, Log Out and
+Profile buttons for a signed-in user or a Log In button otherwise.

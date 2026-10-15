@@ -25,6 +25,13 @@ LOGGING = {
             "class": "logging.NullHandler",
         },
     },
+    "loggers": {
+        # Suppress asyncio DEBUG logs that fire during Clerk SDK's process-exit
+        # finalizer; without this the finalizer triggers a log write after
+        # pytest-xdist has already closed its capture stream, printing
+        # "--- Logging error ---" to the terminal after every worker exits.
+        "asyncio": {"level": "WARNING"},
+    },
     "root": {
         "handlers": ["null"],
     },
