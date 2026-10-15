@@ -52,8 +52,9 @@ ID instead of showing the raw error.
 
 ### `templates/email_transfer_service/index.html`
 
-The ETS's home page: the transfer form, and after a preview, either every failed
-precondition or the steps the transfer will run and a button to confirm it.
+The ETS's home page, whose subtitle is the ETS's description from `core.tools`: the
+transfer form, and after a preview, either every failed precondition or the steps the
+transfer will run and a button to confirm it.
 
 ### `templates/email_transfer_service/list.html`
 
