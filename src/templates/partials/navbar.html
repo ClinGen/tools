@@ -2,4 +2,17 @@
     <div class="navbar-brand">
         <a class="navbar-item has-text-weight-bold" href="{% url 'home' %}">ClinGen Tools</a>
     </div>
+    <div class="navbar-end">
+        {% if user.is_authenticated %}
+            <span class="navbar-item">{{ user.email }}</span>
+            <form class="navbar-item" method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button class="button is-link is-light" type="submit">Sign out</button>
+            </form>
+        {% else %}
+            <div class="navbar-item">
+                <a class="button is-link" href="{% url 'login' %}">Sign in</a>
+            </div>
+        {% endif %}
+    </div>
 </nav>

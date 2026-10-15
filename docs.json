@@ -1,5 +1,6 @@
 {
   "directories": [
+    "src/auth_",
     "src/common",
     "src/config",
     "src/core",

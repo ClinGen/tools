@@ -5,12 +5,28 @@
  */
 
 import { copyFile, mkdir } from "node:fs/promises";
+import * as esbuild from "esbuild";
 
 const CSS_STATIC_DIR = "./src/static/tools/css";
 const JS_STATIC_DIR = "./src/static/tools/js";
 
 await mkdir(`${CSS_STATIC_DIR}/fonts`, { recursive: true });
 await mkdir(JS_STATIC_DIR, { recursive: true });
+
+// Bundle the Clerk React components for the sign-in pages. Note that esbuild, unlike
+// some other bundlers, doesn't bundle unless you ask it to, hence bundle: true.
+await esbuild.build({
+  entryPoints: ["./src/auth_/js/sign-in.jsx", "./src/auth_/js/callback.jsx"],
+  outdir: JS_STATIC_DIR,
+  bundle: true,
+  platform: "browser",
+  format: "iife",
+  target: "es2020",
+  minify: true,
+  define: {
+    "process.env.NODE_ENV": '"production"',
+  },
+});
 
 // Copy HTMX into our Django static directory.
 const htmxPath = "./node_modules/htmx.org/dist/htmx.min.js";

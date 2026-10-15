@@ -3,6 +3,7 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.urls import include, path, reverse
 from django.views.defaults import server_error
 
+from config import urls as project_urls
 from core.tools import TOOLS
 
 
@@ -15,9 +16,10 @@ def fake_ets_index(request: HttpRequest) -> HttpResponse:  # ruff: ignore[unused
     return HttpResponse("ETS")
 
 
-# A URLconf with a fake ETS mounted, so the tests don't depend on which real tools are.
+# The project's URLconf with a fake ETS mounted, so the tests don't depend on which real
+# tools are.
 urlpatterns = [
-    path("", include("core.urls")),
+    *project_urls.urlpatterns,
     path("ets/", include(([path("", fake_ets_index, name="index")], "ets"))),
 ]
 
