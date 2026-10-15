@@ -41,8 +41,9 @@ differ, and can't contain quotes or backslashes, which would break Cognito's fil
 Defines `EmailTransfer`, one run of a transfer: the old and new emails, who ran it,
 whether it was a dry run, its status, each step's result, and any error. It also saves
 the technical details staff don't see: the Cognito usernames, the PKs of the moved and
-retired DynamoDB records, each step's technical description, and the raw error. Its slug
-is `T` and a zero-padded number, such as `T000001`, and it keeps its change history.
+retired DynamoDB records, each step's technical description, and the raw error. It
+extends `common.models.SlugModel`, so its ID is a UUID and its slug is `T` and the first
+8 hex characters of the UUID, such as `T3f2a9c1e`. It keeps its change history.
 
 ### `templates/email_transfer_service/detail.html`
 
@@ -85,8 +86,8 @@ header with the right tab active.
 ### `tests.py`
 
 Tests each `EtsClient` method against stubbed AWS clients, including DynamoDB pagination
-and users that aren't found; the `EmailTransfer` slug and history; and that only users
-with ETS permissions can open the home page.
+and users that aren't found; the `EmailTransfer` slug, including a colliding one, and
+history; and that only users with ETS permissions can open the home page.
 
 ### `transfers.py`
 
