@@ -1,0 +1,10 @@
+<div class="buttons block">
+    <a href="{% url 'ets:index' %}" class="button is-link is-light">
+        {% include "common/icon.html" with icon_name="envelope-arrow-up" %}
+        New Transfer
+    </a>
+    <a href="{% url 'ets:list' %}" class="button is-link is-light">
+        {% include "common/icon.html" with icon_name="clock-history" %}
+        Past Transfers
+    </a>
+</div>

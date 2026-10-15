@@ -6,6 +6,7 @@
         <h1 class="title">Email Transfer Service</h1>
         <h2 class="subtitle">Move a GCI or VCI user's account to a new email.</h2>
 
+        {% include "email_transfer_service/partials/nav.html" %}
         {% include "email_transfer_service/partials/dry_run.html" %}
 
         <form method="post" class="block">{% csrf_token %}

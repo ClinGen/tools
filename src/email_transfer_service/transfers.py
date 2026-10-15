@@ -1,14 +1,22 @@
-"""Checks a transfer's preconditions and plans its steps.
+"""Checks a transfer's preconditions, plans its steps, and runs them.
 
 `check_preconditions()` looks up both emails and returns a `Preview`: either every
-failed precondition, or a `Plan` of the steps a transfer would run. "The Email Transfer
-Service" in `docs/design.md` lists the preconditions and the steps.
+failed precondition, or a `Plan` of the steps a transfer would run. `run_transfer()`
+runs a plan's steps and records each one's result on an `EmailTransfer`. "The Email
+Transfer Service" in `docs/design.md` lists the preconditions and the steps.
 """
 
+import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from django.contrib.auth.models import User
+
 from email_transfer_service.clients import RETIRED_EMAIL, CognitoUser, UserRecord
+from email_transfer_service.models import EmailTransfer
+
+logger = logging.getLogger(__name__)
 
 # The only user_status a new email's record may have; such a record is retired.
 REQUESTED_ACTIVATION = "requested activation"
@@ -23,6 +31,26 @@ class Lookups(Protocol):
 
     def find_user_record(self, email: str) -> UserRecord | None:
         """Returns the DynamoDB user record with the given email, or None."""
+        ...
+
+
+class Writes(Lookups, Protocol):
+    """The lookups and writes a transfer needs, which `EtsClient` provides."""
+
+    def retire_record(self, pk: str) -> None:
+        """Retires a user record."""
+        ...
+
+    def update_record_email(self, pk: str, email: str) -> None:
+        """Sets a user record's email."""
+        ...
+
+    def disable_cognito_user(self, username: str) -> None:
+        """Stops a Cognito user from signing in."""
+        ...
+
+    def enable_cognito_user(self, username: str) -> None:
+        """Lets a Cognito user sign in."""
         ...
 
 
@@ -148,3 +176,80 @@ def check_preconditions(client: Lookups, old_email: str, new_email: str) -> Prev
             new_record=new_record,
         ),
     )
+
+
+def _actions(client: Writes, plan: Plan) -> dict[str, Callable[[], None]]:
+    """Returns the AWS write for each of a plan's steps, keyed by step name."""
+    actions = {
+        "update_old_record": lambda: client.update_record_email(
+            plan.old_record.pk,
+            plan.new_email,
+        ),
+        "disable_old_user": lambda: client.disable_cognito_user(plan.old_user.username),
+        "enable_new_user": lambda: client.enable_cognito_user(plan.new_user.username),
+    }
+    if plan.new_record:
+        new_record_pk = plan.new_record.pk
+        actions["retire_new_record"] = lambda: client.retire_record(new_record_pk)
+    return actions
+
+
+def run_transfer(
+    client: Writes,
+    plan: Plan,
+    *,
+    ran_by: User | None,
+    dry_run: bool,
+) -> EmailTransfer:
+    """Runs a plan's steps in order, recording each step's result as it finishes.
+
+    The transfer is saved before the first step, so it exists even if the server
+    stops partway. The run stops at the first failure and doesn't undo earlier steps.
+    In a dry run, every step is recorded as skipped and nothing in AWS changes.
+
+    Args:
+        client: Makes the AWS writes.
+        plan: The plan from a passing preview.
+        ran_by: The staff member running the transfer.
+        dry_run: Whether to skip the AWS writes.
+
+    Returns:
+        The saved transfer, which has succeeded or failed.
+    """
+    steps = plan.steps()
+    transfer = EmailTransfer.objects.create(
+        old_email=plan.old_email,
+        new_email=plan.new_email,
+        ran_by=ran_by,
+        dry_run=dry_run,
+        steps=[
+            {
+                "name": step.name,
+                "description": step.description,
+                "result": "not run",
+                "detail": "",
+            }
+            for step in steps
+        ],
+    )
+    actions = _actions(client, plan)
+    for record, step in zip(transfer.steps, steps, strict=True):
+        if step.skip_reason or dry_run:
+            record["result"] = "skipped"
+            record["detail"] = step.skip_reason or "Dry run."
+        else:
+            try:
+                actions[step.name]()
+            except Exception as error:
+                logger.exception(f"Transfer {transfer.slug} failed at {step.name}.")
+                record["result"] = "failed"
+                record["detail"] = str(error)
+                transfer.status = EmailTransfer.Status.FAILED
+                transfer.error = str(error)
+                transfer.save()
+                return transfer
+            record["result"] = "succeeded"
+        transfer.save()
+    transfer.status = EmailTransfer.Status.SUCCEEDED
+    transfer.save()
+    return transfer
