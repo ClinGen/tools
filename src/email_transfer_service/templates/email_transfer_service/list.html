@@ -1,0 +1,39 @@
+{% extends "layouts/base.html" %}
+{% block title %}Past Transfers{% endblock %}
+{% block description %}See the email transfers the ETS has run.{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        <h1 class="title">Past Transfers</h1>
+        {% include "email_transfer_service/partials/nav.html" %}
+        {% if transfers %}
+            <div class="block table-container">
+                <table class="table is-hoverable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Old Email</th>
+                            <th>New Email</th>
+                            <th>Status</th>
+                            <th>Ran By</th>
+                            <th>Started</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transfer in transfers %}
+                            <tr>
+                                <td><a href="{{ transfer.get_absolute_url }}">{{ transfer.slug }}</a></td>
+                                <td>{{ transfer.old_email }}</td>
+                                <td>{{ transfer.new_email }}</td>
+                                <td>{% include "email_transfer_service/partials/status.html" %}</td>
+                                <td>{{ transfer.ran_by.email|default:"" }}</td>
+                                <td>{{ transfer.added_at|date:"Y-m-d H:i" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p>No transfers have run yet.</p>
+        {% endif %}
+    </div>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "layouts/base.html" %}
+{% block title %}{{ transfer.slug }} Details{% endblock %}
+{% block description %}See the steps of transfer {{ transfer.slug }}.{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        <h1 class="title">Transfer {{ transfer.slug }}</h1>
+        {% include "email_transfer_service/partials/nav.html" %}
+        <div class="block table-container">
+            <table class="table">
+                <tbody>
+                    <tr><td>Old Email</td><td>{{ transfer.old_email }}</td></tr>
+                    <tr><td>New Email</td><td>{{ transfer.new_email }}</td></tr>
+                    <tr><td>Status</td><td>{% include "email_transfer_service/partials/status.html" %}</td></tr>
+                    <tr><td>Ran By</td><td>{{ transfer.ran_by.email|default:"" }}</td></tr>
+                    <tr><td>Started</td><td>{{ transfer.added_at|date:"Y-m-d H:i" }} UTC</td></tr>
+                </tbody>
+            </table>
+        </div>
+        {% if transfer.error %}
+            <div class="notification is-danger is-light block">
+                <p class="has-text-weight-bold">The transfer stopped at a failed step:</p>
+                <p>{{ transfer.error }}</p>
+                <p>The steps before it ran and weren't undone. A developer needs to finish
+                    or reverse the transfer by hand.</p>
+            </div>
+        {% endif %}
+        <div class="block table-container">
+            <table class="table">
+                <thead>
+                    <tr><th>Step</th><th>Result</th><th>Detail</th></tr>
+                </thead>
+                <tbody>
+                    {% for step in transfer.steps %}
+                        <tr>
+                            <td>{{ step.description }}</td>
+                            <td>
+                                {% if step.result == "succeeded" %}
+                                    <span class="tag is-success is-light">Succeeded</span>
+                                {% elif step.result == "failed" %}
+                                    <span class="tag is-danger is-light">Failed</span>
+                                {% elif step.result == "skipped" %}
+                                    <span class="tag is-light">Skipped</span>
+                                {% else %}
+                                    <span class="tag is-light">Not Run</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ step.detail }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

@@ -2,6 +2,7 @@
 
 from django.contrib.auth.models import User
 from django.db import models
+from django.urls import reverse
 from simple_history.models import HistoricalRecords
 
 
@@ -94,3 +95,7 @@ class EmailTransfer(models.Model):
         if not self.slug:
             self.slug = f"T{self.pk:06d}"
             self.save(update_fields=["slug"])
+
+    def get_absolute_url(self) -> str:
+        """Returns the transfer's detail page."""
+        return reverse("ets:detail", kwargs={"slug": self.slug})

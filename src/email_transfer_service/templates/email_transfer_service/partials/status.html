@@ -1,0 +1,10 @@
+{% if transfer.status == "succeeded" %}
+    <span class="tag is-success is-light">Succeeded</span>
+{% elif transfer.status == "failed" %}
+    <span class="tag is-danger is-light">Failed</span>
+{% else %}
+    <span class="tag is-light">Pending</span>
+{% endif %}
+{% if transfer.dry_run %}
+    <span class="tag is-warning is-light">Dry Run</span>
+{% endif %}

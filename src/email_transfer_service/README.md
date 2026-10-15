@@ -41,19 +41,38 @@ Defines `EmailTransfer`, one run of a transfer: the old and new emails, who ran 
 whether it was a dry run, its status, each step's result, and any error. Its slug is `T`
 and a zero-padded number, such as `T000001`, and it keeps its change history.
 
+### `templates/email_transfer_service/detail.html`
+
+A transfer's page: its emails, status, who ran it, and each step's result, plus the
+error if a step failed.
+
 ### `templates/email_transfer_service/index.html`
 
 The ETS's home page: the transfer form, and after a preview, either every failed
 precondition or the steps the transfer will run and a button to confirm it.
 
+### `templates/email_transfer_service/list.html`
+
+Lists past transfers, newest first, with links to each one's page.
+
 ### `templates/email_transfer_service/partials/dry_run.html`
 
 The banner that says the ETS is in dry-run mode, shown while `ETS_DRY_RUN` is on.
 
+### `templates/email_transfer_service/partials/nav.html`
+
+The New Transfer and Past Transfers buttons at the top of each ETS page.
+
+### `templates/email_transfer_service/partials/status.html`
+
+A transfer's status tag, plus a Dry Run tag if it was one.
+
 ### `test_transfers.py`
 
 Tests the preconditions (each failure, the `requested activation` record, other
-statuses, and an already-enabled new user) and the preview page.
+statuses, and an already-enabled new user) and the preview page; running a transfer
+(full success, the `requested activation` path, a failure at each step, and a dry run);
+and confirming one, which re-checks the preconditions and records who ran it.
 
 ### `tests.py`
 
@@ -65,13 +84,17 @@ with ETS permissions can open the home page.
 
 Checks a transfer's preconditions with `check_preconditions()`, which returns a
 `Preview`: every failure, or a `Plan` whose `steps()` lists what the transfer will
-change, naming the Cognito usernames and DynamoDB PKs.
+change, naming the Cognito usernames and DynamoDB PKs. `run_transfer()` saves an
+`EmailTransfer`, runs the plan's steps in order, and records each result as it finishes.
+It stops at the first failure, and in a dry run it skips every write.
 
 ### `urls.py`
 
-Routes the ETS's pages under the `ets` namespace.
+Routes the ETS's pages under the `ets` namespace: the home page, past transfers at
+`transfers/`, and each transfer at `transfers/<slug>/`.
 
 ### `views.py`
 
-Serves the ETS's home page to users with ETS permissions. Submitting the form previews
-the transfer; AWS errors become error flash messages.
+Serves the ETS's pages to users with ETS permissions. On the home page, submitting the
+form previews the transfer, and confirming re-checks the preconditions and runs it. AWS
+errors become error flash messages. The list and detail pages show past transfers.
