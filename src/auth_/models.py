@@ -4,8 +4,10 @@ from django.contrib.auth.models import User
 from django.db import models
 from simple_history.models import HistoricalRecords
 
+from common.models import UUIDModel
 
-class UserProfile(models.Model):
+
+class UserProfile(UUIDModel):
     """Extends the built-in Django User model with Clerk and per-tool permissions.
 
     Each tool has its own permission flag. Add a flag here when you add a tool that
@@ -34,7 +36,7 @@ class UserProfile(models.Model):
     )
     history = HistoricalRecords()
 
-    class Meta:
+    class Meta:  # ty: ignore[invalid-attribute-override] (Each Django model declares its own Meta.)
         """Provides metadata."""
 
         verbose_name = "User Profile"

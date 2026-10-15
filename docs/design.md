@@ -142,6 +142,17 @@ worth recording here first.
 
 Every model carries full change history via `django-simple-history`.
 
+Every model also has a random UUID primary key instead of an auto-incrementing integer,
+from `common.models.UUIDModel`. UUIDs let data from the standalone AS and CSS move into
+the shared database without ID clashes, and they don't reveal how many records exist.
+History rows use UUIDs too. Django's own models, such as `User`, keep their integer IDs.
+
+A model that staff refer to by ID extends `common.models.SlugModel`, which adds a
+human-readable slug: a prefix letter for the model and the first 8 hex characters of the
+UUID, like a short Git hash. For example, an email transfer's slug looks like
+`T3f2a9c1e`. If a new object's slug is already taken, it gets a new UUID. This replaces
+the HCI's zero-padded integer slugs, such as `T000001`.
+
 ### Authentication and Authorization
 
 Staff sign in once and can then use every tool they've been granted. Permissions are per

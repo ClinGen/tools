@@ -1,10 +1,14 @@
+import uuid
 from unittest.mock import MagicMock, patch
 
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.http import HttpRequest, HttpResponse
 from django.test import TestCase, override_settings
 from django.urls import include, path
 
+from auth_.models import UserProfile
+from common.models import make_slug
 from config import urls as project_urls
 
 
@@ -54,3 +58,17 @@ class BackupStorageTest(TestCase):
         self.assertTrue(
             settings.DBBACKUP_FILENAME_TEMPLATE.startswith("daily/{servername}-")
         )
+
+
+class MakeSlugTest(TestCase):
+    def test_slug_is_the_prefix_and_eight_hex_characters(self):
+        id_ = uuid.UUID("3f2a9c1e-0000-4000-8000-000000000000")
+        self.assertEqual(make_slug("T", id_), "T3f2a9c1e")
+
+
+class UserProfileIdTest(TestCase):
+    def test_profile_and_its_history_have_uuid_ids(self):
+        user = User.objects.create_user(username="staff@example.com")
+        profile = UserProfile.objects.create(user=user)
+        self.assertIsInstance(profile.pk, uuid.UUID)
+        self.assertIsInstance(profile.history.first().history_id, uuid.UUID)  # type: ignore
