@@ -67,7 +67,8 @@ The banner that says the ETS is in dry-run mode, shown while `ETS_DRY_RUN` is on
 ### `templates/email_transfer_service/partials/header.html`
 
 The top of every ETS page: the ETS's name and description from `core.tools`, and boxed
-tabs for New Transfer and Past Transfers, with the current page's tab active.
+tabs for New Transfer and Past Transfers, with the current page's tab active. A
+transfer's page adds a third tab, named for the transfer, which is the active one.
 
 ### `templates/email_transfer_service/partials/status.html`
 

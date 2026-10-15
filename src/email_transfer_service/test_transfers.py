@@ -392,7 +392,7 @@ class TabsTest(TestCase):
         pages = {
             reverse("ets:index"): "New Transfer",
             reverse("ets:list"): "Past Transfers",
-            transfer.get_absolute_url(): "Past Transfers",
+            transfer.get_absolute_url(): f"Transfer {transfer.slug}",
         }
         for url, active in pages.items():
             with self.subTest(url=url):
@@ -407,3 +407,9 @@ class TabsTest(TestCase):
                 active_link = html.split('aria-current="page"')[1].split("</a>")[0]
                 self.assertIn(active, active_link)
                 self.assertNotContains(response, 'class="button is-link is-light"')
+
+    def test_only_the_detail_page_has_a_transfer_tab(self):
+        _sign_in(self.client)
+        transfer = EmailTransfer.objects.create(old_email=OLD, new_email=NEW)
+        for url in [reverse("ets:index"), reverse("ets:list")]:
+            self.assertNotContains(self.client.get(url), f"Transfer {transfer.slug}")
