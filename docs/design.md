@@ -200,8 +200,8 @@ only what a transfer needs: list, enable, and disable users in the one user pool
 query and update items in the one table.
 
 Until the ETS has its own AWS access, it runs in dry-run mode, which `ETS_DRY_RUN` turns
-on unless it's set to `false`. A dry run checks the preconditions and records every step
-as it would a real transfer, but skips the changes to AWS, and the `EmailTransfer` is
+on unless it's set to `0`. A dry run checks the preconditions and records every step as
+it would a real transfer, but skips the changes to AWS, and the `EmailTransfer` is
 marked as a dry run.
 
 ### Color Key

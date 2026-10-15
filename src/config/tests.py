@@ -55,3 +55,8 @@ class BackupSettingsTest(SimpleTestCase):
     def test_subdomain_defaults_to_dev(self):
         base = self._load_base(SUBDOMAIN="")
         assert base.SUBDOMAIN == "dev"
+
+    def test_only_zero_turns_the_ets_dry_run_off(self):
+        assert self._load_base(ETS_DRY_RUN="0").ETS_DRY_RUN is False
+        for value in ["", "1", "false", "off"]:
+            assert self._load_base(ETS_DRY_RUN=value).ETS_DRY_RUN is True
