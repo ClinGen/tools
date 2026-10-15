@@ -5,25 +5,24 @@ from django.db import models
 from django.urls import reverse
 from simple_history.models import HistoricalRecords
 
+from common.models import SlugModel
 
-class EmailTransfer(models.Model):
+
+class EmailTransfer(SlugModel):
     """One run of a transfer from an old email to a new one.
 
     It's saved before the first change to AWS, and each step's result is recorded as
-    the step finishes, so a transfer that fails partway shows which steps ran.
+    the step finishes, so a transfer that fails partway shows which steps ran. Its
+    slug is T and the start of its UUID, such as T3f2a9c1e.
     """
+
+    slug_prefix = "T"
 
     class Status(models.TextChoices):
         PENDING = "pending", "In Progress"
         SUCCEEDED = "succeeded", "Succeeded"
         FAILED = "failed", "Failed"
 
-    slug = models.SlugField(
-        default="",
-        max_length=7,
-        verbose_name="Human-Readable ID",
-        help_text="The human-readable ID for the object.",
-    )
     old_email = models.EmailField(
         verbose_name="Old Email",
         help_text="The email the user's account is moving from.",
@@ -111,7 +110,7 @@ class EmailTransfer(models.Model):
     )
     history = HistoricalRecords()
 
-    class Meta:
+    class Meta:  # ty: ignore[invalid-attribute-override] (Each Django model declares its own Meta.)
         """Provides metadata."""
 
         db_table = "email_transfer"
@@ -122,13 +121,6 @@ class EmailTransfer(models.Model):
     def __str__(self) -> str:
         """Returns the transfer's human-readable ID."""
         return self.slug
-
-    def save(self, *args, **kwargs) -> None:
-        """Adds a human-readable ID."""
-        super().save(*args, **kwargs)
-        if not self.slug:
-            self.slug = f"T{self.pk:06d}"
-            self.save(update_fields=["slug"])
 
     def get_absolute_url(self) -> str:
         """Returns the transfer's detail page."""
