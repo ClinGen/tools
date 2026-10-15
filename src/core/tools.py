@@ -52,10 +52,7 @@ TOOLS = [
         name="Email Transfer Service",
         abbreviation="ETS",
         namespace="ets",
-        description=(
-            "Moves a Gene Curation Interface or Variant Curation Interface user's "
-            "account from an old email to a new one."
-        ),
+        description="Moves a GCI/VCI user's account from an old email to a new one.",
     ),
 ]
 
