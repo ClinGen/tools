@@ -136,6 +136,10 @@ STATIC_ROOT = BASE_DIR / "public"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Our models use UUID primary keys (see common.models), and so do their history rows.
+# Django's own models, such as User, keep the integer IDs DEFAULT_AUTO_FIELD gives them.
+SIMPLE_HISTORY_HISTORY_ID_USE_UUID = True
+
 # Servers keep database backups in S3. Without a bucket, as in dev and CI, backups go
 # to a backups/ directory next to src/. boto3 reads the AWS_ACCESS_KEY_ID and
 # AWS_SECRET_ACCESS_KEY environment variables itself.

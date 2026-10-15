@@ -16,14 +16,14 @@ Empty file that marks `settings` as a Python package.
 
 Defines settings shared across all environments: Sentry, installed apps, middleware,
 templates, the shared SQLite database (`tools.db`), static files served by WhiteNoise,
-Clerk sign-in through `auth_.backends.ClerkBackend`, and database backups. The database
-runs in WAL mode with a busy timeout and `IMMEDIATE` transactions, because background
-processes write to it alongside the web process. Backups go to the S3 bucket named by
-`DBBACKUP_BUCKET_NAME`, or to `backups/` next to `src/` when it's empty, and their names
-start with `SUBDOMAIN`. Reads `SECRET_KEY`, `ENV`, the Sentry settings, and the backup
-settings from the environment, and, as in the HCI, requires `CLERK_SECRET_KEY` and
-`CLERK_PUBLISHABLE_KEY` in every environment. Also reads the ETS's AWS settings and
-`ETS_DRY_RUN`, which is on unless it's set to `0`.
+Clerk sign-in through `auth_.backends.ClerkBackend`, UUID history IDs, and database
+backups. The database runs in WAL mode with a busy timeout and `IMMEDIATE` transactions,
+because background processes write to it alongside the web process. Backups go to the S3
+bucket named by `DBBACKUP_BUCKET_NAME`, or to `backups/` next to `src/` when it's empty,
+and their names start with `SUBDOMAIN`. Reads `SECRET_KEY`, `ENV`, the Sentry settings,
+and the backup settings from the environment, and, as in the HCI, requires
+`CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` in every environment. Also reads the
+ETS's AWS settings and `ETS_DRY_RUN`, which is on unless it's set to `0`.
 
 ### `settings/dev.py`
 

@@ -23,8 +23,16 @@ outside a tool, such as the landing page and sign-in, get no tag.
 
 Renders a Bootstrap Icons icon. Pass the icon's name as `icon_name`.
 
+### `models.py`
+
+Defines the abstract models every tool's models extend: `UUIDModel`, which gives a model
+a random UUID primary key, and `SlugModel`, which adds a unique slug made from the
+model's `slug_prefix` and the first 8 hex characters of its UUID. If a new object's slug
+is taken, `SlugModel` gives it a new UUID. `make_slug()` builds the slug.
+
 ### `tests.py`
 
 Tests that `ToolTagMiddleware` tags tool requests and leaves other requests untagged
 (through a test URLconf, defined in this file, that adds a fake ETS to the project's
-URLconf), and that backups go to a local directory and are named with the subdomain.
+URLconf), that backups go to a local directory and are named with the subdomain, that
+`make_slug()` builds a slug, and that `UserProfile` and its history rows have UUID IDs.

@@ -100,6 +100,8 @@ directory.
   development.
 - We use Google docstrings.
 - We use American English.
+- Every model extends `common.models.UUIDModel` (a UUID primary key), or
+  `common.models.SlugModel` if staff refer to it by ID. See `docs/design.md`.
 - When writing Markdown, the text width is 88 characters.
 - Don't use Markdown tables. Use a bulleted list instead, with one bullet per row.
 - We call the tools by their abbreviations (AS, CSS, ETS) in prose. Because `as` is a
