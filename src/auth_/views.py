@@ -6,51 +6,30 @@ from clerk_backend_api import Clerk
 from clerk_backend_api.security import VerifyTokenOptions, verify_token
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
-from django.http import (
-    HttpRequest,
-    HttpResponse,
-    HttpResponseNotAllowed,
-    HttpResponseRedirect,
-)
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.shortcuts import redirect, render
-from django.urls import reverse
-from django.utils.http import url_has_allowed_host_and_scheme
+
+from auth_.models import UserProfile
 
 logger = logging.getLogger(__name__)
 
 clerk = Clerk(bearer_auth=settings.CLERK_SECRET_KEY)
 
-# Where to send the user after they sign in. Kept in the session because the user
-# leaves for Clerk and comes back to the callback without the original query string.
-NEXT_SESSION_KEY = "auth_next_url"
-
-
-def _clerk_context() -> dict[str, str]:
-    """Returns the template context the Clerk sign-in scripts need."""
-    return {
-        "clerk_publishable_key": settings.CLERK_PUBLISHABLE_KEY,
-        "callback_url": reverse("callback"),
-    }
-
 
 def login_(request: HttpRequest) -> HttpResponseRedirect | HttpResponse:
     """Renders Clerk's embedded sign-in widget.
-
-    Remembers the `next` query parameter, if it points to this site, so the callback
-    can send the user back to the page they asked for.
 
     Returns:
         The login page, or a redirect to home if already logged in.
     """
     if request.user.is_authenticated:
         return redirect("home")
-    next_url = request.GET.get("next")
-    if next_url and url_has_allowed_host_and_scheme(
-        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
-    ):
-        request.session[NEXT_SESSION_KEY] = next_url
     logger.info("Login: rendering sign-in page")
-    return render(request, "auth_/login.html", _clerk_context())
+    return render(
+        request,
+        "auth_/login.html",
+        {"clerk_publishable_key": settings.CLERK_PUBLISHABLE_KEY},
+    )
 
 
 def callback(request: HttpRequest) -> HttpResponseRedirect | HttpResponse:
@@ -91,7 +70,11 @@ def callback(request: HttpRequest) -> HttpResponseRedirect | HttpResponse:
         param = "__clerk_db_jwt"
     if param:
         logger.info("Callback: token delivery via %s; serving exchange page", param)
-        return render(request, "auth_/callback.html", _clerk_context())
+        return render(
+            request,
+            "auth_/callback.html",
+            {"clerk_publishable_key": settings.CLERK_PUBLISHABLE_KEY},
+        )
 
     # Clerk sometimes appends a numeric suffix to the cookie name (e.g. __session.1),
     # so we scan by prefix rather than doing an exact lookup.
@@ -156,8 +139,6 @@ def callback(request: HttpRequest) -> HttpResponseRedirect | HttpResponse:
         )
         return redirect("login")
 
-    # login() flushes the session, so read where to go next before calling it.
-    next_url = request.session.pop(NEXT_SESSION_KEY, None) or reverse("home")
     login(request, user)
     if clerk_session_id:
         request.session["clerk_session_id"] = clerk_session_id
@@ -166,19 +147,15 @@ def callback(request: HttpRequest) -> HttpResponseRedirect | HttpResponse:
         user.get_username(),
         clerk_user_id,
     )
-    return redirect(next_url)
+    return redirect("home")
 
 
-def logout_(request: HttpRequest) -> HttpResponseRedirect | HttpResponseNotAllowed:
+def logout_(request: HttpRequest) -> HttpResponseRedirect:
     """Revokes the Clerk session server-side, clears the Django session, and redirects.
 
-    Only accepts POST, so another site can't sign a user out with a link or an image.
-
     Returns:
-        A redirect to the home page, or a 405 for any method but POST.
+        A redirect to the login page.
     """
-    if request.method != "POST":
-        return HttpResponseNotAllowed(["POST"])
     sid = request.session.get("clerk_session_id")
     if sid:
         logger.info("Logout: revoking Clerk session %s", sid)
@@ -191,3 +168,12 @@ def logout_(request: HttpRequest) -> HttpResponseRedirect | HttpResponseNotAllow
         logger.info("Logout: no Clerk session ID in Django session")
     logout(request)
     return redirect("home")
+
+
+def profile(request: HttpRequest) -> HttpResponse:
+    """Returns the profile page for the user."""
+    if request.user.is_authenticated:
+        p, _ = UserProfile.objects.get_or_create(user=request.user)
+        context = {"user_profile": p}
+        return render(request, "auth_/profile.html", context)
+    return redirect("login")

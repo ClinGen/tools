@@ -1,0 +1,41 @@
+{% extends "layouts/base.html" %}
+{% block title %}User Profile{% endblock %}
+{% block description %}View your user profile in ClinGen Tools.{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6" xmlns="http://www.w3.org/1999/html">
+        <h1 class="title">User Profile</h1>
+        <h2 class="subtitle">{{ request.user.email }}</h2>
+        <div class="block table-container">
+            <table class="table is-hoverable">
+                <tbody>
+
+                    <tr>
+                        <td>ETS Permissions</td>
+                        <td>
+                            {% if request.user.profile.has_ets_permissions %}
+                                <div class="has-text-success">
+                                    {% include "common/icon.html" with icon_name="check-circle-fill" %}
+                                    Granted
+                                </div>
+                            {% else %}
+                                <div class="has-text-danger">
+                                    {% include "common/icon.html" with icon_name="x-circle-fill" %}
+                                    Not Granted
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if request.user.profile.has_ets_permissions %}
+                                You can use the Email Transfer Service.
+                            {% else %}
+                                Ask an administrator to grant you ETS permissions.
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+{% endblock %}

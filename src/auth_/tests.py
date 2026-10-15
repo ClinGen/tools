@@ -12,7 +12,6 @@ from django.views.generic import View
 from auth_.backends import ClerkBackend
 from auth_.models import UserProfile
 from auth_.permissions import ToolPermissionMixin, tool_permission_required
-from auth_.views import NEXT_SESSION_KEY
 
 
 def _make_user(username: str, *, ets: bool = False) -> User:
@@ -145,18 +144,14 @@ def _make_clerk_user(email: str) -> MagicMock:
 
 
 class LoginViewTest(TestCase):
-    def test_renders_the_sign_in_widget_with_the_callback_url(self):
+    def test_renders_the_sign_in_widget(self):
         response = self.client.get(reverse("login"))
         self.assertContains(response, 'id="clerk-sign-in"')
-        self.assertContains(response, f'data-callback-url="{reverse("callback")}"')
 
-    def test_remembers_a_local_next_url(self):
-        self.client.get(reverse("login"), {"next": "/ets/"})
-        self.assertEqual(self.client.session[NEXT_SESSION_KEY], "/ets/")
-
-    def test_ignores_an_offsite_next_url(self):
-        self.client.get(reverse("login"), {"next": "https://evil.example.com/"})
-        self.assertNotIn(NEXT_SESSION_KEY, self.client.session)
+    def test_signed_in_user_is_sent_home(self):
+        self.client.force_login(_make_user("in@example.com"))
+        response = self.client.get(reverse("login"))
+        self.assertRedirects(response, reverse("home"), fetch_redirect_response=False)
 
 
 @patch("auth_.views.verify_token")
@@ -177,15 +172,6 @@ class CallbackViewTest(TestCase):
         self.assertRedirects(response, reverse("home"), fetch_redirect_response=False)
         self.assertIn("_auth_user_id", self.client.session)
         self.assertEqual(self.client.session["clerk_session_id"], "sess_xyz")
-
-    def test_success_returns_to_the_remembered_page(
-        self, mock_clerk: MagicMock, mock_verify: MagicMock
-    ):
-        self.client.get(reverse("login"), {"next": "/ets/"})
-        self._set_up_valid_token(mock_clerk, mock_verify)
-        response = self.client.get(reverse("callback"))
-        self.assertRedirects(response, "/ets/", fetch_redirect_response=False)
-        self.assertNotIn(NEXT_SESSION_KEY, self.client.session)
 
     def test_missing_cookie_redirects_to_login(
         self, _mock_clerk: MagicMock, _mock_verify: MagicMock
@@ -218,20 +204,28 @@ class CallbackViewTest(TestCase):
 
 @patch("auth_.views.clerk")
 class LogoutViewTest(TestCase):
-    def test_post_revokes_the_clerk_session_and_signs_out(self, mock_clerk: MagicMock):
+    def test_revokes_the_clerk_session_and_signs_out(self, mock_clerk: MagicMock):
         user = _make_user("bye@example.com")
         self.client.force_login(user)
         session = self.client.session
         session["clerk_session_id"] = "sess_bye"
         session.save()
-        response = self.client.post(reverse("logout"))
+        response = self.client.get(reverse("logout"))
         self.assertRedirects(response, reverse("home"), fetch_redirect_response=False)
         mock_clerk.sessions.revoke.assert_called_once_with(session_id="sess_bye")
         self.assertNotIn("_auth_user_id", self.client.session)
 
-    def test_get_is_not_allowed(self, _mock_clerk: MagicMock):
-        response = self.client.get(reverse("logout"))
-        self.assertEqual(response.status_code, 405)
+
+class ProfileViewTest(TestCase):
+    def test_anonymous_user_is_sent_to_sign_in(self):
+        response = self.client.get(reverse("profile"))
+        self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
+
+    def test_shows_whether_the_user_has_ets_permissions(self):
+        self.client.force_login(_make_user("p@example.com", ets=True))
+        response = self.client.get(reverse("profile"))
+        self.assertContains(response, "ETS Permissions")
+        self.assertContains(response, "You can use the Email Transfer Service.")
 
 
 class LandingPageAuthTest(TestCase):
@@ -240,8 +234,9 @@ class LandingPageAuthTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, f'href="{reverse("login")}"')
 
-    def test_landing_page_shows_who_is_signed_in(self):
+    def test_landing_page_offers_log_out_and_profile_when_signed_in(self):
         self.client.force_login(_make_user("me@example.com"))
         response = self.client.get(reverse("home"))
-        self.assertContains(response, "me@example.com")
-        self.assertContains(response, f'action="{reverse("logout")}"')
+        self.assertContains(response, f'href="{reverse("logout")}"')
+        self.assertContains(response, f'href="{reverse("profile")}"')
+        self.assertNotContains(response, f'href="{reverse("login")}"')

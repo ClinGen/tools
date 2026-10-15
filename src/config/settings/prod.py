@@ -4,15 +4,10 @@ from django.contrib import messages
 from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # ruff: ignore[undefined-local-with-import-star] (We want to import everything.)
-from .base import BASE_DIR, CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY, SECRET_KEY
+from .base import BASE_DIR, SECRET_KEY
 
-_required = {
-    "SECRET_KEY": SECRET_KEY,
-    "CLERK_SECRET_KEY": CLERK_SECRET_KEY,
-    "CLERK_PUBLISHABLE_KEY": CLERK_PUBLISHABLE_KEY,
-}
-if missing := [name for name, value in _required.items() if not value]:
-    error_message = f"Set these in the environment: {', '.join(missing)}."
+if not SECRET_KEY:
+    error_message = "Set SECRET_KEY in the environment."
     raise ImproperlyConfigured(error_message)
 
 DEBUG = False

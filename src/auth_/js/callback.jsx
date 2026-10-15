@@ -1,9 +1,9 @@
-import { ClerkProvider, useUser } from "@clerk/clerk-react";
 import React, { useEffect } from "react";
 import { createRoot } from "react-dom/client";
+import { ClerkProvider, useUser } from "@clerk/clerk-react";
 
 const el = document.getElementById("clerk-callback");
-const { publishableKey, callbackUrl } = el.dataset;
+const publishableKey = el.dataset.publishableKey;
 
 // Clerk initializes on mount, which exchanges any __clerk_db_jwt or
 // __clerk_handshake token and sets the __session cookie. Once isLoaded
@@ -13,7 +13,7 @@ function Exchange() {
 
   useEffect(() => {
     if (isLoaded) {
-      window.location.replace(callbackUrl);
+      window.location.replace("/auth/callback");
     }
   }, [isLoaded]);
 

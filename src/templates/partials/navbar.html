@@ -3,16 +3,30 @@
         <a class="navbar-item has-text-weight-bold" href="{% url 'home' %}">ClinGen Tools</a>
     </div>
     <div class="navbar-end">
-        {% if user.is_authenticated %}
-            <span class="navbar-item">{{ user.email }}</span>
-            <form class="navbar-item" method="post" action="{% url 'logout' %}">
-                {% csrf_token %}
-                <button class="button is-link is-light" type="submit">Sign out</button>
-            </form>
-        {% else %}
-            <div class="navbar-item">
-                <a class="button is-link" href="{% url 'login' %}">Sign in</a>
+        <div class="navbar-item">
+            <div class="buttons">
+                {% if user.is_authenticated %}
+                    <a id="log-out-button" href="{% url 'logout' %}" class="button is-small is-link is-light">
+                        {% with icon_name="box-arrow-right" %}
+                            {% include "common/icon.html" %}
+                        {% endwith %}
+                        Log Out
+                    </a>
+                    <a href="{% url 'profile' %}" class="button is-small is-link is-light">
+                        {% with icon_name="person" %}
+                            {% include "common/icon.html" %}
+                        {% endwith %}
+                        Profile
+                    </a>
+                {% else %}
+                    <a href="{% url 'login' %}" class="button is-small is-link is-light">
+                        {% with icon_name="box-arrow-in-right" %}
+                            {% include "common/icon.html" %}
+                        {% endwith %}
+                        Log In
+                    </a>
+                {% endif %}
             </div>
-        {% endif %}
+        </div>
     </div>
 </nav>

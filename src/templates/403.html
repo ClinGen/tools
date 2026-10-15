@@ -10,8 +10,13 @@
             </h1>
         </div>
         <div class="message-body">
-            You don't have permission to access this page.
-            Return to the <a href="{% url 'home' %}">home page</a>.
+            {% if not request.user.is_authenticated %}
+                You are not logged in. Please <a href="{% url 'login' %}">log in</a> to
+                view this page.
+            {% else %}
+                You don't have permission to access this page.
+                Return to the <a href="{% url 'home' %}">home page</a>.
+            {% endif %}
         </div>
     </article>
 {% endblock %}

@@ -101,12 +101,10 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
 ]
 
-# Staff sign in with the Clerk application shared by ClinGen's apps. The prod settings
-# refuse to start without these keys.
-CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY", "")
-CLERK_PUBLISHABLE_KEY = os.getenv("CLERK_PUBLISHABLE_KEY", "")
+CLERK_SECRET_KEY = os.environ["CLERK_SECRET_KEY"]
+CLERK_PUBLISHABLE_KEY = os.environ["CLERK_PUBLISHABLE_KEY"]
 
-LOGIN_URL = "login"
+LOGIN_URL = "/auth/login"
 
 LANGUAGE_CODE = "en-us"
 
