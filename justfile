@@ -18,7 +18,7 @@ set dotenv-load := true
 #=====================================================================
 
 # Run all checks and tests. ------------------------------------------
-pre-commit: src-all test-all infra-all
+pre-commit: env-check src-all test-all infra-all
 alias pre := pre-commit
 
 #=====================================================================
@@ -26,7 +26,7 @@ alias pre := pre-commit
 #=====================================================================
 
 # Run all checks and tests that are run in CI. -----------------------
-continuous-integration: py-format-check js-format-check py-lint js-lint py-type-check django-check django-collectstatic test-all
+continuous-integration: env-check py-format-check js-format-check py-lint js-lint py-type-check django-check django-collectstatic test-all
 alias ci := continuous-integration
 
 #=====================================================================
@@ -245,6 +245,16 @@ alias djsh := django-shell
 docs-format:
     uv run mdformat --wrap 88 --number docs
 alias dofm := docs-format
+
+#=====================================================================
+# Environment Recipes
+#=====================================================================
+
+# Check that .env and .env.example have the same keys. ---------------
+[group('env')]
+env-check:
+    uv run scripts/env_check.py
+alias envc := env-check
 
 #=====================================================================
 # Terraform Recipes

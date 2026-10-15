@@ -37,7 +37,9 @@ ClinGen Tools is maintained by the Stanford contingent of
 - Clone the repository.
 - Install JavaScript dependencies: `npm ci`.
 - Install Python dependencies: `uv sync`.
-- Copy `.env.example` to `.env` and fill it in.
+- Copy `.env.example` to `.env` in the root of the repository and fill in the values.
+  When you add or remove a key, change both files; `just env-check` reports any
+  differences.
 - Build the static assets: `just js-build`.
 - Apply migrations: `just django-migrate`.
 - Run the development server: `just django-runserver`.

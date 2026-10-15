@@ -134,6 +134,12 @@ convention = "google"
 "docs.py" = [
     "print", # CLI tool: print is the intended output mechanism.
 ]
+"scripts/*" = [
+    "implicit-namespace-package", # Standalone scripts, not a package.
+]
+"scripts/env_check.py" = [
+    "print", # CLI tool: print is the intended output mechanism.
+]
 
 [tool.coverage.run]
 data_file = "coverage.db"
