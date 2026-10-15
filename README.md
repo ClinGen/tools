@@ -18,8 +18,7 @@ of one of each per tool.
   ClinGen clients through an API, forwards them to ClinVar, and tracks each one until
   ClinVar has processed it.
 - **Email Transfer Service (ETS)**, at [`/ets/`](https://tools.clinicalgenome.org/ets/):
-  moves a Gene Curation Interface or Variant Curation Interface user's account from an
-  old email to a new one.
+  moves a GCI/VCI user's account from an old email to a new one.
 
 The landing page at [tools.clinicalgenome.org](https://tools.clinicalgenome.org/) links
 to each tool. `docs/design.md` describes the design.
