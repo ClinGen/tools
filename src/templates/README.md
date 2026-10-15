@@ -35,4 +35,5 @@ Renders Django's flash messages, one Bulma message per flash message.
 
 ### `partials/navbar.html`
 
-The navigation bar, with a link to the landing page.
+The navigation bar, with a link to the landing page and either the signed-in user's
+email and a sign-out button or a sign-in link.

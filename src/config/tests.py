@@ -19,10 +19,18 @@ class SettingsTest(SimpleTestCase):
         call_command("check", stdout=out)
         assert "no issues" in out.getvalue()
 
-    def test_prod_settings_require_a_secret_key(self):
-        sys.modules.pop("config.settings.prod", None)
-        with (
-            mock.patch("config.settings.base.SECRET_KEY", None),
-            self.assertRaises(ImproperlyConfigured),
-        ):
-            importlib.import_module("config.settings.prod")
+    def test_prod_settings_require_their_secrets(self):
+        for name in ["SECRET_KEY", "CLERK_SECRET_KEY", "CLERK_PUBLISHABLE_KEY"]:
+            with self.subTest(name=name):
+                sys.modules.pop("config.settings.prod", None)
+                with (
+                    mock.patch.multiple(
+                        "config.settings.base",
+                        SECRET_KEY="secret",  # ruff: ignore[hardcoded-password-func-arg]
+                        CLERK_SECRET_KEY="sk_test",  # ruff: ignore[hardcoded-password-func-arg]
+                        CLERK_PUBLISHABLE_KEY="pk_test",
+                    ),
+                    mock.patch(f"config.settings.base.{name}", ""),
+                    self.assertRaisesMessage(ImproperlyConfigured, name),
+                ):
+                    importlib.import_module("config.settings.prod")

@@ -25,6 +25,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "whitenoise.runserver_nostatic",
     "django.contrib.staticfiles",
+    "simple_history",
+    "auth_",
     "common",
     "core",
 ]
@@ -38,6 +40,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "simple_history.middleware.HistoryRequestMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -92,6 +95,18 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
+
+AUTHENTICATION_BACKENDS = [
+    "auth_.backends.ClerkBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+# Staff sign in with the Clerk application shared by ClinGen's apps. The prod settings
+# refuse to start without these keys.
+CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY", "")
+CLERK_PUBLISHABLE_KEY = os.getenv("CLERK_PUBLISHABLE_KEY", "")
+
+LOGIN_URL = "login"
 
 LANGUAGE_CODE = "en-us"
 

@@ -3,11 +3,15 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@clerk/clerk-react": "^5.61.10",
     "bootstrap-icons": "^1.13.1",
     "bulma": "^1.0.4",
-    "htmx.org": "^2.0.10"
+    "htmx.org": "^2.0.10",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "1.9.4"
+    "@biomejs/biome": "1.9.4",
+    "esbuild": "^0.28.2"
   }
 }
