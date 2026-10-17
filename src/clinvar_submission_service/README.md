@@ -73,10 +73,11 @@ ClinVar submission ID, its status, ClinVar's latest response, `updated` timestam
 code, and summary report, any error message, and when it was last and will next be
 polled. It extends `common.models.SlugModel`, so its ID is a UUID and its slug is `S`
 and the first 8 hex characters of the UUID, such as `S3f2a9c1e`. It keeps its change
-history. `Submission.objects.due_to_poll()` returns the submitted and processing
-submissions whose next poll time has passed, oldest first. Also defines `ApiKey`, the
-key one client system sends to use the API. Only its SHA-256 hash and a short prefix are
-stored, and each submission records the key that sent it.
+history, and `get_absolute_url()` returns its page. `Submission.objects.due_to_poll()`
+returns the submitted and processing submissions whose next poll time has passed, oldest
+first. Also defines `ApiKey`, the key one client system sends to use the API. Only its
+SHA-256 hash and a short prefix are stored, and each submission records the key that
+sent it.
 
 ### `polling.py`
 
@@ -96,9 +97,28 @@ with its ClinVar ID and a first poll time; if ClinVar rejects it, can't be reach
 the CSS has no ClinVar key, it's send_failed, with the error. It never retries. Also
 counts the records in a submission's content.
 
-### `templates/clinvar_submission_service/index.html`
+### `templates/clinvar_submission_service/detail.html`
 
-The CSS's home page, with its name and description from `core.tools`.
+A submission's page, in plain language: its status, who sent it, its ClinVar ID, when it
+arrived and was last checked, what its status means, and each record's result and SCV
+from the summary report. A send_failed submission's page has a Resend button. It never
+shows raw JSON or ClinVar's error text; developers see those in the Django admin.
+
+### `templates/clinvar_submission_service/list.html`
+
+The CSS's home page: every submission, newest first, a page at a time, with a search by
+ID or ClinVar ID.
+
+### `templates/clinvar_submission_service/partials/header.html`
+
+The top of every CSS page: the CSS's name and description from `core.tools`, and boxed
+tabs for Submissions and, on a submission's page, that submission, with the current
+page's tab active.
+
+### `templates/clinvar_submission_service/partials/status.html`
+
+A submission's status tag, in plain words and in the color key's colors: green when
+ClinVar accepted it, red when it wasn't sent or has errors, and grey otherwise.
 
 ### `test_api.py`
 
@@ -135,6 +155,14 @@ errors and 429s, that one failing submission doesn't block the rest, that send_f
 and received submissions are never polled, batch size, and stopping mid-pass. Also tests
 the command's `--once` and that SIGTERM stops its loop.
 
+### `test_views.py`
+
+Tests the staff pages: that each needs CSS permissions; the list's order, search,
+pagination, and header; each status's tag color; the detail page's records and its
+plain-language error; that only a send_failed submission has a Resend button; and that
+resending sends it again, records who did, keeps a failed resend's new error, and
+rejects other statuses and GET requests.
+
 ### `tests.py`
 
 Tests the `Submission` slug, including a colliding one, its default status, and its
@@ -143,9 +171,13 @@ CSS permissions can open the home page, which the landing page links to.
 
 ### `urls.py`
 
-Routes the CSS's pages under the `css` namespace: the home page, and the API at
-`api/v1/` under `css:api-1`.
+Routes the CSS's pages under the `css` namespace: the submission list at the root, each
+submission at `submissions/<slug>/`, its resend at `submissions/<slug>/resend/`, and the
+API at `api/v1/` under `css:api-1`.
 
 ### `views.py`
 
-Serves the CSS's pages to users with CSS permissions.
+Serves the CSS's pages to users with CSS permissions: the submission list, with search
+and pagination, and each submission's page. The resend view, which takes only POSTs,
+forwards a send_failed submission again through `services.forward_submission()` and
+shows a plain error message if ClinVar still didn't get it.

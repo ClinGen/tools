@@ -5,6 +5,7 @@ import secrets
 from typing import ClassVar
 
 from django.db import models
+from django.urls import reverse
 from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
@@ -145,6 +146,10 @@ class Submission(SlugModel):
     def __str__(self) -> str:
         """Returns the submission's human-readable ID."""
         return self.slug
+
+    def get_absolute_url(self) -> str:
+        """Returns the submission's page."""
+        return reverse("css:detail", kwargs={"slug": self.slug})
 
 
 def _hash(raw_key: str) -> str:

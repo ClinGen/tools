@@ -116,7 +116,7 @@ class IndexViewTest(TestCase):
         self.client.force_login(_make_user("staff@example.com", css=True))
         response = self.client.get(reverse("css:index"))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "clinvar_submission_service/index.html")
+        self.assertTemplateUsed(response, "clinvar_submission_service/list.html")
         self.assertContains(response, "ClinVar Submission Service")
 
     def test_landing_page_lists_the_css(self):

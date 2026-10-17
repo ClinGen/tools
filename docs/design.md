@@ -274,10 +274,12 @@ exits cleanly on SIGTERM after finishing the submission it's working on.
 
 #### Staff Pages
 
-The CSS's pages list every submission and show each one's status, payload, and ClinVar's
-responses, with its change history. Staff need `has_css_permissions`, and every staff
-member with it sees every submission. The page of a `send_failed` submission has a
-Resend button.
+The CSS's pages list every submission, newest first, with a search by ID or ClinVar ID.
+A submission's page says in plain words what its status means and lists each record's
+result and SCV from the summary report. Like the ETS's pages, they never show raw JSON
+or ClinVar's error text; developers see those, and each submission's change history, in
+the Django admin. Staff need `has_css_permissions`, and every staff member with it sees
+every submission. The page of a `send_failed` submission has a Resend button.
 
 The CSS reads the ClinVar API key and base from the environment. It never logs the
 ClinVar API key or a client's API key.

@@ -1,0 +1,13 @@
+{% if submission.status == "processed" %}
+    <span class="tag is-success is-light">Accepted</span>
+{% elif submission.status == "error" %}
+    <span class="tag is-danger is-light">Has Errors</span>
+{% elif submission.status == "send_failed" %}
+    <span class="tag is-danger is-light">Not Sent</span>
+{% elif submission.status == "processing" %}
+    <span class="tag is-light">ClinVar Is Checking</span>
+{% elif submission.status == "submitted" %}
+    <span class="tag is-light">Sent</span>
+{% else %}
+    <span class="tag is-light">Not Sent Yet</span>
+{% endif %}

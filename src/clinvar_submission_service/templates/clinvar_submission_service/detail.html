@@ -1,0 +1,69 @@
+{% extends "layouts/base.html" %}
+{% block title %}{{ submission.slug }} Details{% endblock %}
+{% block description %}See the status of submission {{ submission.slug }}.{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        {% include "clinvar_submission_service/partials/header.html" with active_tab="detail" %}
+        <div class="block table-container">
+            <table class="table">
+                <tbody>
+                    <tr><td>Status</td><td>{% include "clinvar_submission_service/partials/status.html" %}</td></tr>
+                    <tr><td>Sent By</td><td>{{ submission.api_key.name|default:"" }}</td></tr>
+                    <tr><td>ClinVar ID</td><td>{{ submission.clinvar_submission_id }}</td></tr>
+                    <tr><td>Received</td><td>{{ submission.added_at|date:"Y-m-d H:i" }} UTC</td></tr>
+                    <tr><td>Last Checked With ClinVar</td><td>{{ submission.last_polled_at|date:"Y-m-d H:i"|default:"Not yet" }}{% if submission.last_polled_at %} UTC{% endif %}</td></tr>
+                </tbody>
+            </table>
+        </div>
+        {% if submission.status == "send_failed" %}
+            <div class="notification is-danger is-light block">
+                <p class="has-text-weight-bold">ClinVar never got this submission.</p>
+                <p class="block">You can send it again. If it still doesn't go through, ask a
+                    developer for help, and give them its ID, {{ submission.slug }}.</p>
+                <form method="post"
+                      action="{% url 'css:resend' slug=submission.slug %}"
+                      onsubmit="return confirm('Send {{ submission.slug }} to ClinVar again?');">
+                    {% csrf_token %}
+                    <button type="submit" class="button is-link">Resend</button>
+                </form>
+            </div>
+        {% elif submission.status == "received" %}
+            <p class="block">This submission hasn't been sent to ClinVar yet.</p>
+        {% elif submission.status == "submitted" or submission.status == "processing" %}
+            <p class="block">ClinVar has this submission and is checking it. This can take a few
+                days. The CSS checks with ClinVar regularly, so look back here later.</p>
+        {% elif submission.status == "error" %}
+            <div class="notification is-danger is-light block">
+                <p class="has-text-weight-bold">ClinVar found problems with some records.</p>
+                <p>The records marked Error below weren't accepted.</p>
+            </div>
+        {% elif submission.status == "processed" %}
+            <p class="block">ClinVar accepted every record. They'll be public after ClinVar's next
+                weekly release.</p>
+        {% endif %}
+        {% if records %}
+            <div class="block table-container">
+                <table class="table">
+                    <thead>
+                        <tr><th>Record</th><th>Result</th><th>ClinVar Accession</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for record in records %}
+                            <tr>
+                                <td>{{ record.identifiers.localID }}</td>
+                                <td>
+                                    {% if record.processingStatus == "Success" %}
+                                        <span class="tag is-success is-light">Success</span>
+                                    {% else %}
+                                        <span class="tag is-danger is-light">{{ record.processingStatus }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ record.identifiers.clinvarAccession|default:"" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}
