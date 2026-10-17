@@ -17,6 +17,15 @@ submission's ClinVar fields are read-only, since only ClinVar's responses should
 them. Adding an API key generates its value and shows it once, in a warning message;
 after that, only its prefix is shown.
 
+### `api.py`
+
+Serves the CSS's API, version 1, as a Django Ninja `NinjaAPI` at `/css/api/v1/`, with
+OpenAPI docs at `/css/api/v1/docs`. Every endpoint needs an API key (see `api_auth.py`),
+and a client sees only its own submissions. `POST /submissions` saves the ClinVar
+content as a submission and forwards it, `GET /submissions` lists the client's
+submissions a page at a time, and `GET /submissions/{slug}` reads one with ClinVar's
+responses. Content with more than 10,000 records gets a 422.
+
 ### `api_auth.py`
 
 Defines `ApiKeyAuth`, the Ninja auth class for the CSS's API. It reads the key from the
@@ -54,9 +63,25 @@ submissions whose next poll time has passed. Also defines `ApiKey`, the key one 
 system sends to use the API. Only its SHA-256 hash and a short prefix are stored, and
 each submission records the key that sent it.
 
+### `services.py`
+
+Forwards a saved submission to ClinVar once with `forward_submission()`, which the API
+and the staff Resend button share. If ClinVar accepts it, the submission is submitted,
+with its ClinVar ID and a first poll time; if ClinVar rejects it, can't be reached, or
+the CSS has no ClinVar key, it's send_failed, with the error. It never retries. Also
+counts the records in a submission's content.
+
 ### `templates/clinvar_submission_service/index.html`
 
 The CSS's home page, with its name and description from `core.tools`.
+
+### `test_api.py`
+
+Tests `forward_submission()` and each API endpoint against `FakeClinVarClient`: a
+submission ClinVar accepts or rejects, a missing ClinVar key, that a failed send isn't
+retried, bodies that aren't objects or hold too many records, 401s for missing, unknown,
+and inactive keys, that a client can't read or list another client's submissions,
+pagination, and the OpenAPI docs.
 
 ### `test_api_keys.py`
 
@@ -85,7 +110,8 @@ CSS permissions can open the home page, which the landing page links to.
 
 ### `urls.py`
 
-Routes the CSS's pages under the `css` namespace: the home page.
+Routes the CSS's pages under the `css` namespace: the home page, and the API at
+`api/v1/` under `css:api-1`.
 
 ### `views.py`
 

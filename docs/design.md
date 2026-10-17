@@ -250,10 +250,10 @@ go in a new version beside it. Ninja validates request bodies and serves OpenAPI
   response, and summary report.
 - `GET /css/api/v1/submissions`: list the calling client's submissions.
 
-Each client system has its own API key, which it sends in a request header. A client
-sees only its own submissions. There are no webhooks: clients poll a submission's GET
-endpoint to learn when its status changes. The API doesn't use Clerk sessions or CSRF
-protection.
+Each client system has its own API key, which it sends in the `X-API-Key` header. The
+Django admin shows a new key once and stores only its hash. A client sees only its own
+submissions. There are no webhooks: clients poll a submission's GET endpoint to learn
+when its status changes. The API doesn't use Clerk sessions or CSRF protection.
 
 #### Poller
 
