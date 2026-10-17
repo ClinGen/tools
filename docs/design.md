@@ -23,10 +23,9 @@ tool.
 
 This document is for engineers who are new to the codebase and for product owners who
 want to understand the system's architecture and key design decisions. It covers what
-the tools share and how they're kept apart. Each tool's own domain design (the AS's
-affiliation model and legacy JSON format, the CSS's submission lifecycle and poller)
-carries over from its standalone repository's `docs/design.md` unless this document says
-otherwise.
+the tools share, how they're kept apart, and the design of the CSS and the ETS. The AS's
+domain design (its affiliation model and legacy JSON format) carries over from its
+standalone repository's `docs/design.md` unless this document says otherwise.
 
 ## Goals
 
@@ -87,11 +86,12 @@ the UI, with HTMX where a page needs a little interactivity.
 - **Authentication**: Clerk + custom `ClerkBackend`
 - **API framework**: Django Ninja
 - **AWS client (ETS)**: boto3
+- **HTTP client (CSS)**: requests
 
-Every tool's API uses Django Ninja, as the CSS's already does. The standalone AS used
-Django REST Framework, so porting it means rewriting its API in Ninja. Its URLs and
-response formats, including the legacy JSON format, must stay the same apart from the
-new `/as/` prefix, so that clients only have to change their base URL.
+Every tool's API uses Django Ninja. The standalone AS used Django REST Framework, so
+porting it means rewriting its API in Ninja. Its URLs and response formats, including
+the legacy JSON format, must stay the same apart from the new `/as/` prefix, so that
+clients only have to change their base URL.
 
 ### URL Layout
 
@@ -100,7 +100,7 @@ matching the prefix:
 
 - `/`: the landing page (`core`).
 - `/as/`: the AS UI. Its API lives under `/as/api/`.
-- `/css/`: the CSS UI. Its API lives under `/css/api/`.
+- `/css/`: the CSS UI. Its API lives under `/css/api/v1/`.
 - `/ets/`: the ETS.
 - `/admin/`: the Django admin, shared by every tool.
 
@@ -167,6 +167,120 @@ logins.
 Machine clients use API keys, as they did with the standalone services. A key belongs to
 one tool: an AS key can't call the CSS API. Keys are hashed at rest, and staff manage
 them in the Django admin.
+
+### The ClinVar Submission Service
+
+ClinGen client systems send ClinVar submissions to the CSS through its API. The CSS
+forwards each one to the NCBI ClinVar Submission API, polls ClinVar until the submission
+reaches a final status, and shows staff every submission and ClinVar's responses. The
+CSS doesn't validate submissions against ClinVar's schema beyond what it needs to store
+and forward them, because ClinVar is the source of truth for what's valid. It stores
+only the submissions it sent and ClinVar's responses to them, not a mirror of ClinVar.
+
+#### The ClinVar Submission API
+
+The [ClinVar Submission API](https://www.ncbi.nlm.nih.gov/clinvar/docs/api_http/) needs
+a service account for the submitting organization. Every request sends the account's API
+key in the `SP-API-KEY` header. To create a submission, the CSS POSTs the ClinVar
+content to `{base}/submissions/`, wrapped in an `actions` envelope (`type: AddData`,
+`targetDb: clinvar`), and ClinVar returns a submission ID such as `SUB999999`. ClinVar
+checks the format right away and validates the records later, so the CSS reads the
+status with a GET to `{base}/submissions/SUB999999/actions/`. When processing finishes,
+the status response links to a JSON summary report with each record's result and SCV
+accession. A submission can hold up to 10,000 records, and records that succeed become
+public in ClinVar's next weekly release.
+
+There are two bases:
+
+- **Production**: `https://submit.ncbi.nlm.nih.gov/api/v1`. Only prod uses it.
+- **Test**: `https://submit.ncbi.nlm.nih.gov/apitest/v1`. It validates submissions fully
+  but never makes them public. Dev, tools-test, and the contract tests use it.
+
+The contract tests also use ClinVar's dry-run mode (`?dry-run=true`), which checks the
+format and the API key without creating a submission. They run only when
+`RUN_CONTRACT_TESTS=1` and a key is set. Unit tests use a fake client and send no
+requests.
+
+#### Submission Lifecycle
+
+A `Submission` is one request to ClinVar. Its slug is `S` and the start of its UUID,
+such as `S3f2a9c1e`. It records the client that sent it, the payload as the client sent
+it, the ClinVar submission ID, its status, ClinVar's latest response and that response's
+`updated` timestamp and `errorCode`, the summary report, and any error message.
+
+1. A client POSTs a submission to the CSS API.
+2. The CSS saves a `Submission` with status `received`, then forwards it to ClinVar.
+   Saving first means the CSS keeps a record of every request, even ones ClinVar never
+   got.
+3. If ClinVar accepts it, the CSS saves the ClinVar submission ID, sets the status to
+   `submitted`, and sets `next_poll_at`. If ClinVar rejects it or can't be reached, the
+   CSS sets the status to `send_failed` and saves the error message.
+4. The CSS responds with the submission's slug and status.
+5. The poller checks ClinVar for each `submitted` or `processing` submission whose
+   `next_poll_at` has passed, saves the response, and either records a final status or
+   pushes `next_poll_at` further out. When a submission reaches a final status, the
+   poller downloads its summary report.
+6. Clients and staff read the status through the API or the UI at any time.
+
+The statuses are:
+
+- **`received`**: saved, but not yet sent to ClinVar. Not final.
+- **`send_failed`**: the POST to ClinVar never succeeded, so there's no ClinVar ID.
+  Final; staff can resend it.
+- **`submitted`**: ClinVar has it and hasn't started validating. Not final.
+- **`processing`**: ClinVar is validating it. Not final.
+- **`processed`**: every record succeeded. Final.
+- **`error`**: one or more records failed. ClinVar's `errorCode` is 1 if some records
+  failed and 2 if all of them did. Final.
+
+`send_failed` and `error` stay separate: `send_failed` means ClinVar never got the
+submission, and `error` means ClinVar processed it and reported record errors. The CSS
+never resends a submission on its own. Staff resend a `send_failed` submission from its
+page, which repeats step 3, or the client sends a new submission.
+
+#### API
+
+The API is a Django Ninja `NinjaAPI` mounted at `/css/api/v1/`, so a breaking change can
+go in a new version beside it. Ninja validates request bodies and serves OpenAPI docs at
+`/css/api/v1/docs`. The endpoints are:
+
+- `POST /css/api/v1/submissions`: create a submission and forward it to ClinVar. The
+  body is the ClinVar content, and the CSS adds the `actions` envelope.
+- `GET /css/api/v1/submissions/{slug}`: read a submission's status, ClinVar ID, latest
+  response, and summary report.
+- `GET /css/api/v1/submissions`: list the calling client's submissions.
+
+Each client system has its own API key, which it sends in a request header. A client
+sees only its own submissions. There are no webhooks: clients poll a submission's GET
+endpoint to learn when its status changes. The API doesn't use Clerk sessions or CSRF
+protection.
+
+#### Poller
+
+The poller is the `poll_clinvar` management command (see Processes). Each pass, it:
+
+- takes a small batch of the submissions that are due
+- reads each one's status from ClinVar with a request timeout, logging with the
+  submission's slug
+- backs off exponentially through `next_poll_at` while a submission is still processing
+  or ClinVar returns an error, up to a maximum interval
+- waits at least as long as ClinVar's `Retry-After` header says when ClinVar returns 429
+- reports errors it catches to Sentry, so a failing submission doesn't go unnoticed, and
+  moves on to the next submission
+
+ClinVar's processing can take days, so the poller checks on a scale of minutes, not
+seconds. It keeps its state in the database, so restarting it loses nothing, and it
+exits cleanly on SIGTERM after finishing the submission it's working on.
+
+#### Staff Pages
+
+The CSS's pages list every submission and show each one's status, payload, and ClinVar's
+responses, with its change history. Staff need `has_css_permissions`, and every staff
+member with it sees every submission. The page of a `send_failed` submission has a
+Resend button.
+
+The CSS reads the ClinVar API key and base from the environment. It never logs the
+ClinVar API key or a client's API key.
 
 ### The Email Transfer Service
 
