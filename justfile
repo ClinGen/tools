@@ -230,6 +230,12 @@ django-runserver:
     cd src && uv run manage.py runserver
 alias djru := django-runserver
 
+# Run the CSS's ClinVar poller. ---------------------------------------
+[group('django')]
+django-poll-clinvar:
+    cd src && uv run manage.py poll_clinvar
+alias djpc := django-poll-clinvar
+
 # Enter the shell. ---------------------------------------------------
 [group('django')]
 django-shell:

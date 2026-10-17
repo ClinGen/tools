@@ -13,11 +13,14 @@ from common.models import SlugModel, UUIDModel
 
 class SubmissionManager(models.Manager["Submission"]):
     def due_to_poll(self) -> models.QuerySet["Submission"]:
-        """Returns the pollable submissions whose next poll time has passed."""
+        """Returns the pollable submissions whose next poll time has passed.
+
+        The ones that have waited longest come first.
+        """
         return self.filter(
             status__in=Submission.POLLABLE_STATUSES,
             next_poll_at__lte=timezone.now(),
-        )
+        ).order_by("next_poll_at")
 
 
 class Submission(SlugModel):

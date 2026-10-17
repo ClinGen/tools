@@ -24,7 +24,8 @@ and their names start with `SUBDOMAIN`. Reads `SECRET_KEY`, `ENV`, the Sentry se
 and the backup settings from the environment, and, as in the HCI, requires
 `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` in every environment. Also reads the
 ETS's AWS settings and `ETS_DRY_RUN`, which is on unless it's set to `0`, and the CSS's
-ClinVar key and endpoint, which defaults to ClinVar's test endpoint.
+ClinVar key and endpoint, which defaults to ClinVar's test endpoint. Sets how often the
+CSS's poller checks ClinVar.
 
 ### `settings/dev.py`
 

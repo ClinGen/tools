@@ -1,6 +1,7 @@
 """Provides settings common to every environment."""
 
 import os
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -198,3 +199,11 @@ CSS_CLINVAR_API_URL = (
     os.getenv("CSS_CLINVAR_API_URL") or "https://submit.ncbi.nlm.nih.gov/apitest/v1"
 )
 CSS_CLINVAR_API_KEY = os.getenv("CSS_CLINVAR_API_KEY", "")
+
+# How the CSS's poller paces itself. ClinVar can take days to process a submission, so
+# it checks on a scale of minutes. The wait between checks of one submission doubles
+# from the minimum to the maximum.
+CSS_POLL_SLEEP_SECONDS = 60
+CSS_POLL_BATCH_SIZE = 25
+CSS_POLL_MIN_DELAY = timedelta(minutes=5)
+CSS_POLL_MAX_DELAY = timedelta(hours=6)
