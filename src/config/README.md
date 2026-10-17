@@ -23,7 +23,8 @@ bucket named by `DBBACKUP_BUCKET_NAME`, or to `backups/` next to `src/` when it'
 and their names start with `SUBDOMAIN`. Reads `SECRET_KEY`, `ENV`, the Sentry settings,
 and the backup settings from the environment, and, as in the HCI, requires
 `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` in every environment. Also reads the
-ETS's AWS settings and `ETS_DRY_RUN`, which is on unless it's set to `0`.
+ETS's AWS settings and `ETS_DRY_RUN`, which is on unless it's set to `0`, and the CSS's
+ClinVar key and endpoint, which defaults to ClinVar's test endpoint.
 
 ### `settings/dev.py`
 
@@ -42,8 +43,8 @@ console and a rotating file in `logs/` (5 MB, 5 backups).
 
 Extends `dev.py` for test runs. Turns Sentry off, uses a file-backed test database so
 tests run in WAL mode like the real database, uses plain static file storage so tests
-don't need `collectstatic`, and silences logging so pytest shows logs only for failing
-tests.
+don't need `collectstatic`, never gives the CSS a real ClinVar key or the production
+endpoint, and silences logging so pytest shows logs only for failing tests.
 
 ### `tests.py`
 

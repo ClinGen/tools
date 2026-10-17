@@ -56,6 +56,10 @@ class BackupSettingsTest(SimpleTestCase):
         base = self._load_base(SUBDOMAIN="")
         assert base.SUBDOMAIN == "dev"
 
+    def test_the_clinvar_url_defaults_to_clinvars_test_endpoint(self):
+        base = self._load_base(CSS_CLINVAR_API_URL="")
+        assert base.CSS_CLINVAR_API_URL == "https://submit.ncbi.nlm.nih.gov/apitest/v1"
+
     def test_only_zero_turns_the_ets_dry_run_off(self):
         assert self._load_base(ETS_DRY_RUN="0").ETS_DRY_RUN is False
         for value in ["", "1", "false", "off"]:

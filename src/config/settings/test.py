@@ -13,6 +13,11 @@ sentry_sdk.init()
 # real one. pytest-django gives each xdist worker its own copy.
 DATABASES["default"]["TEST"] = {"NAME": BASE_DIR / "test_tools.db"}
 
+# Tests never use a real ClinVar key or the production endpoint, even if .env has them.
+# The contract tests read their key from the environment themselves.
+CSS_CLINVAR_API_URL = "https://submit.ncbi.nlm.nih.gov/apitest/v1"
+CSS_CLINVAR_API_KEY = ""
+
 # Tests don't need the manifest that collectstatic builds.
 STORAGES = {
     **STORAGES,

@@ -19,6 +19,21 @@ read-only, since only ClinVar's responses should change them.
 
 Configures the `clinvar_submission_service` app.
 
+### `clients.py`
+
+Wraps the NCBI ClinVar Submission API in `ClinVarClient`, built on requests, with one
+method for each call the CSS makes: create a submission (or a dry run), read its status,
+and download its summary report. Every request sends the `SP-API-KEY` header and a
+timeout. A failed request raises `ClinVarError`, which says whether it's worth retrying
+(timeouts, 429s, and 5xx are; 400s and 401s aren't) and carries a 429's `Retry-After`.
+Nothing it logs or raises includes the API key. `ClinVarClient.from_settings()` builds
+one from the `CSS_` settings and raises `ImproperlyConfigured` without a key.
+
+### `fakes.py`
+
+Defines `FakeClinVarClient`, which holds ClinVar's submissions, statuses, and summary
+reports in memory, so tests never reach ClinVar. Each of its calls can be told to fail.
+
 ### `models.py`
 
 Defines `Submission`, one request to ClinVar: the payload as the client sent it, the
@@ -32,6 +47,19 @@ submissions whose next poll time has passed.
 ### `templates/clinvar_submission_service/index.html`
 
 The CSS's home page, with its name and description from `core.tools`.
+
+### `test_clients.py`
+
+Tests each `ClinVarClient` call against a mocked requests session: the request's
+envelope, headers, and timeout; parsing ClinVar's ID, status, update time, error code,
+and report URL; which failures are retryable; that the API key never appears in logs or
+errors; and `from_settings()`. Also tests `FakeClinVarClient`.
+
+### `test_contract.py`
+
+Checks `ClinVarClient` against ClinVar's real test endpoint with a dry run, which
+creates nothing. It's skipped unless `RUN_CONTRACT_TESTS=1` and `CSS_CLINVAR_API_KEY`
+are set in the environment.
 
 ### `tests.py`
 

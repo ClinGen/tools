@@ -189,3 +189,12 @@ ETS_AWS_REGION = os.getenv("ETS_AWS_REGION", "")
 ETS_COGNITO_USER_POOL_ID = os.getenv("ETS_COGNITO_USER_POOL_ID", "")
 ETS_DYNAMODB_TABLE_NAME = os.getenv("ETS_DYNAMODB_TABLE_NAME", "")
 ETS_DRY_RUN = os.getenv("ETS_DRY_RUN") != "0"
+
+# The CSS's ClinVar Submission API access. Every environment but prod uses ClinVar's
+# test endpoint, which never makes submissions public, so it's the default. An empty
+# key, as in a .env copied from .env.example, leaves the CSS unable to send
+# submissions, so each one ends in send_failed.
+CSS_CLINVAR_API_URL = (
+    os.getenv("CSS_CLINVAR_API_URL") or "https://submit.ncbi.nlm.nih.gov/apitest/v1"
+)
+CSS_CLINVAR_API_KEY = os.getenv("CSS_CLINVAR_API_KEY", "")
