@@ -26,3 +26,7 @@
       ansible.builtin.include_tasks: ../tasks/admin/django_collectstatic.yml
     - name: Admin | Gunicorn restart
       ansible.builtin.include_tasks: ../tasks/admin/gunicorn_restart.yml
+    - name: Placement | ClinVar poller files
+      ansible.builtin.include_tasks: ../tasks/placement/poll_clinvar.yml
+    - name: Admin | ClinVar poller restart
+      ansible.builtin.include_tasks: ../tasks/admin/poll_clinvar_restart.yml

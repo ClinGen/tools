@@ -138,6 +138,10 @@ the `prod` outputs when you set that check up.
 
 - Make sure to add the Ansible SSH key to the `authorized_keys` file.
 
+Initialization starts two systemd services: `gunicorn.service`, which serves every tool,
+and `poll-clinvar.service`, the CSS's ClinVar poller. To check on the poller, SSH in and
+run `systemctl status poll-clinvar` or `journalctl -u poll-clinvar`.
+
 ## How to Manually Deploy ClinGen Tools
 
 If you need to deploy ClinGen Tools by hand, follow the steps below. Every tool is
@@ -170,3 +174,6 @@ Pre-deployment backup: pre-deployment/tools-3f2a9c1-to-88c5e47-2026-09-25T180102
 The first SHA is the code the backup's data matches, and the second is the code being
 deployed. If the backup fails, the deploy stops before it migrates, so the server needs
 its backup credentials first (see How to Configure Backup Credentials).
+
+Every deploy restarts Gunicorn and the ClinVar poller. The poller finishes the
+submission it's polling before it stops.
