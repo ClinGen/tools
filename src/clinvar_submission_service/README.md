@@ -12,8 +12,16 @@ Empty file that marks `clinvar_submission_service` as a Python package.
 
 ### `admin.py`
 
-Registers `Submission` in the Django admin, with its history. ClinVar's fields are
-read-only, since only ClinVar's responses should change them.
+Registers `Submission` and `ApiKey` in the Django admin, with their history. A
+submission's ClinVar fields are read-only, since only ClinVar's responses should change
+them. Adding an API key generates its value and shows it once, in a warning message;
+after that, only its prefix is shown.
+
+### `api_auth.py`
+
+Defines `ApiKeyAuth`, the Ninja auth class for the CSS's API. It reads the key from the
+`X-API-Key` header and accepts it only if it's an active `ApiKey`, which becomes
+`request.auth`.
 
 ### `apps.py`
 
@@ -42,11 +50,19 @@ code, and summary report, any error message, and when it was last and will next 
 polled. It extends `common.models.SlugModel`, so its ID is a UUID and its slug is `S`
 and the first 8 hex characters of the UUID, such as `S3f2a9c1e`. It keeps its change
 history. `Submission.objects.due_to_poll()` returns the submitted and processing
-submissions whose next poll time has passed.
+submissions whose next poll time has passed. Also defines `ApiKey`, the key one client
+system sends to use the API. Only its SHA-256 hash and a short prefix are stored, and
+each submission records the key that sent it.
 
 ### `templates/clinvar_submission_service/index.html`
 
 The CSS's home page, with its name and description from `core.tools`.
+
+### `test_api_keys.py`
+
+Tests that an API key is stored only as a hash, verifies only while active, and records
+its last use; that `ApiKeyAuth` accepts and rejects the right headers; and that the
+admin shows a new key once.
 
 ### `test_clients.py`
 

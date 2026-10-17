@@ -1,12 +1,14 @@
 """Houses database models for the clinvar_submission_service app."""
 
+import hashlib
+import secrets
 from typing import ClassVar
 
 from django.db import models
 from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
-from common.models import SlugModel
+from common.models import SlugModel, UUIDModel
 
 
 class SubmissionManager(models.Manager["Submission"]):
@@ -40,6 +42,15 @@ class Submission(SlugModel):
     # and a send_failed one has no ClinVar ID to poll; the rest are final.
     POLLABLE_STATUSES: ClassVar[list[str]] = [Status.SUBMITTED, Status.PROCESSING]
 
+    api_key = models.ForeignKey(
+        "ApiKey",
+        blank=True,
+        null=True,
+        on_delete=models.PROTECT,
+        related_name="submissions",
+        verbose_name="Client",
+        help_text="The API key of the client that sent the submission.",
+    )
     payload = models.JSONField(
         verbose_name="Payload",
         help_text="The request body as the client sent it.",
@@ -131,3 +142,117 @@ class Submission(SlugModel):
     def __str__(self) -> str:
         """Returns the submission's human-readable ID."""
         return self.slug
+
+
+def _hash(raw_key: str) -> str:
+    """Returns the hash of an API key that's stored in place of the key."""
+    return hashlib.sha256(raw_key.encode()).hexdigest()
+
+
+class ApiKeyManager(models.Manager["ApiKey"]):
+    def create_key(self, *, name: str) -> tuple["ApiKey", str]:
+        """Creates an API key for a client.
+
+        Args:
+            name: The client's name, such as "GCI".
+
+        Returns:
+            The new key and its raw value, which is never stored or shown again.
+        """
+        api_key = self.model(name=name)
+        raw_key = api_key.set_new_key()
+        api_key.save()
+        return api_key, raw_key
+
+    def verify(self, raw_key: str) -> "ApiKey | None":
+        """Returns the active key with this raw value, and records its use.
+
+        Returns:
+            The key, or None if no active key matches.
+        """
+        if not raw_key:
+            return None
+        api_key = self.filter(key_hash=_hash(raw_key), is_active=True).first()
+        if api_key:
+            # update() skips the history, which shouldn't get a row per request.
+            now = timezone.now()
+            self.filter(pk=api_key.pk).update(last_used_at=now)
+            api_key.last_used_at = now
+        return api_key
+
+
+# Every raw key starts with this, so a leaked one is easy to recognize.
+API_KEY_PREFIX = "css_"
+
+# How much of a raw key is kept, so staff can tell keys apart.
+PREFIX_LENGTH = 8
+
+
+class ApiKey(UUIDModel):
+    """The key one client system sends to use the CSS's API.
+
+    Only a hash of the key is stored. Staff create keys in the Django admin, which shows
+    the raw key once.
+    """
+
+    name = models.CharField(
+        max_length=128,
+        verbose_name="Client",
+        help_text="The client system that uses this key, such as the GCI.",
+    )
+    prefix = models.CharField(
+        editable=False,
+        max_length=PREFIX_LENGTH,
+        verbose_name="Prefix",
+        help_text="The start of the key, so you can tell keys apart.",
+    )
+    key_hash = models.CharField(
+        editable=False,
+        max_length=64,
+        unique=True,
+        verbose_name="Key Hash",
+        help_text="The SHA-256 hash of the key. The key itself isn't stored.",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Active",
+        help_text="Whether the key can call the API. Turn it off to revoke the key.",
+    )
+    added_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Added At",
+        help_text="When the key was created.",
+    )
+    last_used_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        editable=False,
+        verbose_name="Last Used At",
+        help_text="When the key last called the API.",
+    )
+    history = HistoricalRecords()
+
+    objects: ClassVar[ApiKeyManager] = ApiKeyManager()
+
+    class Meta:  # ty: ignore[invalid-attribute-override] (Each Django model declares its own Meta.)
+        """Provides metadata."""
+
+        db_table = "api_key"
+        ordering = ["name"]
+        verbose_name = "API Key"
+        verbose_name_plural = "API Keys"
+
+    def set_new_key(self) -> str:
+        """Gives the key a new random value, without saving it.
+
+        Returns:
+            The raw value, which is never stored or shown again.
+        """
+        raw_key = f"{API_KEY_PREFIX}{secrets.token_urlsafe(32)}"
+        self.prefix = raw_key[:PREFIX_LENGTH]
+        self.key_hash = _hash(raw_key)
+        return raw_key
+
+    def __str__(self) -> str:
+        """Returns the client's name and the start of the key."""
+        return f"{self.name} ({self.prefix}…)"
