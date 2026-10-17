@@ -10,6 +10,30 @@
                 <tbody>
 
                     <tr>
+                        <td>CSS Permissions</td>
+                        <td>
+                            {% if request.user.profile.has_css_permissions %}
+                                <div class="has-text-success">
+                                    {% include "common/icon.html" with icon_name="check-circle-fill" %}
+                                    Granted
+                                </div>
+                            {% else %}
+                                <div class="has-text-danger">
+                                    {% include "common/icon.html" with icon_name="x-circle-fill" %}
+                                    Not Granted
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if request.user.profile.has_css_permissions %}
+                                You can use the ClinVar Submission Service.
+                            {% else %}
+                                Ask an administrator to grant you CSS permissions.
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <tr>
                         <td>ETS Permissions</td>
                         <td>
                             {% if request.user.profile.has_ets_permissions %}

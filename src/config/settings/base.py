@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "auth_",
     "common",
     "core",
+    "clinvar_submission_service",
     "email_transfer_service",
 ]
 

@@ -1,0 +1,9 @@
+{% extends "layouts/base.html" %}
+{% block title %}ClinVar Submission Service{% endblock %}
+{% block description %}{{ tool.description }}{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        <h1 class="title">{{ tool.name }}</h1>
+        <h2 class="subtitle">{{ tool.description }}</h2>
+    </div>
+{% endblock %}

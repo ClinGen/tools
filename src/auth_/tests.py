@@ -227,6 +227,15 @@ class ProfileViewTest(TestCase):
         self.assertContains(response, "ETS Permissions")
         self.assertContains(response, "You can use the Email Transfer Service.")
 
+    def test_shows_whether_the_user_has_css_permissions(self):
+        user = _make_user("c@example.com")
+        user.profile.has_css_permissions = True  # type: ignore
+        user.profile.save()  # type: ignore
+        self.client.force_login(user)
+        response = self.client.get(reverse("profile"))
+        self.assertContains(response, "CSS Permissions")
+        self.assertContains(response, "You can use the ClinVar Submission Service.")
+
 
 class LandingPageAuthTest(TestCase):
     def test_landing_page_is_public(self):

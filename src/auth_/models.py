@@ -16,6 +16,11 @@ class UserProfile(UUIDModel):
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
 
+    has_css_permissions = models.BooleanField(
+        default=False,
+        verbose_name="CSS Permissions",
+        help_text="Whether the user can use the ClinVar Submission Service.",
+    )
     has_ets_permissions = models.BooleanField(
         default=False,
         verbose_name="ETS Permissions",

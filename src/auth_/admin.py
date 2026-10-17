@@ -10,5 +10,5 @@ admin.site.unregister(Group)
 
 @admin.register(UserProfile)
 class UserProfileAdmin(SimpleHistoryAdmin):
-    list_display = ["user", "has_ets_permissions"]
-    fields = ["user", "has_ets_permissions", "clerk_user_id"]
+    list_display = ["user", "has_css_permissions", "has_ets_permissions"]
+    fields = ["user", "has_css_permissions", "has_ets_permissions", "clerk_user_id"]
