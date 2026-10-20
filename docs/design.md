@@ -53,7 +53,9 @@ standalone repository's `docs/design.md` unless this document says otherwise.
 
 ClinGen Tools is a single Django application on a single server. Caddy terminates TLS
 for tools.clinicalgenome.org and proxies every request to Gunicorn, and Django routes
-each request to a tool by its path prefix. Caddy doesn't know about the tools.
+each request to a tool by its path prefix. Caddy knows about one tool path: it lets the
+CSS's submissions endpoint take bodies up to 64 MB, since a submission can hold 10,000
+records, and keeps every other path at Django's 2.5 MB default.
 
 Each tool keeps the external integrations it had as a standalone service:
 

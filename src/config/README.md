@@ -25,7 +25,8 @@ and the backup settings from the environment, and, as in the HCI, requires
 `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` in every environment. Also reads the
 ETS's AWS settings and `ETS_DRY_RUN`, which is on unless it's set to `0`, and the CSS's
 ClinVar key and endpoint, which defaults to ClinVar's test endpoint. Sets how often the
-CSS's poller checks ClinVar.
+CSS's poller checks ClinVar, and raises `DATA_UPLOAD_MAX_MEMORY_SIZE` to 64 MB for the
+CSS's largest submissions; Caddy keeps other paths at 2.5 MB.
 
 ### `settings/dev.py`
 

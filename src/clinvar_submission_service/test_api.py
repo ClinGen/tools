@@ -107,8 +107,28 @@ class CreateSubmissionTest(ApiTestCase):
         self.assertEqual(response.status_code, 422)
         self.assertFalse(Submission.objects.exists())
 
-    # A full submission is bigger than Django's default upload limit.
-    @override_settings(DATA_UPLOAD_MAX_MEMORY_SIZE=None)
+    def test_accepts_a_full_submission_with_long_comments(self):
+        comment = "Criteria met: PS3, PM2, PP3. " + "Evidence summary. " * 300
+        records = [
+            make_record(
+                str(i),
+                germlineClassification={
+                    "germlineClassificationDescription": "Pathogenic",
+                    "comment": comment,
+                },
+            )
+            for i in range(MAX_RECORDS)
+        ]
+        response = self.post(make_content(*records))
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Record.objects.count(), MAX_RECORDS)
+
+    @override_settings(DATA_UPLOAD_MAX_MEMORY_SIZE=1000)
+    def test_rejects_a_body_over_the_upload_limit(self):
+        response = self.post(make_content(*[make_record(str(i)) for i in range(5)]))
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Submission.objects.exists())
+
     def test_rejects_too_many_records(self):
         records = [make_record(str(i)) for i in range(MAX_RECORDS + 1)]
         response = self.post(make_content(*records))

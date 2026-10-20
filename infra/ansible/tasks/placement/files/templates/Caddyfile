@@ -13,5 +13,15 @@
         }
         respond @blocked 403
 
+        # Django reads bodies up to 64 MB, for the CSS's submissions. Every other path
+        # keeps Django's 2.5 MB default.
+        request_body /css/api/v1/submissions {
+                max_size 64MB
+        }
+        @not_submissions not path /css/api/v1/submissions
+        request_body @not_submissions {
+                max_size 2.5MB
+        }
+
         reverse_proxy unix//run/gunicorn.sock
 }

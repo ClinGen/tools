@@ -200,6 +200,11 @@ CSS_CLINVAR_API_URL = (
 )
 CSS_CLINVAR_API_KEY = os.getenv("CSS_CLINVAR_API_KEY", "")
 
+# The largest request body Django reads. A CSS submission can hold 10,000 records with
+# long comments, so this is far above Django's 2.5 MB default. Caddy keeps the default
+# for every other path, so only the submissions endpoint takes bodies this big.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 64 * 1024 * 1024
+
 # How the CSS's poller paces itself. ClinVar can take days to process a submission, so
 # it checks on a scale of minutes. The wait between checks of one submission doubles
 # from the minimum to the maximum.
