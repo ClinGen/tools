@@ -163,9 +163,23 @@ class Submission(SlugModel):
         verbose_name="Client",
         help_text="The API key of the client that sent the submission.",
     )
+    affiliation_id = models.PositiveIntegerField(
+        blank=True,
+        db_index=True,
+        null=True,
+        verbose_name="Affiliation ID",
+        help_text="The AS ID of the curation group whose classifications these are.",
+    )
+    affiliation_name = models.CharField(
+        blank=True,
+        default="",
+        max_length=255,
+        verbose_name="Affiliation",
+        help_text="The curation group's name, as the client sent it.",
+    )
     payload = models.JSONField(
         verbose_name="Payload",
-        help_text="The request body as the client sent it.",
+        help_text="The ClinVar content as the client sent it.",
     )
     assertion_criteria_db = models.CharField(
         blank=True,

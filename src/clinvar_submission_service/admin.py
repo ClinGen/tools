@@ -43,9 +43,16 @@ class RecordInline(admin.TabularInline):
 
 @admin.register(Submission)
 class SubmissionAdmin(SimpleHistoryAdmin):
-    list_display = ["slug", "api_key", "status", "clinvar_submission_id", "added_at"]
-    list_filter = ["status"]
-    search_fields = ["slug", "clinvar_submission_id"]
+    list_display = [
+        "slug",
+        "affiliation_name",
+        "api_key",
+        "status",
+        "clinvar_submission_id",
+        "added_at",
+    ]
+    list_filter = ["status", "affiliation_name"]
+    search_fields = ["slug", "clinvar_submission_id", "affiliation_name"]
     inlines = [RecordInline]
     readonly_fields = [
         "slug",

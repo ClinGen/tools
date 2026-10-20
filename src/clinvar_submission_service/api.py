@@ -15,7 +15,7 @@ from ninja import NinjaAPI, Schema, Status
 from ninja.pagination import paginate
 
 from clinvar_submission_service.api_auth import ApiKeyAuth
-from clinvar_submission_service.content import Content
+from clinvar_submission_service.content import Affiliation, SubmissionRequest
 from clinvar_submission_service.models import Submission
 from clinvar_submission_service.services import forward_submission, save_submission
 
@@ -36,12 +36,26 @@ class SubmissionSummary(Schema):
     """A submission's status, without ClinVar's responses."""
 
     slug: str
+    affiliation: Affiliation | None
     status: str
     clinvar_submission_id: str
     clinvar_error_code: int | None
     error_message: str
     added_at: datetime
     updated_at: datetime
+
+    @staticmethod
+    def resolve_affiliation(submission: Submission) -> Affiliation | None:
+        """Returns the submission's affiliation, if it has one.
+
+        Returns:
+            The affiliation, or None for a submission saved before affiliations.
+        """
+        if submission.affiliation_id is None:
+            return None
+        return Affiliation(
+            id=submission.affiliation_id, name=submission.affiliation_name
+        )
 
 
 class SubmissionDetail(SubmissionSummary):
@@ -53,20 +67,26 @@ class SubmissionDetail(SubmissionSummary):
 
 
 @api.post("/submissions", response={201: SubmissionDetail})
-def create_submission(request: HttpRequest, content: Content) -> Status[Submission]:  # ruff: ignore[unused-function-argument] (Ninja validates the body into content.)
+def create_submission(
+    request: HttpRequest, body: SubmissionRequest
+) -> Status[Submission]:
     """Saves a submission and forwards it to ClinVar.
 
-    The body is the ClinVar content, which holds germline records; the CSS wraps it in
-    ClinVar's AddData action and forwards it as sent. A body that doesn't match gets a
-    422. The response's status is submitted if ClinVar accepted it, or send_failed,
-    with an error message, if it didn't.
+    The body is the client's affiliation and the ClinVar content, which holds germline
+    records. The CSS wraps the content in ClinVar's AddData action and forwards it as
+    sent. A body that doesn't match gets a 422. The response's status is submitted if
+    ClinVar accepted it, or send_failed, with an error message, if it didn't.
 
     Returns:
         201 and the submission.
     """
-    # Save the body as sent, not as Ninja parsed it, since that's what's forwarded.
-    payload = json.loads(request.body)
-    submission = save_submission(api_key=request.auth, payload=payload)  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
+    # Save the content as sent, not as Ninja parsed it, since that's what's forwarded.
+    payload = json.loads(request.body)["content"]
+    submission = save_submission(
+        api_key=request.auth,  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
+        affiliation=body.affiliation,
+        payload=payload,
+    )
     return Status(201, forward_submission(submission))
 
 

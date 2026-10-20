@@ -15,6 +15,7 @@ from simple_history.utils import bulk_create_with_history
 
 from clinvar_submission_service.clients import ClinVarClient, ClinVarError
 from clinvar_submission_service.content import (
+    Affiliation,
     Content,
     record_fields,
     submission_fields,
@@ -28,11 +29,14 @@ logger = logging.getLogger(__name__)
 FIRST_POLL_DELAY = timedelta(minutes=5)
 
 
-def save_submission(*, api_key: ApiKey | None, payload: dict[str, Any]) -> Submission:
+def save_submission(
+    *, api_key: ApiKey | None, affiliation: Affiliation, payload: dict[str, Any]
+) -> Submission:
     """Saves a received submission and a Record for each of its records.
 
     Args:
         api_key: The key of the client that sent it.
+        affiliation: The curation group whose classifications it holds.
         payload: The ClinVar content as the client sent it.
 
     Returns:
@@ -41,7 +45,11 @@ def save_submission(*, api_key: ApiKey | None, payload: dict[str, Any]) -> Submi
     content = Content.model_validate(payload)
     with transaction.atomic():
         submission = Submission.objects.create(
-            api_key=api_key, payload=payload, **submission_fields(content)
+            api_key=api_key,
+            affiliation_id=affiliation.id,
+            affiliation_name=affiliation.name,
+            payload=payload,
+            **submission_fields(content),
         )
         records = [
             Record(submission=submission, **fields) for fields in record_fields(content)

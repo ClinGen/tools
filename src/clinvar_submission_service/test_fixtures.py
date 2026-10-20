@@ -28,6 +28,13 @@ class SubmissionFixtureTest(TestCase):
                 # Hand-numbered UUIDs would give slugs like S00000006.
                 self.assertNotRegex(submission.slug, r"^S0000")
 
+    def test_submissions_belong_to_several_affiliations(self):
+        affiliations = set(
+            Submission.objects.values_list("affiliation_id", "affiliation_name")
+        )
+        self.assertGreaterEqual(len(affiliations), 3)
+        self.assertNotIn(None, {affiliation_id for affiliation_id, _ in affiliations})
+
     def test_only_forwarded_submissions_have_a_clinvar_id(self):
         for submission in Submission.objects.all():
             with self.subTest(submission.status):

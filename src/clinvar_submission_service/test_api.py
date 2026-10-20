@@ -18,6 +18,8 @@ from clinvar_submission_service.services import forward_submission
 
 CONTENT = make_content()
 
+AFFILIATION = {"id": 10007, "name": "Hearing Loss VCEP"}
+
 SUBMISSIONS_URL = "/css/api/v1/submissions"
 
 
@@ -32,7 +34,13 @@ class ApiTestCase(TestCase):
         self.addCleanup(patcher.stop)
         self.api_key, self.raw_key = ApiKey.objects.create_key(name="GCI")
 
-    def post(self, body: object, raw_key: str | None = None):
+    def post(self, content: object, raw_key: str | None = None):
+        # Wraps the content with the test affiliation.
+        return self.post_body(
+            {"affiliation": AFFILIATION, "content": content}, raw_key=raw_key
+        )
+
+    def post_body(self, body: object, raw_key: str | None = None):
         return self.client.post(
             SUBMISSIONS_URL,
             body,
@@ -103,8 +111,40 @@ class CreateSubmissionTest(ApiTestCase):
         )
 
     def test_rejects_a_body_that_is_not_an_object(self):
-        response = self.post(["not", "an", "object"])
+        response = self.post_body(["not", "an", "object"])
         self.assertEqual(response.status_code, 422)
+        self.assertFalse(Submission.objects.exists())
+
+    def test_saves_the_affiliation_and_forwards_only_the_content(self):
+        response = self.post(CONTENT)
+        submission = Submission.objects.get()
+        self.assertEqual(submission.affiliation_id, 10007)
+        self.assertEqual(submission.affiliation_name, "Hearing Loss VCEP")
+        self.assertEqual(submission.payload, CONTENT)
+        self.assertEqual(self.fake.submitted, [CONTENT])
+        self.assertEqual(json.loads(response.content)["affiliation"], AFFILIATION)
+
+    def test_rejects_a_missing_or_bad_affiliation(self):
+        cases = {
+            "content only": CONTENT,
+            "no affiliation": {"content": CONTENT},
+            "non-integer ID": {
+                "affiliation": {"id": "VCEP", "name": "Hearing Loss VCEP"},
+                "content": CONTENT,
+            },
+            "empty name": {
+                "affiliation": {"id": 10007, "name": ""},
+                "content": CONTENT,
+            },
+            "unknown field": {
+                "affiliation": AFFILIATION,
+                "content": CONTENT,
+                "notes": "x",
+            },
+        }
+        for name, body in cases.items():
+            with self.subTest(name):
+                self.assertEqual(self.post_body(body).status_code, 422)
         self.assertFalse(Submission.objects.exists())
 
     def test_accepts_a_full_submission_with_long_comments(self):
@@ -222,6 +262,8 @@ class ReadSubmissionTest(ApiTestCase):
     def test_returns_the_clients_submission(self):
         submission = Submission.objects.create(
             api_key=self.api_key,
+            affiliation_id=10007,
+            affiliation_name="Hearing Loss VCEP",
             payload=CONTENT,
             status=Submission.Status.PROCESSED,
             clinvar_submission_id="SUB000009",
@@ -231,6 +273,7 @@ class ReadSubmissionTest(ApiTestCase):
         response = self.get(f"{SUBMISSIONS_URL}/{submission.slug}")
         self.assertEqual(response.status_code, 200)
         body = json.loads(response.content)
+        self.assertEqual(body["affiliation"], AFFILIATION)
         self.assertEqual(body["status"], "processed")
         self.assertEqual(body["clinvar_submission_id"], "SUB000009")
         self.assertEqual(body["latest_response"], {"actions": []})

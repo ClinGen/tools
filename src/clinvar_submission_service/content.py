@@ -1,6 +1,7 @@
-"""Describes the ClinVar content the CSS accepts, and copies it into fields.
+"""Describes the submissions the CSS accepts, and copies them into fields.
 
-The API validates a submission's body against `Content`, which is the part of ClinVar's
+A client sends a `SubmissionRequest`: its affiliation and the ClinVar content. The
+content is validated against `Content`, which is the part of ClinVar's
 submission schema the CSS models: germline variant classifications, one condition and
 one observation each. Field names are ClinVar's, as aliases, and a field the CSS doesn't
 model is rejected, so a submission's fields always hold everything that's forwarded.
@@ -121,6 +122,20 @@ class Content(ClinVarSchema):
     release_status: ReleaseStatus | None = Field(
         None, alias="clinvarSubmissionReleaseStatus"
     )
+
+
+class Affiliation(ClinVarSchema):
+    """The curation group whose classifications a submission holds."""
+
+    id: int = Field(ge=1, description="The affiliation's ID in the AS, such as 10007.")
+    name: str = Field(min_length=1, description="The affiliation's name.")
+
+
+class SubmissionRequest(ClinVarSchema):
+    """The body a client sends: its affiliation and the ClinVar content."""
+
+    affiliation: Affiliation
+    content: Content
 
 
 def submission_fields(content: Content) -> dict[str, Any]:

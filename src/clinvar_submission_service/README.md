@@ -22,11 +22,12 @@ is shown.
 
 Serves the CSS's API, version 1, as a Django Ninja `NinjaAPI` at `/css/api/v1/`, with
 OpenAPI docs at `/css/api/v1/docs`. Every endpoint needs an API key (see `api_auth.py`),
-and a client sees only its own submissions. `POST /submissions` validates the ClinVar
-content against `content.Content`, saves it as a submission with its records, and
-forwards it as sent, `GET /submissions` lists the client's submissions a page at a time,
-and `GET /submissions/{slug}` reads one with ClinVar's responses. Content that doesn't
-match, including more than 10,000 records, gets a 422.
+and a client sees only its own submissions. `POST /submissions` takes the client's
+affiliation and the ClinVar content (`content.SubmissionRequest`), saves them as a
+submission with its records, and forwards the content as sent, `GET /submissions` lists
+the client's submissions a page at a time, and `GET /submissions/{slug}` reads one with
+ClinVar's responses. Content that doesn't match, including more than 10,000 records,
+gets a 422.
 
 ### `api_auth.py`
 
@@ -53,9 +54,10 @@ one from the `CSS_` settings and raises `ImproperlyConfigured` without a key.
 Describes the ClinVar content the API accepts as Ninja schemas, with ClinVar's field
 names as aliases: `Content` holds 1 to 10,000 germline records, each with one HGVS
 variant, one condition, and one observation, plus the assertion criteria, on-behalf-of
-organization, and release status. A field the CSS doesn't model is rejected, and an
-update must name its SCV. `submission_fields()` and `record_fields()` copy validated
-content into `Submission` and `Record` fields.
+organization, and release status. `SubmissionRequest`, the API's body, wraps the content
+with the client's `Affiliation`: its AS ID and name. A field the CSS doesn't model is
+rejected, and an update must name its SCV. `submission_fields()` and `record_fields()`
+copy validated content into `Submission` and `Record` fields.
 
 ### `fakes.py`
 
@@ -66,11 +68,12 @@ replaced, and `make_content()` wraps records in content.
 
 ### `fixtures/test_submissions.json`
 
-A Django fixture with a VCI API key and six submissions, one in each status, with one to
-three records each: received and send_failed ones ClinVar never got, and submitted,
-processing, processed, and error ones forwarded to ClinVar, with made-up ClinVar IDs,
-responses, and summary reports with SCVs and an error. None is due to poll. Load it with
-`just django-loaddata-test`; tests load it with `fixtures = ["test_submissions.json"]`.
+A Django fixture with a VCI API key and eight submissions from five made-up
+affiliations, with at least one in each status and one to three records each: received
+and send_failed ones ClinVar never got, and submitted, processing, processed, and error
+ones forwarded to ClinVar, with made-up ClinVar IDs, responses, and summary reports with
+SCVs and an error. None is due to poll. Load it with `just django-loaddata-test`; tests
+load it with `fixtures = ["test_submissions.json"]`.
 
 ### `management/__init__.py`
 
@@ -89,23 +92,23 @@ runs one pass and exits. Run it locally with `just django-poll-clinvar`.
 
 ### `models.py`
 
-Defines `Submission`, one request to ClinVar: the payload as the client sent it, the
-ClinVar submission ID, its status, ClinVar's latest response, `updated` timestamp, error
-code, and summary report, any error message, and when it was last and will next be
-polled, plus the content's assertion criteria, the organization it's on behalf of, and
-its release status. It extends `common.models.SlugModel`, so its ID is a UUID and its
-slug is `S` and the first 8 hex characters of the UUID, such as `S3f2a9c1e`. It keeps
-its change history, and `get_absolute_url()` returns its page.
-`Submission.objects.due_to_poll()` returns the submitted and processing submissions
-whose next poll time has passed, oldest first. Also defines `Record`, one germline
-variant classification in a submission and a copy of one item in its payload's
-`germlineSubmission`: the variant's HGVS and assembly, the condition, the
-classification, mode of inheritance, date last evaluated, comment, how the evidence was
-gathered, and the record's SCV for an update. Its choices, defined above the models, are
-ClinVar's terms, so a value is exactly what ClinVar expects; the classifications are the
-five ACMG terms the VCI uses. Also defines `ApiKey`, the key one client system sends to
-use the API. Only its SHA-256 hash and a short prefix are stored, and each submission
-records the key that sent it.
+Defines `Submission`, one request to ClinVar: the affiliation the client sent it for
+(its AS ID and name), the ClinVar content as the client sent it, the ClinVar submission
+ID, its status, ClinVar's latest response, `updated` timestamp, error code, and summary
+report, any error message, and when it was last and will next be polled, plus the
+content's assertion criteria, the organization it's on behalf of, and its release
+status. It extends `common.models.SlugModel`, so its ID is a UUID and its slug is `S`
+and the first 8 hex characters of the UUID, such as `S3f2a9c1e`. It keeps its change
+history, and `get_absolute_url()` returns its page. `Submission.objects.due_to_poll()`
+returns the submitted and processing submissions whose next poll time has passed, oldest
+first. Also defines `Record`, one germline variant classification in a submission and a
+copy of one item in its payload's `germlineSubmission`: the variant's HGVS and assembly,
+the condition, the classification, mode of inheritance, date last evaluated, comment,
+how the evidence was gathered, and the record's SCV for an update. Its choices, defined
+above the models, are ClinVar's terms, so a value is exactly what ClinVar expects; the
+classifications are the five ACMG terms the VCI uses. Also defines `ApiKey`, the key one
+client system sends to use the API. Only its SHA-256 hash and a short prefix are stored,
+and each submission records the key that sent it.
 
 ### `polling.py`
 
@@ -153,11 +156,11 @@ ClinVar accepted it, red when it wasn't sent or has errors, and grey otherwise.
 
 Tests `forward_submission()` and each API endpoint against `FakeClinVarClient`: a
 submission ClinVar accepts or rejects, a missing ClinVar key, that a failed send isn't
-retried, that a body's fields and records are saved and its payload forwarded as sent,
-that bodies that aren't objects, hold too many records, or don't match `Content` get a
-422 and save nothing, 401s for missing, unknown, and inactive keys, that a client can't
-read or list another client's submissions, pagination, and the OpenAPI docs and their
-fields.
+retried, that a body's affiliation, fields, and records are saved and only its content
+is forwarded, as sent, that a missing or bad affiliation gets a 422, that bodies that
+aren't objects, hold too many records, or don't match `Content` get a 422 and save
+nothing, 401s for missing, unknown, and inactive keys, that a client can't read or list
+another client's submissions, pagination, and the OpenAPI docs and their fields.
 
 ### `test_api_keys.py`
 
@@ -180,9 +183,10 @@ are set in the environment.
 
 ### `test_fixtures.py`
 
-Tests the fixture: it has a submission in every status, only forwarded ones have a
-ClinVar ID, only finished ones have a summary report, each submission's records match
-what parsing its payload gives, and every submission's page renders.
+Tests the fixture: it has a submission in every status, from several affiliations, only
+forwarded ones have a ClinVar ID, only finished ones have a summary report, each
+submission's records match what parsing its payload gives, and every submission's page
+renders.
 
 ### `test_polling.py`
 

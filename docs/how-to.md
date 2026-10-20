@@ -192,11 +192,11 @@ submission it's polling before it stops.
   just django-loaddata-test
   ```
 
-  This adds a VCI API key and six submissions, one in each status, with their records.
-  Two never reached ClinVar (`received` and `send_failed`), and four were forwarded
-  (`submitted`, `processing`, `processed`, and `error`). The ClinVar IDs are made up,
-  and none of the submissions is due to poll, so a local poller leaves them alone. The
-  API key has no raw value, so it can't call the API; create a key in the Django admin
-  for that.
+  This adds a VCI API key and eight submissions from five affiliations, with their
+  records. Two never reached ClinVar (`received` and `send_failed`), and six were
+  forwarded (`submitted`, `processing`, `processed`, and `error`). The affiliation IDs
+  and ClinVar IDs are made up, and none of the submissions is due to poll, so a local
+  poller leaves them alone. The API key has no raw value, so it can't call the API;
+  create a key in the Django admin for that.
 
 - Open `/css/` to see them. Loading the fixtures again resets them.
