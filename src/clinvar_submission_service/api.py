@@ -4,23 +4,20 @@ Clients authenticate with an API key in the X-API-Key header and see only their 
 submissions. The OpenAPI docs are at /css/api/v1/docs.
 """
 
+import json
 from datetime import datetime
 from typing import Any
 
 from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
-from ninja import Body, NinjaAPI, Schema, Status
-from ninja.errors import HttpError
+from ninja import NinjaAPI, Schema, Status
 from ninja.pagination import paginate
 
 from clinvar_submission_service.api_auth import ApiKeyAuth
+from clinvar_submission_service.content import Content
 from clinvar_submission_service.models import Submission
-from clinvar_submission_service.services import (
-    MAX_RECORDS,
-    count_records,
-    forward_submission,
-)
+from clinvar_submission_service.services import forward_submission, save_submission
 
 api = NinjaAPI(
     title="ClinVar Submission Service API",
@@ -56,25 +53,20 @@ class SubmissionDetail(SubmissionSummary):
 
 
 @api.post("/submissions", response={201: SubmissionDetail})
-def create_submission(
-    request: HttpRequest, content: Body[dict[str, Any]]
-) -> Status[Submission]:
+def create_submission(request: HttpRequest, content: Content) -> Status[Submission]:  # ruff: ignore[unused-function-argument] (Ninja validates the body into content.)
     """Saves a submission and forwards it to ClinVar.
 
-    The body is the ClinVar submission content; the CSS wraps it in ClinVar's AddData
-    action. The response's status is submitted if ClinVar accepted it, or send_failed,
+    The body is the ClinVar content, which holds germline records; the CSS wraps it in
+    ClinVar's AddData action and forwards it as sent. A body that doesn't match gets a
+    422. The response's status is submitted if ClinVar accepted it, or send_failed,
     with an error message, if it didn't.
 
     Returns:
         201 and the submission.
-
-    Raises:
-        HttpError: 422 if the content holds too many records.
     """
-    if count_records(content) > MAX_RECORDS:
-        error_message = f"A submission can hold at most {MAX_RECORDS} records."
-        raise HttpError(422, error_message)
-    submission = Submission.objects.create(api_key=request.auth, payload=content)  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
+    # Save the body as sent, not as Ninja parsed it, since that's what's forwarded.
+    payload = json.loads(request.body)
+    submission = save_submission(api_key=request.auth, payload=payload)  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
     return Status(201, forward_submission(submission))
 
 

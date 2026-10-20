@@ -11,6 +11,7 @@ import unittest
 from django.test import SimpleTestCase
 
 from clinvar_submission_service.clients import CLINVAR_TEST_URL, ClinVarClient
+from clinvar_submission_service.fakes import make_content
 
 API_KEY = os.getenv("CSS_CLINVAR_API_KEY", "")
 
@@ -22,4 +23,4 @@ API_KEY = os.getenv("CSS_CLINVAR_API_KEY", "")
 class ClinVarContractTest(SimpleTestCase):
     def test_a_dry_run_reaches_clinvar_with_our_key(self):
         client = ClinVarClient(base_url=CLINVAR_TEST_URL, api_key=API_KEY)
-        self.assertIsNone(client.submit({"clinvarSubmission": []}, dry_run=True))
+        self.assertIsNone(client.submit(make_content(), dry_run=True))

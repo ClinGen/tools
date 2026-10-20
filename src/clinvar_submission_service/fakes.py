@@ -1,4 +1,7 @@
-"""Stands in for ClinVar in tests, so they never send a request."""
+"""Stands in for ClinVar in tests, so they never send a request.
+
+Also builds sample ClinVar content for tests and fixtures.
+"""
 
 from datetime import UTC, datetime
 from typing import Any
@@ -70,3 +73,53 @@ class FakeClinVarClient:
         if self.report_error:
             raise self.report_error
         return self.reports[url]
+
+
+def make_record(local_id: str = "var-1", **fields: object) -> dict[str, Any]:
+    """Returns a germline record, likely pathogenic for an example condition.
+
+    Args:
+        local_id: The record's localID.
+        **fields: Fields to set in place of the defaults, by ClinVar's names.
+
+    Returns:
+        The record, as the client would send it.
+    """
+    record = {
+        "recordStatus": "novel",
+        "localID": local_id,
+        "localKey": local_id,
+        "submittedAssembly": "GRCh38",
+        "variantSet": {
+            "variant": [
+                {"hgvs": "NC_000017.11:g.43045712T>C", "gene": [{"symbol": "BRCA1"}]}
+            ]
+        },
+        "conditionSet": {"condition": [{"db": "MONDO", "id": "MONDO:0011450"}]},
+        "germlineClassification": {
+            "germlineClassificationDescription": "Likely pathogenic",
+            "modeOfInheritance": "Autosomal dominant inheritance",
+            "dateLastEvaluated": "2026-10-01",
+            "comment": "Criteria met: PM2, PS3, PP3.",
+        },
+        "observedIn": [
+            {
+                "alleleOrigin": "germline",
+                "affectedStatus": "not provided",
+                "collectionMethod": "curation",
+            }
+        ],
+    }
+    return record | fields
+
+
+def make_content(*records: dict[str, Any]) -> dict[str, Any]:
+    """Returns ClinVar content with the given records, or one sample record.
+
+    Returns:
+        The content, as the client would send it.
+    """
+    return {
+        "germlineSubmission": list(records) or [make_record()],
+        "assertionCriteria": {"db": "PubMed", "id": "25741868"},
+    }

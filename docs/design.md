@@ -253,7 +253,12 @@ go in a new version beside it. Ninja validates request bodies and serves OpenAPI
 `/css/api/v1/docs`. The endpoints are:
 
 - `POST /css/api/v1/submissions`: create a submission and forward it to ClinVar. The
-  body is the ClinVar content, and the CSS adds the `actions` envelope.
+  body is the ClinVar content, and the CSS adds the `actions` envelope. The body must
+  match the part of ClinVar's schema the CSS models: 1 to 10,000 `germlineSubmission`
+  records, plus `assertionCriteria`, `behalfOrgID`, and
+  `clinvarSubmissionReleaseStatus`. Any other field gets a 422, so a submission's fields
+  always hold everything that's forwarded. The CSS saves the body as sent, with a
+  `Record` per record, and forwards it unchanged.
 - `GET /css/api/v1/submissions/{slug}`: read a submission's status, ClinVar ID, latest
   response, and summary report.
 - `GET /css/api/v1/submissions`: list the calling client's submissions.

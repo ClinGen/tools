@@ -1,4 +1,4 @@
-"""Forwards submissions to ClinVar and records what happened.
+"""Saves submissions, forwards them to ClinVar, and records what happened.
 
 The API and the staff Resend button both forward submissions through here, so a
 submission ends up in the same state whichever one sent it.
@@ -9,10 +9,17 @@ from datetime import timedelta
 from typing import Any
 
 from django.core.exceptions import ImproperlyConfigured
+from django.db import transaction
 from django.utils import timezone
+from simple_history.utils import bulk_create_with_history
 
 from clinvar_submission_service.clients import ClinVarClient, ClinVarError
-from clinvar_submission_service.models import Submission
+from clinvar_submission_service.content import (
+    Content,
+    record_fields,
+    submission_fields,
+)
+from clinvar_submission_service.models import ApiKey, Record, Submission
 
 logger = logging.getLogger(__name__)
 
@@ -20,18 +27,28 @@ logger = logging.getLogger(__name__)
 # check waits this long.
 FIRST_POLL_DELAY = timedelta(minutes=5)
 
-# The most records ClinVar accepts in one submission.
-MAX_RECORDS = 10_000
 
+def save_submission(*, api_key: ApiKey | None, payload: dict[str, Any]) -> Submission:
+    """Saves a received submission and a Record for each of its records.
 
-def count_records(content: dict[str, Any]) -> int:
-    """Returns how many records a ClinVar submission's content holds.
+    Args:
+        api_key: The key of the client that sent it.
+        payload: The ClinVar content as the client sent it.
 
-    Records are the content's submissions plus the accessions it deletes.
+    Returns:
+        The submission, received and not yet forwarded.
     """
-    submissions = content.get("clinvarSubmission") or []
-    deletions = (content.get("clinvarDeletion") or {}).get("accessionSet") or []
-    return len(submissions) + len(deletions)
+    content = Content.model_validate(payload)
+    with transaction.atomic():
+        submission = Submission.objects.create(
+            api_key=api_key, payload=payload, **submission_fields(content)
+        )
+        records = [
+            Record(submission=submission, **fields) for fields in record_fields(content)
+        ]
+        # bulk_create skips save(), so the history is added for it.
+        bulk_create_with_history(records, Record)
+    return submission
 
 
 def forward_submission(submission: Submission) -> Submission:

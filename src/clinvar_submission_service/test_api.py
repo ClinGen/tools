@@ -2,16 +2,21 @@ import json
 from unittest import mock
 
 from django.core.exceptions import ImproperlyConfigured
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from clinvar_submission_service.api_auth import API_KEY_HEADER
 from clinvar_submission_service.clients import ClinVarError
-from clinvar_submission_service.fakes import FakeClinVarClient
-from clinvar_submission_service.models import ApiKey, Submission
-from clinvar_submission_service.services import MAX_RECORDS, forward_submission
+from clinvar_submission_service.content import MAX_RECORDS
+from clinvar_submission_service.fakes import (
+    FakeClinVarClient,
+    make_content,
+    make_record,
+)
+from clinvar_submission_service.models import ApiKey, Record, Submission
+from clinvar_submission_service.services import forward_submission
 
-CONTENT = {"clinvarSubmission": [{"localID": "1", "recordStatus": "novel"}]}
+CONTENT = make_content()
 
 SUBMISSIONS_URL = "/css/api/v1/submissions"
 
@@ -102,11 +107,78 @@ class CreateSubmissionTest(ApiTestCase):
         self.assertEqual(response.status_code, 422)
         self.assertFalse(Submission.objects.exists())
 
+    # A full submission is bigger than Django's default upload limit.
+    @override_settings(DATA_UPLOAD_MAX_MEMORY_SIZE=None)
     def test_rejects_too_many_records(self):
-        records = [{"localID": str(i)} for i in range(MAX_RECORDS + 1)]
-        response = self.post({"clinvarSubmission": records})
+        records = [make_record(str(i)) for i in range(MAX_RECORDS + 1)]
+        response = self.post(make_content(*records))
         self.assertEqual(response.status_code, 422)
         self.assertFalse(Submission.objects.exists())
+
+    def test_saves_the_contents_fields_and_records(self):
+        content = make_content(
+            make_record("var-1"),
+            make_record(
+                "var-2",
+                recordStatus="update",
+                clinvarAccession="SCV000000002",
+            ),
+        )
+        content["behalfOrgID"] = 506185
+        self.post(content)
+        submission = Submission.objects.get()
+        self.assertEqual(submission.assertion_criteria_db, "PubMed")
+        self.assertEqual(submission.assertion_criteria_id, "25741868")
+        self.assertEqual(submission.behalf_org_id, 506185)
+        first, second = submission.records.all()  # type: ignore
+        self.assertEqual(first.local_id, "var-1")
+        self.assertEqual(first.hgvs, "NC_000017.11:g.43045712T>C")
+        self.assertEqual(first.gene_symbol, "BRCA1")
+        self.assertEqual(first.condition_id, "MONDO:0011450")
+        self.assertEqual(first.classification, "Likely pathogenic")
+        self.assertEqual(first.mode_of_inheritance, "Autosomal dominant inheritance")
+        self.assertEqual(first.date_last_evaluated.isoformat(), "2026-10-01")
+        self.assertEqual(first.collection_method, "curation")
+        self.assertEqual(second.record_status, "update")
+        self.assertEqual(second.clinvar_accession, "SCV000000002")
+        self.assertEqual(first.history.count(), 1)
+
+    def test_forwards_the_payload_as_sent(self):
+        self.post(CONTENT)
+        self.assertEqual(self.fake.submitted, [CONTENT])
+        self.assertEqual(Submission.objects.get().payload, CONTENT)
+
+    def test_rejects_content_that_does_not_match_and_saves_nothing(self):
+        cases = {
+            "unknown field": make_content(make_record(unknownField="x")),
+            "bad classification": make_content(
+                make_record(
+                    germlineClassification={
+                        "germlineClassificationDescription": "Probably fine"
+                    }
+                )
+            ),
+            "update without an accession": make_content(
+                make_record(recordStatus="update")
+            ),
+            "two conditions": make_content(
+                make_record(
+                    conditionSet={
+                        "condition": [
+                            {"db": "MONDO", "id": "MONDO:0011450"},
+                            {"db": "MONDO", "id": "MONDO:0007254"},
+                        ]
+                    }
+                )
+            ),
+            "no records": {"germlineSubmission": []},
+            "older clinvarSubmission records": {"clinvarSubmission": [make_record()]},
+        }
+        for name, content in cases.items():
+            with self.subTest(name):
+                self.assertEqual(self.post(content).status_code, 422)
+        self.assertFalse(Submission.objects.exists())
+        self.assertFalse(Record.objects.exists())
 
 
 class AuthTest(ApiTestCase):
@@ -176,6 +248,11 @@ class DocsTest(TestCase):
     def test_openapi_docs_render(self):
         response = self.client.get("/css/api/v1/docs")
         self.assertEqual(response.status_code, 200)
+
+    def test_openapi_schema_lists_clinvars_fields(self):
+        response = self.client.get("/css/api/v1/openapi.json")
+        self.assertContains(response, "germlineSubmission")
+        self.assertContains(response, "germlineClassificationDescription")
 
     def test_the_api_is_under_the_css_namespace(self):
         self.assertEqual(

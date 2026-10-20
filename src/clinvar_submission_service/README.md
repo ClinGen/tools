@@ -22,10 +22,11 @@ is shown.
 
 Serves the CSS's API, version 1, as a Django Ninja `NinjaAPI` at `/css/api/v1/`, with
 OpenAPI docs at `/css/api/v1/docs`. Every endpoint needs an API key (see `api_auth.py`),
-and a client sees only its own submissions. `POST /submissions` saves the ClinVar
-content as a submission and forwards it, `GET /submissions` lists the client's
-submissions a page at a time, and `GET /submissions/{slug}` reads one with ClinVar's
-responses. Content with more than 10,000 records gets a 422.
+and a client sees only its own submissions. `POST /submissions` validates the ClinVar
+content against `content.Content`, saves it as a submission with its records, and
+forwards it as sent, `GET /submissions` lists the client's submissions a page at a time,
+and `GET /submissions/{slug}` reads one with ClinVar's responses. Content that doesn't
+match, including more than 10,000 records, gets a 422.
 
 ### `api_auth.py`
 
@@ -47,10 +48,21 @@ timeout. A failed request raises `ClinVarError`, which says whether it's worth r
 Nothing it logs or raises includes the API key. `ClinVarClient.from_settings()` builds
 one from the `CSS_` settings and raises `ImproperlyConfigured` without a key.
 
+### `content.py`
+
+Describes the ClinVar content the API accepts as Ninja schemas, with ClinVar's field
+names as aliases: `Content` holds 1 to 10,000 germline records, each with one HGVS
+variant, one condition, and one observation, plus the assertion criteria, on-behalf-of
+organization, and release status. A field the CSS doesn't model is rejected, and an
+update must name its SCV. `submission_fields()` and `record_fields()` copy validated
+content into `Submission` and `Record` fields.
+
 ### `fakes.py`
 
 Defines `FakeClinVarClient`, which holds ClinVar's submissions, statuses, and summary
 reports in memory, so tests never reach ClinVar. Each of its calls can be told to fail.
+Also builds sample content: `make_record()` returns a germline record, with any field
+replaced, and `make_content()` wraps records in content.
 
 ### `management/__init__.py`
 
@@ -99,11 +111,12 @@ status as it was, and doesn't stop the batch.
 
 ### `services.py`
 
-Forwards a saved submission to ClinVar once with `forward_submission()`, which the API
-and the staff Resend button share. If ClinVar accepts it, the submission is submitted,
-with its ClinVar ID and a first poll time; if ClinVar rejects it, can't be reached, or
-the CSS has no ClinVar key, it's send_failed, with the error. It never retries. Also
-counts the records in a submission's content.
+Saves a received submission and a `Record` for each of its records, in one transaction,
+with `save_submission()`. Forwards a saved submission to ClinVar once with
+`forward_submission()`, which the API and the staff Resend button share. If ClinVar
+accepts it, the submission is submitted, with its ClinVar ID and a first poll time; if
+ClinVar rejects it, can't be reached, or the CSS has no ClinVar key, it's send_failed,
+with the error. It never retries.
 
 ### `templates/clinvar_submission_service/detail.html`
 
@@ -132,9 +145,11 @@ ClinVar accepted it, red when it wasn't sent or has errors, and grey otherwise.
 
 Tests `forward_submission()` and each API endpoint against `FakeClinVarClient`: a
 submission ClinVar accepts or rejects, a missing ClinVar key, that a failed send isn't
-retried, bodies that aren't objects or hold too many records, 401s for missing, unknown,
-and inactive keys, that a client can't read or list another client's submissions,
-pagination, and the OpenAPI docs.
+retried, that a body's fields and records are saved and its payload forwarded as sent,
+that bodies that aren't objects, hold too many records, or don't match `Content` get a
+422 and save nothing, 401s for missing, unknown, and inactive keys, that a client can't
+read or list another client's submissions, pagination, and the OpenAPI docs and their
+fields.
 
 ### `test_api_keys.py`
 

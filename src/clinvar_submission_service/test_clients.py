@@ -13,6 +13,7 @@ from clinvar_submission_service.clients import (
     ClinVarClient,
     ClinVarError,
 )
+from clinvar_submission_service.fakes import FakeClinVarClient, make_content
 
 BASE_URL = "https://clinvar.example.org/apitest/v1"
 API_KEY = "k" * 64
@@ -72,7 +73,7 @@ class ClinVarClientTestCase(SimpleTestCase):
 class SubmitTest(ClinVarClientTestCase):
     def test_posts_the_content_in_an_add_data_envelope(self):
         self.session.request.return_value = _response(201, {"id": "SUB999999"})
-        content = {"clinvarSubmission": [{"localID": "1"}]}
+        content = make_content()
         self.assertEqual(self.client_.submit(content), "SUB999999")
         _, kwargs = self.session.request.call_args
         self.assertEqual(
@@ -227,10 +228,8 @@ class FromSettingsTest(SimpleTestCase):
 
 class FakeClinVarClientTest(SimpleTestCase):
     def test_submits_and_reports_status_like_clinvar(self):
-        from clinvar_submission_service.fakes import FakeClinVarClient
-
         fake = FakeClinVarClient()
-        clinvar_id = fake.submit({"clinvarSubmission": []})
+        clinvar_id = fake.submit(make_content())
         assert clinvar_id is not None
         self.assertEqual(fake.get_status(clinvar_id).status, "submitted")
         fake.set_status(clinvar_id, "processed", report={"totalCount": 0})
