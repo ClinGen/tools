@@ -8,6 +8,12 @@
                 <span>Submissions</span>
             </a>
         </li>
+        <li{% if active_tab == "affiliations" %} class="is-active"{% endif %}>
+            <a href="{% url 'css:affiliations' %}"{% if active_tab == "affiliations" %} aria-current="page"{% endif %}>
+                {% include "common/icon.html" with icon_name="people" %}
+                <span>Affiliations</span>
+            </a>
+        </li>
         {% if active_tab == "detail" %}
             <li class="is-active">
                 <a href="{{ submission.get_absolute_url }}" aria-current="page">

@@ -1,8 +1,9 @@
 from dataclasses import dataclass
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Count, OuterRef, Q, QuerySet, Subquery
 from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -28,6 +29,29 @@ SENT_FILTERS = {
     "not_sent": Q(status__in=NOT_SENT_STATUSES),
     "sent": ~Q(status__in=NOT_SENT_STATUSES),
 }
+
+# The counts on the affiliations page, by the name each row's count has.
+AFFILIATION_COUNTS = {
+    "not_sent": Q(status__in=NOT_SENT_STATUSES),
+    "waiting": Q(status__in=Submission.POLLABLE_STATUSES),
+    "accepted": Q(status=Submission.Status.PROCESSED),
+    "errors": Q(status=Submission.Status.ERROR),
+}
+
+
+def _query_string(**params: str) -> str:
+    """Returns a query string with the params that have values, starting with ?."""
+    return "?" + urlencode({name: value for name, value in params.items() if value})
+
+
+def _filter_by_affiliation(
+    submissions: QuerySet[Submission], affiliation: str
+) -> QuerySet[Submission]:
+    """Returns the submissions from the affiliation, or none if it isn't an ID."""
+    try:
+        return submissions.filter(affiliation_id=int(affiliation))
+    except ValueError:
+        return submissions.none()
 
 
 @dataclass(frozen=True)
@@ -68,9 +92,9 @@ def _record_rows(submission: Submission) -> list[RecordRow]:
 def index(request: HttpRequest) -> HttpResponse:
     """Lists submissions, newest first.
 
-    The sent= filter narrows the list to submissions ClinVar never got or ones it did.
-    The q= search matches a submission's ID, ClinVar ID, or affiliation, or a record's
-    gene or HGVS.
+    The sent= filter narrows the list to submissions ClinVar never got or ones it did,
+    and the affiliation= filter to one affiliation's, by its ID. The q= search matches
+    a submission's ID, ClinVar ID, or affiliation, or a record's gene or HGVS.
 
     Returns:
         The list page.
@@ -82,6 +106,12 @@ def index(request: HttpRequest) -> HttpResponse:
     submissions = Submission.objects.select_related("api_key").prefetch_related(
         "records"
     )
+    affiliation = request.GET.get("affiliation", "").strip()
+    affiliation_name = ""
+    if affiliation:
+        submissions = _filter_by_affiliation(submissions, affiliation)
+        newest = submissions.first()
+        affiliation_name = newest.affiliation_name if newest else ""
     if sent:
         submissions = submissions.filter(SENT_FILTERS[sent])
     if query:
@@ -97,7 +127,53 @@ def index(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "clinvar_submission_service/list.html",
-        {"tool": get_tool("css"), "page": page, "query": query, "sent": sent},
+        {
+            "tool": get_tool("css"),
+            "page": page,
+            "query": query,
+            "sent": sent,
+            "affiliation": affiliation,
+            "affiliation_name": affiliation_name,
+            "filter_links": [
+                (label, value, _query_string(affiliation=affiliation, sent=value))
+                for label, value in (
+                    ("All", ""),
+                    ("Not Sent to ClinVar", "not_sent"),
+                    ("Sent to ClinVar", "sent"),
+                )
+            ],
+            "page_query": _query_string(q=query, sent=sent, affiliation=affiliation),
+        },
+    )
+
+
+@tool_permission_required("has_css_permissions")
+def affiliations(request: HttpRequest) -> HttpResponse:
+    """Lists each affiliation that has submissions, with counts by status.
+
+    An affiliation's name is the one on its newest submission, in case it changed.
+
+    Returns:
+        The affiliations page.
+    """
+    newest_name = (
+        Submission.objects.filter(affiliation_id=OuterRef("affiliation_id"))
+        .order_by("-added_at")
+        .values("affiliation_name")[:1]
+    )
+    counts = {name: Count("pk", filter=q) for name, q in AFFILIATION_COUNTS.items()}
+    rows = (
+        # Clear the default ordering, which would split the groups.
+        Submission.objects.order_by()
+        .filter(affiliation_id__isnull=False)
+        .values("affiliation_id")
+        .annotate(name=Subquery(newest_name), total=Count("pk"), **counts)
+        .order_by("name")
+    )
+    return render(
+        request,
+        "clinvar_submission_service/affiliations.html",
+        {"tool": get_tool("css"), "affiliations": rows},
     )
 
 

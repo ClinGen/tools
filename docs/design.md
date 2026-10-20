@@ -300,10 +300,12 @@ submission's ID, ClinVar ID, or affiliation, or a record's gene or HGVS. A submi
 page says in plain words what its status means and lists its records: each one's
 variant, condition, classification, inheritance, date last evaluated, whether it's new
 or updates an SCV, and, once ClinVar has reported, whether ClinVar accepted it and its
-SCV. Like the ETS's pages, they never show raw JSON or ClinVar's error text; developers
-see those, and each submission's change history, in the Django admin. Staff need
-`has_css_permissions`, and every staff member with it sees every submission. The page of
-a `send_failed` submission has a Resend button.
+SCV. An Affiliations page lists each affiliation that has submissions, with how many are
+not sent, being checked by ClinVar, accepted, and with errors, and links to the list
+filtered to that affiliation. Like the ETS's pages, they never show raw JSON or
+ClinVar's error text; developers see those, and each submission's change history, in the
+Django admin. Staff need `has_css_permissions`, and every staff member with it sees
+every submission. The page of a `send_failed` submission has a Resend button.
 
 The CSS reads the ClinVar API key and base from the environment. It never logs the
 ClinVar API key or a client's API key.

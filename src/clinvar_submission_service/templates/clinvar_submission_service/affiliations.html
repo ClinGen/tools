@@ -1,0 +1,46 @@
+{% extends "layouts/base.html" %}
+{% block title %}CSS Affiliations{% endblock %}
+{% block description %}See each affiliation's ClinVar submissions.{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        {% include "clinvar_submission_service/partials/header.html" with active_tab="affiliations" %}
+        {% if affiliations %}
+            <div class="block table-container">
+                <table class="table is-hoverable">
+                    <thead>
+                        <tr>
+                            <th>Affiliation</th>
+                            <th>Not Sent to ClinVar</th>
+                            <th>ClinVar Is Checking</th>
+                            <th>Accepted</th>
+                            <th>Has Errors</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in affiliations %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'css:index' %}?affiliation={{ row.affiliation_id }}">{{ row.name }}</a>
+                                </td>
+                                <td>{{ row.not_sent }}</td>
+                                <td>{{ row.waiting }}</td>
+                                <td>{{ row.accepted }}</td>
+                                <td>
+                                    {% if row.errors %}
+                                        <span class="tag is-danger is-light">{{ row.errors }}</span>
+                                    {% else %}
+                                        0
+                                    {% endif %}
+                                </td>
+                                <td>{{ row.total }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p>No submissions yet.</p>
+        {% endif %}
+    </div>
+{% endblock %}

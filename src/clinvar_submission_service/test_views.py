@@ -347,3 +347,79 @@ class ResendViewTest(CssViewTestCase):
             reverse("css:resend", kwargs={"slug": submission.slug})
         )
         self.assertEqual(response.status_code, 405)
+
+
+class AffiliationTestCase(TestCase):
+    fixtures = ["test_submissions.json"]
+
+    def setUp(self):
+        self.client.force_login(_make_user("staff@example.com", css=True))
+
+
+class AffiliationFilterTest(AffiliationTestCase):
+    def test_filters_the_list_to_one_affiliation(self):
+        response = self.client.get(reverse("css:index"), {"affiliation": "10901"})
+        names = {s.affiliation_name for s in response.context["page"]}
+        self.assertEqual(names, {"Cardiomyopathy VCEP"})
+        self.assertEqual(len(response.context["page"]), 3)
+        self.assertContains(response, "Showing submissions from Cardiomyopathy VCEP.")
+
+    def test_combines_with_the_sent_filter(self):
+        response = self.client.get(
+            reverse("css:index"), {"affiliation": "10901", "sent": "not_sent"}
+        )
+        self.assertEqual(
+            [s.status for s in response.context["page"]], [Submission.Status.RECEIVED]
+        )
+        self.assertContains(response, 'href="?affiliation=10901&amp;sent=sent"')
+
+    def test_an_unknown_affiliation_shows_nothing(self):
+        for value in ("99999", "not-a-number"):
+            with self.subTest(value=value):
+                response = self.client.get(reverse("css:index"), {"affiliation": value})
+                self.assertEqual(list(response.context["page"]), [])
+
+
+class AffiliationsViewTest(AffiliationTestCase):
+    def test_needs_css_permissions(self):
+        self.client.force_login(_make_user("other@example.com"))
+        response = self.client.get(reverse("css:affiliations"))
+        self.assertEqual(response.status_code, 403)
+
+    def test_counts_each_affiliations_submissions(self):
+        response = self.client.get(reverse("css:affiliations"))
+        self.assertTemplateUsed(
+            response, "clinvar_submission_service/affiliations.html"
+        )
+        counts = {
+            row["name"]: (
+                row["not_sent"],
+                row["waiting"],
+                row["accepted"],
+                row["errors"],
+                row["total"],
+            )
+            for row in response.context["affiliations"]
+        }
+        self.assertEqual(
+            counts,
+            {
+                "CDH1 VCEP": (0, 0, 0, 1, 1),
+                "Cardiomyopathy VCEP": (1, 1, 1, 0, 3),
+                "Malignant Hyperthermia Susceptibility VCEP": (0, 1, 0, 0, 1),
+                "Phenylketonuria VCEP": (0, 0, 1, 0, 1),
+                "TP53 VCEP": (1, 0, 0, 1, 2),
+            },
+        )
+
+    def test_lists_affiliations_by_name_with_links_to_their_submissions(self):
+        response = self.client.get(reverse("css:affiliations"))
+        names = [row["name"] for row in response.context["affiliations"]]
+        self.assertEqual(names, sorted(names))
+        self.assertContains(response, f"{reverse('css:index')}?affiliation=10901")
+
+    def test_the_header_has_an_affiliations_tab(self):
+        response = self.client.get(reverse("css:affiliations"))
+        self.assertContains(
+            response, f'<a href="{reverse("css:affiliations")}" aria-current="page">'
+        )

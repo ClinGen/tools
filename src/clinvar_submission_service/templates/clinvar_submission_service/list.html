@@ -4,21 +4,28 @@
 {% block main %}
     <div class="block mt-6 mb-6">
         {% include "clinvar_submission_service/partials/header.html" with active_tab="list" %}
+        {% if affiliation %}
+            <div class="notification is-light block">
+                {% if affiliation_name %}
+                    Showing submissions from {{ affiliation_name }}.
+                {% else %}
+                    No affiliation has that ID.
+                {% endif %}
+                <a href="{% url 'css:index' %}">Show every affiliation</a>
+            </div>
+        {% endif %}
         <div class="tabs is-toggle is-small">
             <ul>
-                <li{% if not sent %} class="is-active"{% endif %}>
-                    <a href="?"{% if not sent %} aria-current="page"{% endif %}>All</a>
-                </li>
-                <li{% if sent == "not_sent" %} class="is-active"{% endif %}>
-                    <a href="?sent=not_sent"{% if sent == "not_sent" %} aria-current="page"{% endif %}>Not Sent to ClinVar</a>
-                </li>
-                <li{% if sent == "sent" %} class="is-active"{% endif %}>
-                    <a href="?sent=sent"{% if sent == "sent" %} aria-current="page"{% endif %}>Sent to ClinVar</a>
-                </li>
+                {% for label, value, link in filter_links %}
+                    <li{% if sent == value %} class="is-active"{% endif %}>
+                        <a href="{{ link }}"{% if sent == value %} aria-current="page"{% endif %}>{{ label }}</a>
+                    </li>
+                {% endfor %}
             </ul>
         </div>
         <form method="get" class="block">
             {% if sent %}<input type="hidden" name="sent" value="{{ sent }}">{% endif %}
+            {% if affiliation %}<input type="hidden" name="affiliation" value="{{ affiliation }}">{% endif %}
             <div class="field has-addons">
                 <div class="control">
                     <input class="input"
@@ -51,7 +58,11 @@
                         {% for submission in page %}
                             <tr>
                                 <td><a href="{{ submission.get_absolute_url }}">{{ submission.slug }}</a></td>
-                                <td>{{ submission.affiliation_name }}</td>
+                                <td>
+                                    {% if submission.affiliation_id %}
+                                        <a href="?affiliation={{ submission.affiliation_id }}">{{ submission.affiliation_name }}</a>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     {% for record in submission.records.all %}
                                         {{ record.gene_symbol|default:record.hgvs }}{% if not forloop.last %},{% endif %}
@@ -69,10 +80,10 @@
             {% if page.has_other_pages %}
                 <nav class="pagination" aria-label="Pages">
                     {% if page.has_previous %}
-                        <a class="pagination-previous" href="?q={{ query|urlencode }}&sent={{ sent }}&page={{ page.previous_page_number }}">Previous</a>
+                        <a class="pagination-previous" href="{{ page_query }}&page={{ page.previous_page_number }}">Previous</a>
                     {% endif %}
                     {% if page.has_next %}
-                        <a class="pagination-next" href="?q={{ query|urlencode }}&sent={{ sent }}&page={{ page.next_page_number }}">Next</a>
+                        <a class="pagination-next" href="{{ page_query }}&page={{ page.next_page_number }}">Next</a>
                     {% endif %}
                     <p>Page {{ page.number }} of {{ page.paginator.num_pages }}</p>
                 </nav>

@@ -129,6 +129,12 @@ accepts it, the submission is submitted, with its ClinVar ID and a first poll ti
 ClinVar rejects it, can't be reached, or the CSS has no ClinVar key, it's send_failed,
 with the error. It never retries.
 
+### `templates/clinvar_submission_service/affiliations.html`
+
+The Affiliations tab: each affiliation that has submissions, by name, with how many of
+its submissions ClinVar never got, ClinVar is checking, ClinVar accepted, and have
+errors. Each name links to the list filtered to that affiliation.
+
 ### `templates/clinvar_submission_service/detail.html`
 
 A submission's page, in plain language: its status, affiliation, who sent it, its
@@ -142,14 +148,14 @@ JSON or ClinVar's error text; developers see those in the Django admin.
 
 The CSS's home page: every submission, newest first, a page at a time, with its
 affiliation and its records' genes. Toggles show all submissions, only the ones ClinVar
-never got, or only the ones sent to ClinVar, and a search matches IDs, affiliations,
-genes, and HGVS.
+never got, or only the ones sent to ClinVar, a link on an affiliation's name shows only
+its submissions, and a search matches IDs, affiliations, genes, and HGVS.
 
 ### `templates/clinvar_submission_service/partials/header.html`
 
 The top of every CSS page: the CSS's name and description from `core.tools`, and boxed
-tabs for Submissions and, on a submission's page, that submission, with the current
-page's tab active.
+tabs for Submissions, Affiliations, and, on a submission's page, that submission, with
+the current page's tab active.
 
 ### `templates/clinvar_submission_service/partials/status.html`
 
@@ -203,12 +209,14 @@ the command's `--once` and that SIGTERM stops its loop.
 ### `test_views.py`
 
 Tests the staff pages: that each needs CSS permissions; the list's order, affiliations
-and variants, sent filter, search by ID, affiliation, gene, or HGVS, pagination, and
-header; each status's tag color; the detail page's records, with ClinVar's result
-matched by local ID, an update's SCV, and records ClinVar never got or hasn't reported
-on; its plain-language error; that only a send_failed submission has a Resend button;
-and that resending sends it again, records who did, keeps a failed resend's new error,
-and rejects other statuses and GET requests.
+and variants, sent filter, affiliation filter (alone, with the sent filter, and with an
+unknown ID), search by ID, affiliation, gene, or HGVS, pagination, and header; each
+status's tag color; the detail page's records, with ClinVar's result matched by local
+ID, an update's SCV, and records ClinVar never got or hasn't reported on; its
+plain-language error; that only a send_failed submission has a Resend button; and that
+resending sends it again, records who did, keeps a failed resend's new error, and
+rejects other statuses and GET requests. Against the fixtures, tests the affiliations
+page's counts, order, links, and tab.
 
 ### `tests.py`
 
@@ -220,14 +228,16 @@ which the landing page links to.
 
 ### `urls.py`
 
-Routes the CSS's pages under the `css` namespace: the submission list at the root, each
-submission at `submissions/<slug>/`, its resend at `submissions/<slug>/resend/`, and the
-API at `api/v1/` under `css:api-1`.
+Routes the CSS's pages under the `css` namespace: the submission list at the root, the
+affiliations page at `affiliations/`, each submission at `submissions/<slug>/`, its
+resend at `submissions/<slug>/resend/`, and the API at `api/v1/` under `css:api-1`.
 
 ### `views.py`
 
 Serves the CSS's pages to users with CSS permissions: the submission list, with its sent
-filter, search, and pagination, and each submission's page, which pairs each `Record`
-with its result in ClinVar's summary report. The resend view, which takes only POSTs,
-forwards a send_failed submission again through `services.forward_submission()` and
-shows a plain error message if ClinVar still didn't get it.
+and affiliation filters, search, and pagination; the affiliations page, which counts
+each affiliation's submissions by status and names it from its newest submission; and
+each submission's page, which pairs each `Record` with its result in ClinVar's summary
+report. The resend view, which takes only POSTs, forwards a send_failed submission again
+through `services.forward_submission()` and shows a plain error message if ClinVar still
+didn't get it.
