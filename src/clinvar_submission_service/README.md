@@ -131,15 +131,19 @@ with the error. It never retries.
 
 ### `templates/clinvar_submission_service/detail.html`
 
-A submission's page, in plain language: its status, who sent it, its ClinVar ID, when it
-arrived and was last checked, what its status means, and each record's result and SCV
-from the summary report. A send_failed submission's page has a Resend button. It never
-shows raw JSON or ClinVar's error text; developers see those in the Django admin.
+A submission's page, in plain language: its status, affiliation, who sent it, its
+ClinVar ID, when it arrived and was last checked, and what its status means. Its records
+table shows each record's variant, condition, classification, inheritance, date last
+evaluated, and whether it's new or an update, with ClinVar's result and SCV once ClinVar
+has reported. A send_failed submission's page has a Resend button. It never shows raw
+JSON or ClinVar's error text; developers see those in the Django admin.
 
 ### `templates/clinvar_submission_service/list.html`
 
-The CSS's home page: every submission, newest first, a page at a time, with a search by
-ID or ClinVar ID.
+The CSS's home page: every submission, newest first, a page at a time, with its
+affiliation and its records' genes. Toggles show all submissions, only the ones ClinVar
+never got, or only the ones sent to ClinVar, and a search matches IDs, affiliations,
+genes, and HGVS.
 
 ### `templates/clinvar_submission_service/partials/header.html`
 
@@ -198,11 +202,13 @@ the command's `--once` and that SIGTERM stops its loop.
 
 ### `test_views.py`
 
-Tests the staff pages: that each needs CSS permissions; the list's order, search,
-pagination, and header; each status's tag color; the detail page's records and its
-plain-language error; that only a send_failed submission has a Resend button; and that
-resending sends it again, records who did, keeps a failed resend's new error, and
-rejects other statuses and GET requests.
+Tests the staff pages: that each needs CSS permissions; the list's order, affiliations
+and variants, sent filter, search by ID, affiliation, gene, or HGVS, pagination, and
+header; each status's tag color; the detail page's records, with ClinVar's result
+matched by local ID, an update's SCV, and records ClinVar never got or hasn't reported
+on; its plain-language error; that only a send_failed submission has a Resend button;
+and that resending sends it again, records who did, keeps a failed resend's new error,
+and rejects other statuses and GET requests.
 
 ### `tests.py`
 
@@ -220,7 +226,8 @@ API at `api/v1/` under `css:api-1`.
 
 ### `views.py`
 
-Serves the CSS's pages to users with CSS permissions: the submission list, with search
-and pagination, and each submission's page. The resend view, which takes only POSTs,
+Serves the CSS's pages to users with CSS permissions: the submission list, with its sent
+filter, search, and pagination, and each submission's page, which pairs each `Record`
+with its result in ClinVar's summary report. The resend view, which takes only POSTs,
 forwards a send_failed submission again through `services.forward_submission()` and
 shows a plain error message if ClinVar still didn't get it.

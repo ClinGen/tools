@@ -6,8 +6,13 @@ from django.urls import reverse
 
 from auth_.models import UserProfile
 from clinvar_submission_service.clients import ClinVarError
-from clinvar_submission_service.fakes import FakeClinVarClient
-from clinvar_submission_service.models import ApiKey, Submission
+from clinvar_submission_service.content import Content, record_fields
+from clinvar_submission_service.fakes import (
+    FakeClinVarClient,
+    make_content,
+    make_record,
+)
+from clinvar_submission_service.models import ApiKey, Record, Submission
 from clinvar_submission_service.views import PAGE_SIZE
 
 REPORT = {
@@ -37,8 +42,17 @@ class CssViewTestCase(TestCase):
         self.client.force_login(self.user)
         self.api_key, _ = ApiKey.objects.create_key(name="GCI")
 
-    def _make(self, **fields: object) -> Submission:
-        return Submission.objects.create(api_key=self.api_key, payload={}, **fields)
+    def _make(self, *records: dict, **fields: object) -> Submission:
+        """Returns a submission from the Hearing Loss VCEP with the given records."""
+        payload = make_content(*records) if records else {}
+        defaults = {"affiliation_id": 10007, "affiliation_name": "Hearing Loss VCEP"}
+        submission = Submission.objects.create(
+            api_key=self.api_key, payload=payload, **(defaults | fields)
+        )
+        if records:
+            for row in record_fields(Content.model_validate(payload)):
+                Record.objects.create(submission=submission, **row)
+        return submission
 
 
 class PermissionTest(CssViewTestCase):
@@ -83,6 +97,80 @@ class ListViewTest(CssViewTestCase):
         response = self.client.get(reverse("css:index"), {"page": 2})
         self.assertEqual(len(response.context["page"]), 1)
 
+    def test_shows_each_submissions_affiliation_and_variants(self):
+        self._make(
+            make_record("var-1"),
+            make_record(
+                "var-2",
+                variantSet={
+                    "variant": [
+                        {
+                            "hgvs": "NC_000014.9:g.23431584C>T",
+                            "gene": [{"symbol": "MYH7"}],
+                        }
+                    ]
+                },
+            ),
+        )
+        response = self.client.get(reverse("css:index"))
+        self.assertContains(response, "Hearing Loss VCEP")
+        self.assertContains(response, "BRCA1")
+        self.assertContains(response, "MYH7")
+
+    def test_filters_to_submissions_clinvar_never_got_or_got(self):
+        received = self._make(status=Submission.Status.RECEIVED)
+        send_failed = self._make(status=Submission.Status.SEND_FAILED)
+        submitted = self._make(status=Submission.Status.SUBMITTED)
+        processing = self._make(status=Submission.Status.PROCESSING)
+        processed = self._make(status=Submission.Status.PROCESSED)
+        error = self._make(status=Submission.Status.ERROR)
+        cases = {
+            "": {received, send_failed, submitted, processing, processed, error},
+            "not_sent": {received, send_failed},
+            "sent": {submitted, processing, processed, error},
+            "unknown": {received, send_failed, submitted, processing, processed, error},
+        }
+        for sent, expected in cases.items():
+            with self.subTest(sent=sent):
+                response = self.client.get(reverse("css:index"), {"sent": sent})
+                self.assertEqual(set(response.context["page"]), expected)
+
+    def test_the_active_filter_is_marked(self):
+        response = self.client.get(reverse("css:index"), {"sent": "not_sent"})
+        self.assertContains(
+            response,
+            '<a href="?sent=not_sent" aria-current="page">Not Sent to ClinVar</a>',
+            html=True,
+        )
+
+    def test_searches_by_affiliation_gene_or_hgvs(self):
+        match = self._make(make_record("var-1"), affiliation_name="TP53 VCEP")
+        self._make(
+            make_record(
+                "var-2",
+                variantSet={
+                    "variant": [
+                        {
+                            "hgvs": "NC_000014.9:g.23431584C>T",
+                            "gene": [{"symbol": "MYH7"}],
+                        }
+                    ]
+                },
+            ),
+        )
+        for query in ("tp53 vcep", "BRCA1", "43045712T>C"):
+            with self.subTest(query=query):
+                response = self.client.get(reverse("css:index"), {"q": query})
+                self.assertEqual(list(response.context["page"]), [match])
+
+    def test_search_keeps_the_filter(self):
+        self._make(status=Submission.Status.SUBMITTED, clinvar_submission_id="SUB1")
+        response = self.client.get(
+            reverse("css:index"), {"q": "SUB1", "sent": "not_sent"}
+        )
+        self.assertEqual(list(response.context["page"]), [])
+        self.assertContains(response, 'name="sent" value="not_sent"')
+
     def test_says_so_when_there_are_none(self):
         response = self.client.get(reverse("css:index"))
         self.assertContains(response, "No submissions yet.")
@@ -116,6 +204,8 @@ class StatusTagTest(CssViewTestCase):
 class DetailViewTest(CssViewTestCase):
     def test_shows_the_submission(self):
         submission = self._make(
+            make_record("var-1"),
+            make_record("var-2"),
             status=Submission.Status.ERROR,
             clinvar_submission_id="SUB000009",
             summary_report=REPORT,
@@ -124,9 +214,58 @@ class DetailViewTest(CssViewTestCase):
         self.assertTemplateUsed(response, "clinvar_submission_service/detail.html")
         self.assertContains(response, "SUB000009")
         self.assertContains(response, "GCI")
-        self.assertContains(response, "var-1")
-        self.assertContains(response, "SCV000000001")
+        self.assertContains(response, "Hearing Loss VCEP")
         self.assertContains(response, f"Submission {submission.slug}")
+
+    def test_shows_each_records_classification_and_clinvar_result(self):
+        submission = self._make(
+            make_record("var-1"),
+            make_record("var-2"),
+            status=Submission.Status.ERROR,
+            summary_report=REPORT,
+        )
+        response = self.client.get(submission.get_absolute_url())
+        rows = response.context["rows"]
+        self.assertEqual([row.record.local_id for row in rows], ["var-1", "var-2"])
+        self.assertEqual(rows[0].scv, "SCV000000001")
+        self.assertTrue(rows[0].accepted)
+        self.assertFalse(rows[1].accepted)
+        for text in (
+            "BRCA1",
+            "NC_000017.11:g.43045712T&gt;C",
+            "MONDO:0011450",
+            "Likely Pathogenic",
+            "Autosomal Dominant",
+            "2026-10-01",
+            "SCV000000001",
+            "Not Accepted",
+        ):
+            with self.subTest(text=text):
+                self.assertContains(response, text)
+
+    def test_records_have_no_result_before_clinvar_reports(self):
+        submission = self._make(
+            make_record("var-1"), status=Submission.Status.SUBMITTED
+        )
+        response = self.client.get(submission.get_absolute_url())
+        (row,) = response.context["rows"]
+        self.assertIsNone(row.accepted)
+        self.assertContains(response, "Waiting for ClinVar")
+
+    def test_records_clinvar_never_got_say_so(self):
+        submission = self._make(
+            make_record("var-1"), status=Submission.Status.SEND_FAILED
+        )
+        response = self.client.get(submission.get_absolute_url())
+        self.assertContains(response, "Not Sent")
+        self.assertNotContains(response, "Waiting for ClinVar")
+
+    def test_an_update_names_the_record_it_updates(self):
+        submission = self._make(
+            make_record("var-1", recordStatus="update", clinvarAccession="SCV000575021")
+        )
+        response = self.client.get(submission.get_absolute_url())
+        self.assertContains(response, "Update to SCV000575021")
 
     def test_never_shows_the_raw_error(self):
         submission = self._make(

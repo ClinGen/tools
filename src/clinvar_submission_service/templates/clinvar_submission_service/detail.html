@@ -8,6 +8,7 @@
             <table class="table">
                 <tbody>
                     <tr><td>Status</td><td>{% include "clinvar_submission_service/partials/status.html" %}</td></tr>
+                    <tr><td>Affiliation</td><td>{{ submission.affiliation_name }}</td></tr>
                     <tr><td>Sent By</td><td>{{ submission.api_key.name|default:"" }}</td></tr>
                     <tr><td>ClinVar ID</td><td>{{ submission.clinvar_submission_id }}</td></tr>
                     <tr><td>Received</td><td>{{ submission.added_at|date:"Y-m-d H:i" }} UTC</td></tr>
@@ -35,30 +36,60 @@
         {% elif submission.status == "error" %}
             <div class="notification is-danger is-light block">
                 <p class="has-text-weight-bold">ClinVar found problems with some records.</p>
-                <p>The records marked Error below weren't accepted.</p>
+                <p>The records marked Not Accepted below weren't accepted.</p>
             </div>
         {% elif submission.status == "processed" %}
             <p class="block">ClinVar accepted every record. They'll be public after ClinVar's next
                 weekly release.</p>
         {% endif %}
-        {% if records %}
+        {% if rows %}
+            <h3 class="title is-5">Records</h3>
             <div class="block table-container">
                 <table class="table">
                     <thead>
-                        <tr><th>Record</th><th>Result</th><th>ClinVar Accession</th></tr>
+                        <tr>
+                            <th>Record</th>
+                            <th>Variant</th>
+                            <th>Condition</th>
+                            <th>Classification</th>
+                            <th>Inheritance</th>
+                            <th>Last Evaluated</th>
+                            <th>New or Update</th>
+                            <th>ClinVar Result</th>
+                            <th>ClinVar Accession</th>
+                        </tr>
                     </thead>
                     <tbody>
-                        {% for record in records %}
+                        {% for row in rows %}
                             <tr>
-                                <td>{{ record.identifiers.localID }}</td>
+                                <td>{{ row.record.local_id }}</td>
                                 <td>
-                                    {% if record.processingStatus == "Success" %}
-                                        <span class="tag is-success is-light">Success</span>
+                                    {% if row.record.gene_symbol %}<strong>{{ row.record.gene_symbol }}</strong><br>{% endif %}
+                                    {{ row.record.hgvs }}
+                                </td>
+                                <td>{{ row.record.condition_id }}</td>
+                                <td>{{ row.record.get_classification_display }}</td>
+                                <td>{{ row.record.get_mode_of_inheritance_display }}</td>
+                                <td>{{ row.record.date_last_evaluated|date:"Y-m-d"|default:"" }}</td>
+                                <td>
+                                    {% if row.record.record_status == "update" %}
+                                        Update to {{ row.record.clinvar_accession }}
                                     {% else %}
-                                        <span class="tag is-danger is-light">{{ record.processingStatus }}</span>
+                                        New
                                     {% endif %}
                                 </td>
-                                <td>{{ record.identifiers.clinvarAccession|default:"" }}</td>
+                                <td>
+                                    {% if submission.status == "received" or submission.status == "send_failed" %}
+                                        <span class="tag is-light">Not Sent</span>
+                                    {% elif row.accepted is None %}
+                                        <span class="tag is-light">Waiting for ClinVar</span>
+                                    {% elif row.accepted %}
+                                        <span class="tag is-success is-light">Accepted</span>
+                                    {% else %}
+                                        <span class="tag is-danger is-light">Not Accepted</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ row.scv }}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
