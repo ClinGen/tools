@@ -64,6 +64,14 @@ reports in memory, so tests never reach ClinVar. Each of its calls can be told t
 Also builds sample content: `make_record()` returns a germline record, with any field
 replaced, and `make_content()` wraps records in content.
 
+### `fixtures/test_submissions.json`
+
+A Django fixture with a VCI API key and six submissions, one in each status, with one to
+three records each: received and send_failed ones ClinVar never got, and submitted,
+processing, processed, and error ones forwarded to ClinVar, with made-up ClinVar IDs,
+responses, and summary reports with SCVs and an error. None is due to poll. Load it with
+`just django-loaddata-test`; tests load it with `fixtures = ["test_submissions.json"]`.
+
 ### `management/__init__.py`
 
 Empty file that marks `management` as a Python package.
@@ -169,6 +177,12 @@ errors; and `from_settings()`. Also tests `FakeClinVarClient`.
 Checks `ClinVarClient` against ClinVar's real test endpoint with a dry run, which
 creates nothing. It's skipped unless `RUN_CONTRACT_TESTS=1` and `CSS_CLINVAR_API_KEY`
 are set in the environment.
+
+### `test_fixtures.py`
+
+Tests the fixture: it has a submission in every status, only forwarded ones have a
+ClinVar ID, only finished ones have a summary report, each submission's records match
+what parsing its payload gives, and every submission's page renders.
 
 ### `test_polling.py`
 

@@ -236,6 +236,12 @@ django-poll-clinvar:
     cd src && uv run manage.py poll_clinvar
 alias djpc := django-poll-clinvar
 
+# Load the test fixtures, such as sample CSS submissions. -------------
+[group('django')]
+django-loaddata-test:
+    cd src && uv run manage.py loaddata clinvar_submission_service/fixtures/test_submissions.json
+alias djlt := django-loaddata-test
+
 # Enter the shell. ---------------------------------------------------
 [group('django')]
 django-shell:
