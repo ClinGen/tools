@@ -11,6 +11,114 @@ from simple_history.models import HistoricalRecords
 
 from common.models import SlugModel, UUIDModel
 
+# ClinVar's terms, from its submission schema. Each choice's value is exactly what
+# ClinVar expects in the submission's content.
+
+
+class AssertionCriteriaDb(models.TextChoices):
+    PUBMED = "PubMed", "PubMed"
+    DOI = "DOI", "DOI"
+    PMC = "pmc", "PubMed Central"
+
+
+class ReleaseStatus(models.TextChoices):
+    PUBLIC = "public", "Public"
+    HOLD_UNTIL_PUBLISHED = "hold until published", "Hold Until Published"
+
+
+class RecordStatus(models.TextChoices):
+    NOVEL = "novel", "Novel"
+    UPDATE = "update", "Update"
+
+
+class Assembly(models.TextChoices):
+    GRCH38 = "GRCh38", "GRCh38"
+    HG38 = "hg38", "hg38"
+    GRCH37 = "GRCh37", "GRCh37"
+    HG19 = "hg19", "hg19"
+    NCBI36 = "NCBI36", "NCBI36"
+    HG18 = "hg18", "hg18"
+    NOT_APPLICABLE = "not applicable", "Not Applicable"
+
+
+class ConditionDb(models.TextChoices):
+    OMIM = "OMIM", "OMIM"
+    MEDGEN = "MedGen", "MedGen"
+    ORPHANET = "Orphanet", "Orphanet"
+    MESH = "MeSH", "MeSH"
+    HP = "HP", "HPO"
+    MONDO = "MONDO", "Mondo"
+
+
+class Classification(models.TextChoices):
+    """The five ACMG classifications, the only ones the VCI makes."""
+
+    PATHOGENIC = "Pathogenic", "Pathogenic"
+    LIKELY_PATHOGENIC = "Likely pathogenic", "Likely Pathogenic"
+    UNCERTAIN_SIGNIFICANCE = "Uncertain significance", "Uncertain Significance"
+    LIKELY_BENIGN = "Likely benign", "Likely Benign"
+    BENIGN = "Benign", "Benign"
+
+
+class ModeOfInheritance(models.TextChoices):
+    AUTOSOMAL_DOMINANT = "Autosomal dominant inheritance"
+    AUTOSOMAL_RECESSIVE = "Autosomal recessive inheritance"
+    MITOCHONDRIAL = "Mitochondrial inheritance"
+    GENETIC_ANTICIPATION = "Genetic anticipation"
+    SPORADIC = "Sporadic"
+    SEX_LIMITED_AUTOSOMAL_DOMINANT = "Sex-limited autosomal dominant"
+    X_LINKED_RECESSIVE = "X-linked recessive inheritance"
+    X_LINKED_DOMINANT = "X-linked dominant inheritance"
+    Y_LINKED = "Y-linked inheritance"
+    OTHER = "Other"
+    X_LINKED = "X-linked inheritance"
+    CODOMINANT = "Codominant"
+    SEMIDOMINANT = "Semidominant inheritance"
+    AUTOSOMAL_UNKNOWN = "Autosomal unknown"
+    AUTOSOMAL_DOMINANT_MATERNAL_IMPRINTING = (
+        "Autosomal dominant inheritance with maternal imprinting"
+    )
+    AUTOSOMAL_DOMINANT_PATERNAL_IMPRINTING = (
+        "Autosomal dominant inheritance with paternal imprinting"
+    )
+    MULTIFACTORIAL = "Multifactorial inheritance"
+    UNKNOWN_MECHANISM = "Unknown mechanism"
+    OLIGOGENIC = "Oligogenic inheritance"
+
+
+class AlleleOrigin(models.TextChoices):
+    GERMLINE = "germline", "Germline"
+    SOMATIC = "somatic", "Somatic"
+    DE_NOVO = "de novo", "De Novo"
+    UNKNOWN = "unknown", "Unknown"
+    INHERITED = "inherited", "Inherited"
+    MATERNAL = "maternal", "Maternal"
+    PATERNAL = "paternal", "Paternal"
+    BIPARENTAL = "biparental", "Biparental"
+    NOT_APPLICABLE = "not applicable", "Not Applicable"
+
+
+class AffectedStatus(models.TextChoices):
+    YES = "yes", "Yes"
+    NO = "no", "No"
+    UNKNOWN = "unknown", "Unknown"
+    NOT_PROVIDED = "not provided", "Not Provided"
+    NOT_APPLICABLE = "not applicable", "Not Applicable"
+
+
+class CollectionMethod(models.TextChoices):
+    CURATION = "curation", "Curation"
+    LITERATURE_ONLY = "literature only", "Literature Only"
+    REFERENCE_POPULATION = "reference population", "Reference Population"
+    PROVIDER_INTERPRETATION = "provider interpretation", "Provider Interpretation"
+    PHENOTYPING_ONLY = "phenotyping only", "Phenotyping Only"
+    CASE_CONTROL = "case-control", "Case-Control"
+    CLINICAL_TESTING = "clinical testing", "Clinical Testing"
+    IN_VITRO = "in vitro", "In Vitro"
+    IN_VIVO = "in vivo", "In Vivo"
+    RESEARCH = "research", "Research"
+    NOT_PROVIDED = "not provided", "Not Provided"
+
 
 class SubmissionManager(models.Manager["Submission"]):
     def due_to_poll(self) -> models.QuerySet["Submission"]:
@@ -58,6 +166,35 @@ class Submission(SlugModel):
     payload = models.JSONField(
         verbose_name="Payload",
         help_text="The request body as the client sent it.",
+    )
+    assertion_criteria_db = models.CharField(
+        blank=True,
+        choices=AssertionCriteriaDb.choices,
+        default="",
+        max_length=8,
+        verbose_name="Assertion Criteria Database",
+        help_text="Where the criteria used to classify the variants are published.",
+    )
+    assertion_criteria_id = models.CharField(
+        blank=True,
+        default="",
+        max_length=255,
+        verbose_name="Assertion Criteria ID",
+        help_text="The criteria's ID in that database, such as a PubMed ID.",
+    )
+    behalf_org_id = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name="On Behalf Of",
+        help_text="The ClinVar ID of the organization the submission is made for.",
+    )
+    release_status = models.CharField(
+        blank=True,
+        choices=ReleaseStatus.choices,
+        default="",
+        max_length=32,
+        verbose_name="Release Status",
+        help_text="Whether ClinVar may make the records public. Blank means public.",
     )
     clinvar_submission_id = models.CharField(
         blank=True,
@@ -150,6 +287,135 @@ class Submission(SlugModel):
     def get_absolute_url(self) -> str:
         """Returns the submission's page."""
         return reverse("css:detail", kwargs={"slug": self.slug})
+
+
+class Record(UUIDModel):
+    """One germline variant classification in a submission.
+
+    Each record is one variant-condition pair, a copy of one item in the payload's
+    germlineSubmission, so pages and search can use its fields.
+    """
+
+    submission = models.ForeignKey(
+        Submission,
+        on_delete=models.CASCADE,
+        related_name="records",
+        verbose_name="Submission",
+        help_text="The submission the record came in.",
+    )
+    record_status = models.CharField(
+        choices=RecordStatus.choices,
+        max_length=8,
+        verbose_name="Record Status",
+        help_text="Whether the record is new to ClinVar or updates one of its records.",
+    )
+    clinvar_accession = models.CharField(
+        blank=True,
+        default="",
+        max_length=16,  # An SCV accession is of the form SCV000123456.
+        verbose_name="ClinVar Accession",
+        help_text="The record's SCV accession in ClinVar. Blank for a novel record.",
+    )
+    local_id = models.CharField(
+        blank=True,
+        default="",
+        max_length=255,
+        verbose_name="Local ID",
+        help_text="The client's ID for the variant. ClinVar makes it public.",
+    )
+    local_key = models.CharField(
+        blank=True,
+        default="",
+        max_length=255,
+        verbose_name="Local Key",
+        help_text="The client's ID for the variant-condition pair.",
+    )
+    submitted_assembly = models.CharField(
+        choices=Assembly.choices,
+        max_length=16,
+        verbose_name="Assembly",
+        help_text="The genome assembly the HGVS expression is on.",
+    )
+    hgvs = models.CharField(
+        max_length=512,
+        verbose_name="HGVS",
+        help_text="The variant, as an HGVS expression.",
+    )
+    gene_symbol = models.CharField(
+        blank=True,
+        default="",
+        max_length=32,
+        verbose_name="Gene Symbol",
+        help_text="The gene whose relationship to the condition supports the record.",
+    )
+    condition_db = models.CharField(
+        choices=ConditionDb.choices,
+        max_length=16,
+        verbose_name="Condition Database",
+        help_text="The database the condition's ID is from.",
+    )
+    condition_id = models.CharField(
+        max_length=64,
+        verbose_name="Condition ID",
+        help_text="The condition's ID, such as MONDO:0011450.",
+    )
+    classification = models.CharField(
+        choices=Classification.choices,
+        max_length=32,
+        verbose_name="Classification",
+        help_text="The variant's classification for the condition.",
+    )
+    mode_of_inheritance = models.CharField(
+        blank=True,
+        choices=ModeOfInheritance.choices,
+        default="",
+        max_length=64,
+        verbose_name="Mode of Inheritance",
+        help_text="How the variant is inherited for this condition.",
+    )
+    date_last_evaluated = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name="Date Last Evaluated",
+        help_text="When the variant was last classified.",
+    )
+    comment = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Comment",
+        help_text="Why the variant has its classification.",
+    )
+    allele_origin = models.CharField(
+        choices=AlleleOrigin.choices,
+        max_length=16,
+        verbose_name="Allele Origin",
+        help_text="Where the variant's allele came from.",
+    )
+    affected_status = models.CharField(
+        choices=AffectedStatus.choices,
+        max_length=16,
+        verbose_name="Affected Status",
+        help_text="Whether the individuals observed had the condition.",
+    )
+    collection_method = models.CharField(
+        choices=CollectionMethod.choices,
+        max_length=32,
+        verbose_name="Collection Method",
+        help_text="How the evidence for the classification was gathered.",
+    )
+    history = HistoricalRecords()
+
+    class Meta:  # ty: ignore[invalid-attribute-override] (Each Django model declares its own Meta.)
+        """Provides metadata."""
+
+        db_table = "record"
+        ordering = ["submission", "local_id"]
+        verbose_name = "Record"
+        verbose_name_plural = "Records"
+
+    def __str__(self) -> str:
+        """Returns the record's variant and classification."""
+        return f"{self.hgvs}: {self.classification}"
 
 
 def _hash(raw_key: str) -> str:

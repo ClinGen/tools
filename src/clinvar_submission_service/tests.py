@@ -7,7 +7,17 @@ from django.urls import reverse
 from django.utils import timezone
 
 from auth_.models import UserProfile
-from clinvar_submission_service.models import Submission
+from clinvar_submission_service.models import (
+    AffectedStatus,
+    AlleleOrigin,
+    Assembly,
+    Classification,
+    CollectionMethod,
+    ConditionDb,
+    Record,
+    RecordStatus,
+    Submission,
+)
 
 
 def _make_user(username: str, *, css: bool = False) -> User:
@@ -52,6 +62,63 @@ class SubmissionTest(TestCase):
         records = submission.history.order_by("history_date")  # type: ignore
         statuses = list(records.values_list("status", flat=True))
         self.assertEqual(statuses, ["received", "submitted"])
+
+
+def _make_record(submission: Submission, local_id: str, **fields: object) -> Record:
+    """Returns a likely pathogenic record in the submission."""
+    defaults = {
+        "record_status": RecordStatus.NOVEL,
+        "local_id": local_id,
+        "submitted_assembly": Assembly.GRCH38,
+        "hgvs": "NC_000017.11:g.43045712T>C",
+        "condition_db": ConditionDb.MONDO,
+        "condition_id": "MONDO:0011450",
+        "classification": Classification.LIKELY_PATHOGENIC,
+        "allele_origin": AlleleOrigin.GERMLINE,
+        "affected_status": AffectedStatus.NOT_PROVIDED,
+        "collection_method": CollectionMethod.CURATION,
+    }
+    return Record.objects.create(submission=submission, **(defaults | fields))
+
+
+class RecordTest(TestCase):
+    def setUp(self):
+        self.submission = Submission.objects.create(payload={})
+
+    def test_belongs_to_a_submission_in_local_id_order(self):
+        second = _make_record(self.submission, "var-2")
+        first = _make_record(self.submission, "var-1")
+        self.assertEqual(list(self.submission.records.all()), [first, second])  # type: ignore
+
+    def test_string_representation_is_the_variant_and_classification(self):
+        record = _make_record(self.submission, "var-1")
+        self.assertEqual(str(record), "NC_000017.11:g.43045712T>C: Likely pathogenic")
+
+    def test_classifications_are_clinvars_acmg_terms(self):
+        self.assertEqual(
+            Classification.values,
+            [
+                "Pathogenic",
+                "Likely pathogenic",
+                "Uncertain significance",
+                "Likely benign",
+                "Benign",
+            ],
+        )
+
+    def test_history_records_a_change(self):
+        record = _make_record(self.submission, "var-1")
+        record.classification = Classification.PATHOGENIC
+        record.save()
+        classifications = record.history.order_by("history_date").values_list(  # type: ignore
+            "classification", flat=True
+        )
+        self.assertEqual(list(classifications), ["Likely pathogenic", "Pathogenic"])
+
+    def test_deleting_the_submission_deletes_its_records(self):
+        _make_record(self.submission, "var-1")
+        self.submission.delete()
+        self.assertFalse(Record.objects.exists())
 
 
 class DueToPollTest(TestCase):
@@ -99,6 +166,16 @@ class SubmissionAdminTest(TestCase):
         )
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+
+    def test_change_page_lists_the_records(self):
+        _make_record(self.submission, "var-1")
+        url = reverse(
+            "admin:clinvar_submission_service_submission_change",
+            args=[self.submission.pk],
+        )
+        response = self.client.get(url)
+        self.assertContains(response, "var-1")
+        self.assertContains(response, "NC_000017.11:g.43045712T&gt;C")
 
 
 class IndexViewTest(TestCase):

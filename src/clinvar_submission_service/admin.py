@@ -3,7 +3,42 @@ from django.forms import ModelForm
 from django.http import HttpRequest
 from simple_history.admin import SimpleHistoryAdmin
 
-from clinvar_submission_service.models import ApiKey, Submission
+from clinvar_submission_service.models import ApiKey, Record, Submission
+
+# A tuple, since Django types fields and readonly_fields differently.
+RECORD_INLINE_FIELDS = (
+    "local_id",
+    "record_status",
+    "clinvar_accession",
+    "hgvs",
+    "condition_id",
+    "classification",
+    "mode_of_inheritance",
+    "date_last_evaluated",
+)
+
+
+class RecordInline(admin.TabularInline):
+    """Lists a submission's records, which only its payload should change."""
+
+    model = Record
+    fields = RECORD_INLINE_FIELDS
+    readonly_fields = RECORD_INLINE_FIELDS
+    extra = 0
+    can_delete = False
+    show_change_link = True
+
+    def has_add_permission(
+        self,
+        request: HttpRequest,  # ruff: ignore[unused-method-argument] (Django's signature.)
+        obj: Submission | None = None,  # ruff: ignore[unused-method-argument] (Django's signature.)
+    ) -> bool:
+        """Keeps staff from adding records the payload doesn't have.
+
+        Returns:
+            False, always.
+        """
+        return False
 
 
 @admin.register(Submission)
@@ -11,6 +46,7 @@ class SubmissionAdmin(SimpleHistoryAdmin):
     list_display = ["slug", "api_key", "status", "clinvar_submission_id", "added_at"]
     list_filter = ["status"]
     search_fields = ["slug", "clinvar_submission_id"]
+    inlines = [RecordInline]
     readonly_fields = [
         "slug",
         "clinvar_submission_id",
@@ -22,6 +58,13 @@ class SubmissionAdmin(SimpleHistoryAdmin):
         "updated_at",
         "last_polled_at",
     ]
+
+
+@admin.register(Record)
+class RecordAdmin(SimpleHistoryAdmin):
+    list_display = ["local_id", "submission", "hgvs", "classification"]
+    list_filter = ["classification"]
+    search_fields = ["local_id", "clinvar_accession", "hgvs", "submission__slug"]
 
 
 @admin.register(ApiKey)

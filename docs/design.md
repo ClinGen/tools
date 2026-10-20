@@ -208,6 +208,14 @@ such as `S3f2a9c1e`. It records the client that sent it, the payload as the clie
 it, the ClinVar submission ID, its status, ClinVar's latest response and that response's
 `updated` timestamp and `errorCode`, the summary report, and any error message.
 
+Each of a submission's records is a `Record`: one germline variant classification, a
+copy of one item in the payload's `germlineSubmission`. A record is one
+variant-condition pair, so it has one HGVS variant, one condition, and one observation,
+in fields that pages and search can use. The payload stays the copy that's forwarded to
+ClinVar. Choices hold ClinVar's terms exactly; the classifications are the five ACMG
+terms the VCI uses. Records extend `UUIDModel`, since staff find them by their local ID
+or SCV.
+
 1. A client POSTs a submission to the CSS API.
 2. The CSS saves a `Submission` with status `received`, then forwards it to ClinVar.
    Saving first means the CSS keeps a record of every request, even ones ClinVar never

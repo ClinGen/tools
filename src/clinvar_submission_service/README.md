@@ -12,10 +12,11 @@ Empty file that marks `clinvar_submission_service` as a Python package.
 
 ### `admin.py`
 
-Registers `Submission` and `ApiKey` in the Django admin, with their history. A
-submission's ClinVar fields are read-only, since only ClinVar's responses should change
-them. Adding an API key generates its value and shows it once, in a warning message;
-after that, only its prefix is shown.
+Registers `Submission`, `Record`, and `ApiKey` in the Django admin, with their history.
+A submission's ClinVar fields are read-only, since only ClinVar's responses should
+change them, and its records are listed read-only on its page. Adding an API key
+generates its value and shows it once, in a warning message; after that, only its prefix
+is shown.
 
 ### `api.py`
 
@@ -71,13 +72,20 @@ runs one pass and exits. Run it locally with `just django-poll-clinvar`.
 Defines `Submission`, one request to ClinVar: the payload as the client sent it, the
 ClinVar submission ID, its status, ClinVar's latest response, `updated` timestamp, error
 code, and summary report, any error message, and when it was last and will next be
-polled. It extends `common.models.SlugModel`, so its ID is a UUID and its slug is `S`
-and the first 8 hex characters of the UUID, such as `S3f2a9c1e`. It keeps its change
-history, and `get_absolute_url()` returns its page. `Submission.objects.due_to_poll()`
-returns the submitted and processing submissions whose next poll time has passed, oldest
-first. Also defines `ApiKey`, the key one client system sends to use the API. Only its
-SHA-256 hash and a short prefix are stored, and each submission records the key that
-sent it.
+polled, plus the content's assertion criteria, the organization it's on behalf of, and
+its release status. It extends `common.models.SlugModel`, so its ID is a UUID and its
+slug is `S` and the first 8 hex characters of the UUID, such as `S3f2a9c1e`. It keeps
+its change history, and `get_absolute_url()` returns its page.
+`Submission.objects.due_to_poll()` returns the submitted and processing submissions
+whose next poll time has passed, oldest first. Also defines `Record`, one germline
+variant classification in a submission and a copy of one item in its payload's
+`germlineSubmission`: the variant's HGVS and assembly, the condition, the
+classification, mode of inheritance, date last evaluated, comment, how the evidence was
+gathered, and the record's SCV for an update. Its choices, defined above the models, are
+ClinVar's terms, so a value is exactly what ClinVar expects; the classifications are the
+five ACMG terms the VCI uses. Also defines `ApiKey`, the key one client system sends to
+use the API. Only its SHA-256 hash and a short prefix are stored, and each submission
+records the key that sent it.
 
 ### `polling.py`
 
@@ -166,8 +174,10 @@ rejects other statuses and GET requests.
 ### `tests.py`
 
 Tests the `Submission` slug, including a colliding one, its default status, and its
-history; which submissions are due to poll; the admin pages; and that only users with
-CSS permissions can open the home page, which the landing page links to.
+history; a `Record`'s order, history, and classifications, and that it's deleted with
+its submission; which submissions are due to poll; the admin pages, including a
+submission's records; and that only users with CSS permissions can open the home page,
+which the landing page links to.
 
 ### `urls.py`
 
