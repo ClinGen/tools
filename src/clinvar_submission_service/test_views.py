@@ -217,6 +217,13 @@ class DetailViewTest(CssViewTestCase):
         self.assertContains(response, "Hearing Loss VCEP")
         self.assertContains(response, f"Submission {submission.slug}")
 
+    def test_the_submission_tab_comes_between_submissions_and_affiliations(self):
+        submission = self._make()
+        html = self.client.get(submission.get_absolute_url()).content.decode()
+        tabs = ["Submissions", f"Submission {submission.slug}", "Affiliations"]
+        positions = [html.index(f"<span>{tab}</span>") for tab in tabs]
+        self.assertEqual(positions, sorted(positions))
+
     def test_shows_each_records_classification_and_clinvar_result(self):
         submission = self._make(
             make_record("var-1"),

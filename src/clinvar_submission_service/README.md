@@ -154,8 +154,8 @@ its submissions, and a search matches IDs, affiliations, genes, and HGVS.
 ### `templates/clinvar_submission_service/partials/header.html`
 
 The top of every CSS page: the CSS's name and description from `core.tools`, and boxed
-tabs for Submissions, Affiliations, and, on a submission's page, that submission, with
-the current page's tab active.
+tabs for Submissions, that submission when you're on a submission's page, and
+Affiliations, with the current page's tab active.
 
 ### `templates/clinvar_submission_service/partials/status.html`
 
