@@ -17,14 +17,14 @@
         <div class="tabs is-toggle is-small">
             <ul>
                 {% for label, value, link in filter_links %}
-                    <li{% if sent == value %} class="is-active"{% endif %}>
-                        <a href="{{ link }}"{% if sent == value %} aria-current="page"{% endif %}>{{ label }}</a>
+                    <li{% if status == value %} class="is-active"{% endif %}>
+                        <a href="{{ link }}"{% if status == value %} aria-current="page"{% endif %}>{{ label }}</a>
                     </li>
                 {% endfor %}
             </ul>
         </div>
         <form method="get">
-            {% if sent %}<input type="hidden" name="sent" value="{{ sent }}">{% endif %}
+            {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
             {% if affiliation %}<input type="hidden" name="affiliation" value="{{ affiliation }}">{% endif %}
             <div class="field mb-4">
                 <div class="control has-icons-left">

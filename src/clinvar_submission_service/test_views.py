@@ -127,29 +127,37 @@ class ListViewTest(CssViewTestCase):
         self.assertContains(response, "BRCA1")
         self.assertContains(response, "MYH7")
 
-    def test_filters_to_submissions_clinvar_never_got_or_got(self):
-        received = self._make(status=Submission.Status.NOT_SENT_TO_CLINVAR)
-        send_failed = self._make(status=Submission.Status.SEND_TO_CLINVAR_FAILED)
-        submitted = self._make(status=Submission.Status.SUBMITTED_TO_CLINVAR)
-        processing = self._make(status=Submission.Status.PROCESSING_AT_CLINVAR)
-        processed = self._make(status=Submission.Status.PROCESSED_BY_CLINVAR)
-        error = self._make(status=Submission.Status.ERROR_AT_CLINVAR)
-        cases = {
-            "": {received, send_failed, submitted, processing, processed, error},
-            "not_sent": {received, send_failed},
-            "sent": {submitted, processing, processed, error},
-            "unknown": {received, send_failed, submitted, processing, processed, error},
+    def test_filters_to_each_status(self):
+        by_status = {
+            status: self._make(status=status) for status in Submission.Status.values
         }
-        for sent, expected in cases.items():
-            with self.subTest(sent=sent):
-                response = self.client.get(reverse("css:index"), {"sent": sent})
-                self.assertEqual(set(_listed(response)), expected)
+        for status, submission in by_status.items():
+            with self.subTest(status=status):
+                response = self.client.get(reverse("css:index"), {"status": status})
+                self.assertEqual(_listed(response), [submission])
+        for status in ("", "received", "unknown"):
+            with self.subTest(status=status):
+                response = self.client.get(reverse("css:index"), {"status": status})
+                self.assertEqual(set(_listed(response)), set(by_status.values()))
+
+    def test_has_a_pill_for_all_and_each_status(self):
+        response = self.client.get(reverse("css:index"))
+        self.assertContains(
+            response, '<a href="?" aria-current="page">All</a>', html=True
+        )
+        for value, label in Submission.Status.choices:
+            with self.subTest(status=value):
+                self.assertContains(
+                    response, f'<a href="?status={value}">{label}</a>', html=True
+                )
 
     def test_the_active_filter_is_marked(self):
-        response = self.client.get(reverse("css:index"), {"sent": "not_sent"})
+        response = self.client.get(
+            reverse("css:index"), {"status": "submitted_to_clinvar"}
+        )
         self.assertContains(
             response,
-            '<a href="?sent=not_sent" aria-current="page">Not Sent to ClinVar</a>',
+            '<a href="?status=submitted_to_clinvar" aria-current="page">Submitted</a>',
             html=True,
         )
 
@@ -178,10 +186,10 @@ class ListViewTest(CssViewTestCase):
             status=Submission.Status.SUBMITTED_TO_CLINVAR, clinvar_submission_id="SUB1"
         )
         response = self.client.get(
-            reverse("css:index"), {"q": "SUB1", "sent": "not_sent"}
+            reverse("css:index"), {"q": "SUB1", "status": "not_sent_to_clinvar"}
         )
         self.assertEqual(_listed(response), [])
-        self.assertContains(response, 'name="sent" value="not_sent"')
+        self.assertContains(response, 'name="status" value="not_sent_to_clinvar"')
 
     def test_sorts_by_a_column(self):
         first = self._make(clinvar_submission_id="SUB000001")
@@ -197,10 +205,15 @@ class ListViewTest(CssViewTestCase):
     def test_page_links_keep_the_search_and_filters(self):
         for _ in range(PAGE_SIZE + 1):
             self._make(status=Submission.Status.NOT_SENT_TO_CLINVAR)
-        params = {"q": "Hearing", "sent": "not_sent", "affiliation": "10007"}
+        params = {
+            "q": "Hearing",
+            "status": "not_sent_to_clinvar",
+            "affiliation": "10007",
+        }
         response = self.client.get(reverse("css:index"), params)
         self.assertContains(
-            response, "?q=Hearing&amp;sent=not_sent&amp;affiliation=10007&amp;page=2"
+            response,
+            "?q=Hearing&amp;status=not_sent_to_clinvar&amp;affiliation=10007&amp;page=2",
         )
 
     def test_an_htmx_request_gets_only_the_results(self):
@@ -487,15 +500,18 @@ class AffiliationFilterTest(AffiliationTestCase):
         self.assertEqual(len(_listed(response)), 3)
         self.assertContains(response, "Showing submissions from Cardiomyopathy VCEP.")
 
-    def test_combines_with_the_sent_filter(self):
+    def test_combines_with_the_status_filter(self):
         response = self.client.get(
-            reverse("css:index"), {"affiliation": "10901", "sent": "not_sent"}
+            reverse("css:index"),
+            {"affiliation": "10901", "status": "not_sent_to_clinvar"},
         )
         self.assertEqual(
             [s.status for s in _listed(response)],
             [Submission.Status.NOT_SENT_TO_CLINVAR],
         )
-        self.assertContains(response, 'href="?affiliation=10901&amp;sent=sent"')
+        self.assertContains(
+            response, 'href="?affiliation=10901&amp;status=processed_by_clinvar"'
+        )
 
     def test_an_unknown_affiliation_shows_nothing(self):
         for value in ("99999", "not-a-number"):

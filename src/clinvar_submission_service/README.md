@@ -149,11 +149,10 @@ raw JSON or ClinVar's error text; developers see those in the Django admin.
 
 ### `templates/clinvar_submission_service/list.html`
 
-The CSS's home page: the filter toggles, a notice when the list shows one affiliation,
+The CSS's home page: the status pills, a notice when the list shows one affiliation,
 and, as in the HCI, a search box that updates the results as you type, sending the
-active filters along. Toggles show all submissions, only the ones ClinVar never got, or
-only the ones sent to ClinVar, and the search matches IDs, affiliations, genes, and
-HGVS.
+active filters along. Pills show all submissions or only those in one status, and the
+search matches IDs, affiliations, genes, and HGVS.
 
 ### `templates/clinvar_submission_service/partials/results.html`
 
@@ -235,16 +234,17 @@ failed, are never polled, batch size, and stopping mid-pass. Also tests the comm
 ### `test_views.py`
 
 Tests the staff pages: that each needs CSS permissions; the list's order, affiliations
-and variants, sent filter, affiliation filter (alone, with the sent filter, and with an
-unknown ID), search by ID, affiliation, gene, or HGVS, sorting, pagination that keeps
-the search and filters, the results-only response to HTMX, and header; each status's tag
-color, ClinVar's wording, and tooltip, on the list and the detail page, and an Error's
-tooltip by error code; that no page uses the old wording; the detail page's records,
-with ClinVar's result matched by local ID, an update's SCV, and records ClinVar never
-got or hasn't reported on; its plain-language error; that only a send_to_clinvar_failed
-submission has a Resend button; and that resending sends it again, records who did,
-keeps a failed resend's new error, and rejects other statuses and GET requests. Against
-the fixtures, tests the affiliations page's counts, order, links, headers, and tab.
+and variants, status filter and its pills, affiliation filter (alone, with the status
+filter, and with an unknown ID), search by ID, affiliation, gene, or HGVS, sorting,
+pagination that keeps the search and filters, the results-only response to HTMX, and
+header; each status's tag color, ClinVar's wording, and tooltip, on the list and the
+detail page, and an Error's tooltip by error code; that no page uses the old wording;
+the detail page's records, with ClinVar's result matched by local ID, an update's SCV,
+and records ClinVar never got or hasn't reported on; its plain-language error; that only
+a send_to_clinvar_failed submission has a Resend button; and that resending sends it
+again, records who did, keeps a failed resend's new error, and rejects other statuses
+and GET requests. Against the fixtures, tests the affiliations page's counts, order,
+links, headers, and tab.
 
 ### `tests.py`
 
@@ -263,11 +263,11 @@ resend at `submissions/<slug>/resend/`, and the API at `api/v1/` under `css:api-
 
 ### `views.py`
 
-Serves the CSS's pages to users with CSS permissions: the submission list, with its sent
-and affiliation filters, search, sorting, and pagination, and just its results for an
-HTMX request; the affiliations page, which counts each affiliation's submissions by
-status and names it from its newest submission; and each submission's page, which pairs
-each `Record` with its result in ClinVar's summary report. The resend view, which takes
-only POSTs, forwards a send_to_clinvar_failed submission again through
+Serves the CSS's pages to users with CSS permissions: the submission list, with its
+status and affiliation filters, search, sorting, and pagination, and just its results
+for an HTMX request; the affiliations page, which counts each affiliation's submissions
+by status and names it from its newest submission; and each submission's page, which
+pairs each `Record` with its result in ClinVar's summary report. The resend view, which
+takes only POSTs, forwards a send_to_clinvar_failed submission again through
 `services.forward_submission()` and shows a plain error message if ClinVar still didn't
 get it.

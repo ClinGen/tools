@@ -6,7 +6,7 @@
             {% render_table table %}
         {% elif query %}
             <p>No submissions match “{{ query }}”.</p>
-        {% elif sent or affiliation %}
+        {% elif status or affiliation %}
             <p>No submissions here.</p>
         {% else %}
             <p>No submissions yet.</p>

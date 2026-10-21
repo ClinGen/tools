@@ -23,16 +23,11 @@ RESEND_FAILED_MESSAGE = (
 
 NOT_RESENDABLE_MESSAGE = "Only a submission ClinVar never got can be resent."
 
-# The list's filters, by their sent= value: submissions ClinVar never got, and ones it
-# did. Any other value shows every submission.
+# The statuses of submissions ClinVar never got.
 NOT_SENT_STATUSES = [
     Submission.Status.NOT_SENT_TO_CLINVAR,
     Submission.Status.SEND_TO_CLINVAR_FAILED,
 ]
-SENT_FILTERS = {
-    "not_sent": Q(status__in=NOT_SENT_STATUSES),
-    "sent": ~Q(status__in=NOT_SENT_STATUSES),
-}
 
 # The counts on the affiliations page, by the name each row's count has.
 AFFILIATION_COUNTS = {
@@ -96,8 +91,9 @@ def _record_rows(submission: Submission) -> list[RecordRow]:
 def index(request: HttpRequest) -> HttpResponse:
     """Lists submissions, newest first.
 
-    The sent= filter narrows the list to submissions ClinVar never got or ones it did,
-    and the affiliation= filter to one affiliation's, by its ID. The q= search matches
+    The status= filter narrows the list to one status, such as submitted_to_clinvar,
+    and the affiliation= filter to one affiliation's, by its ID. An unknown status
+    shows every submission. The q= search matches
     a submission's ID, ClinVar ID, or affiliation, or a record's gene or HGVS. The
     table's sort= and page= parameters sort and page the results.
 
@@ -106,9 +102,9 @@ def index(request: HttpRequest) -> HttpResponse:
         and the table's links send.
     """
     query = request.GET.get("q", "").strip()
-    sent = request.GET.get("sent", "")
-    if sent not in SENT_FILTERS:
-        sent = ""
+    status = request.GET.get("status", "")
+    if status not in Submission.Status.values:
+        status = ""
     submissions = Submission.objects.select_related("api_key").prefetch_related(
         "records"
     )
@@ -118,8 +114,8 @@ def index(request: HttpRequest) -> HttpResponse:
         submissions = _filter_by_affiliation(submissions, affiliation)
         newest = submissions.first()
         affiliation_name = newest.affiliation_name if newest else ""
-    if sent:
-        submissions = submissions.filter(SENT_FILTERS[sent])
+    if status:
+        submissions = submissions.filter(status=status)
     if query:
         matches = (
             Q(slug__icontains=query)
@@ -143,16 +139,12 @@ def index(request: HttpRequest) -> HttpResponse:
             "tool": get_tool("css"),
             "table": table,
             "query": query,
-            "sent": sent,
+            "status": status,
             "affiliation": affiliation,
             "affiliation_name": affiliation_name,
             "filter_links": [
-                (label, value, _query_string(affiliation=affiliation, sent=value))
-                for label, value in (
-                    ("All", ""),
-                    ("Not Sent to ClinVar", "not_sent"),
-                    ("Submitted to ClinVar", "sent"),
-                )
+                (label, value, _query_string(affiliation=affiliation, status=value))
+                for value, label in [("", "All"), *Submission.Status.choices]
             ],
         },
     )
