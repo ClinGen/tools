@@ -307,15 +307,16 @@ exits cleanly on SIGTERM after finishing the submission it's working on.
 #### Staff Pages
 
 The CSS's pages list every submission, newest first, with its affiliation and the genes
-of its records. Pills filter it to one status, or show all of them, and a search matches
-a submission's ID, ClinVar ID, or affiliation, or a record's gene or HGVS. As in the
-HCI, the list is a django-tables2 table that sorts by its columns, and the search
-updates the results as you type. Every status tag uses ClinVar's word for the status,
-with what it means in a tooltip (`common/tooltip.html`); an Error's tooltip says whether
-some or all records failed. A submission's page says in plain words what its status
-means and lists its records: each one's variant, condition, classification, inheritance,
-date last evaluated, whether it's new or updates an SCV, and, once ClinVar has reported,
-its result in ClinVar's words (Success or Error) and its SCV. An Affiliations page lists
+of its records. Pills filter it to one status, or show all of them, and clicking a
+status tag in the table filters to that status too. A search matches a submission's ID,
+ClinVar ID, or affiliation, or a record's gene or HGVS. As in the HCI, the list is a
+django-tables2 table that sorts by its columns, and the search updates the results as
+you type. Every status tag uses ClinVar's word for the status, with what it means in a
+tooltip (`common/tooltip.html`); an Error's tooltip says whether some or all records
+failed. A submission's page says in plain words what its status means and lists its
+records: each one's variant, condition, classification, inheritance, date last
+evaluated, whether it's new or updates an SCV, and, once ClinVar has reported, its
+result in ClinVar's words (Success or Error) and its SCV. An Affiliations page lists
 each affiliation that has submissions, with how many are not sent or failed to send,
 submitted or processing, processed, and in error, and links to the list filtered to that
 affiliation. Like the ETS's pages, they never show raw JSON or ClinVar's error text;
@@ -396,7 +397,9 @@ this key, so a color means the same thing wherever staff see it.
 - **Link blue** (`is-link`): something you can click. Examples: every button; secondary
   buttons, such as the navbar's, add `is-light`.
 
-Status tags always render `is-light`. Don't use `is-primary`. The base layout sets
+Status tags always render `is-light`. A status tag that's a link, such as in the CSS's
+submissions table, shows its solid color on hover or focus (dark grey for a grey tag),
+from `static/tools/css/custom.css`. Don't use `is-primary`. The base layout sets
 `data-theme="light"`, so there is no dark theme to check.
 
 ### Flash Messages

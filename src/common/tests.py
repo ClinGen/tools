@@ -101,6 +101,18 @@ class TooltipTest(TestCase):
         )
         self.assertNotIn("bi-", html)
 
+    def test_a_label_with_an_href_is_a_link(self):
+        html = render_to_string(
+            "common/tooltip.html",
+            {"label": "Processed", "text": "Some help.", "href": "?status=x"},
+        )
+        self.assertIn(
+            '<a href="?status=x" data-tippy-content="Some help.">Processed'
+            '<span class="is-sr-only">: Some help.</span></a>',
+            html,
+        )
+        self.assertNotIn("cursor: default", html)
+
     def test_keeps_the_arrow_cursor(self):
         for context in ({"icon_name": "info-circle"}, {"label": "Processed"}):
             with self.subTest(context=context):
@@ -118,6 +130,7 @@ class TooltipTest(TestCase):
         html = self.client.get(reverse("home")).content.decode()
         for asset in (
             "tools/css/tippy.css",
+            "tools/css/custom.css",
             "tools/js/popper.min.js",
             "tools/js/tippy.umd.min.js",
             "tools/js/tooltips.js",

@@ -169,9 +169,10 @@ Affiliations, with the current page's tab active.
 ### `templates/clinvar_submission_service/partials/status.html`
 
 A submission's status tag, in ClinVar's words (the status's label), with
-`Submission.status_help` in a tooltip on the tag, from `common/tooltip.html`. Its color
-follows the color key: green when processed, red when the send failed or ClinVar
-reported an error, and grey otherwise.
+`Submission.status_help` in a tooltip on the tag, from `common/tooltip.html`. Given an
+`href`, as in the submissions table, the tag is a link. Its color follows the color key:
+green when processed, red when the send failed or ClinVar reported an error, and grey
+otherwise.
 
 ### `templates/clinvar_submission_service/partials/record_result.html`
 
@@ -183,8 +184,9 @@ ClinVar's own words from the summary report, Success or Error.
 
 `SubmissionTable`, the django-tables2 table on the list page: each submission's ID,
 linked to its page, its affiliation, linked to the list of that affiliation's
-submissions, its records' genes, the client that sent it, its status tag, its ClinVar
-ID, and when the CSS received it. It sorts by every column but the genes and status.
+submissions, its records' genes, the client that sent it, its status tag, linked to the
+list filtered to that status (keeping the affiliation filter), its ClinVar ID, and when
+the CSS received it. It sorts by every column but the genes and status.
 
 ### `test_api.py`
 
@@ -238,10 +240,11 @@ and variants, status filter and its pills, affiliation filter (alone, with the s
 filter, and with an unknown ID), search by ID, affiliation, gene, or HGVS, sorting,
 pagination that keeps the search and filters, the results-only response to HTMX, and
 header; each status's tag color, ClinVar's wording, and tooltip, on the list and the
-detail page, and an Error's tooltip by error code; that no page uses the old wording;
-the detail page's records, with ClinVar's result matched by local ID, an update's SCV,
-and records ClinVar never got or hasn't reported on; its plain-language error; that only
-a send_to_clinvar_failed submission has a Resend button; and that resending sends it
+detail page, the list's tags linking to their status (and the detail page's not), and an
+Error's tooltip by error code; that no page uses the old wording; the detail page's
+records, with ClinVar's result matched by local ID, an update's SCV, and records ClinVar
+never got or hasn't reported on; its plain-language error; that only a
+send_to_clinvar_failed submission has a Resend button; and that resending sends it
 again, records who did, keeps a failed resend's new error, and rejects other statuses
 and GET requests. Against the fixtures, tests the affiliations page's counts, order,
 links, headers, and tab.

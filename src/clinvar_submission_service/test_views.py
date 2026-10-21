@@ -290,6 +290,33 @@ class StatusTagTest(CssViewTestCase):
         response = self.client.get(reverse("css:index"))
         self.assertContains(response, f'data-tippy-content="{escape(help_text)}"')
 
+    def test_each_tag_in_the_list_links_to_its_status(self):
+        for status in Submission.Status.values:
+            self._make(status=status)
+        html = self.client.get(reverse("css:index")).content.decode()
+        for status in Submission.Status.values:
+            with self.subTest(status=status):
+                help_text = escape(Submission.STATUS_HELP[status])
+                self.assertRegex(
+                    html,
+                    rf'<a href="\?status={status}" class="tag[^"]*" '
+                    rf'data-tippy-content="{help_text}">',
+                )
+
+    def test_a_tags_link_keeps_the_affiliation(self):
+        self._make(status=Submission.Status.PROCESSED_BY_CLINVAR)
+        response = self.client.get(reverse("css:index"), {"affiliation": "10007"})
+        self.assertContains(
+            response,
+            '<a href="?affiliation=10007&amp;status=processed_by_clinvar" class="tag',
+        )
+
+    def test_the_detail_pages_tag_isnt_a_link(self):
+        submission = self._make(status=Submission.Status.PROCESSED_BY_CLINVAR)
+        response = self.client.get(submission.get_absolute_url())
+        self.assertContains(response, '<span class="tag is-success is-light"')
+        self.assertNotRegex(response.content.decode(), r'<a [^>]*class="tag')
+
     def test_no_page_uses_the_old_wording(self):
         for status in Submission.Status.values:
             self._make(make_record("var-1"), status=status)

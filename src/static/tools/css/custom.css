@@ -1,0 +1,27 @@
+/* A tag that's a link drops its is-light look on hover or keyboard focus and shows its
+   solid color, so it reads as clickable. The variables are the ones Bulma's own color
+   classes set. A grey is-light tag is already as light as a plain tag, so it turns dark
+   grey (Bulma's is-dark) instead. */
+a.tag.is-light:hover,
+a.tag.is-light:focus-visible {
+  --bulma-tag-h: var(--bulma-dark-h);
+  --bulma-tag-s: var(--bulma-dark-s);
+  --bulma-tag-background-l: var(--bulma-dark-l);
+  --bulma-tag-color-l: var(--bulma-dark-invert-l);
+}
+
+a.tag.is-success.is-light:hover,
+a.tag.is-success.is-light:focus-visible {
+  --bulma-tag-h: var(--bulma-success-h);
+  --bulma-tag-s: var(--bulma-success-s);
+  --bulma-tag-background-l: var(--bulma-success-l);
+  --bulma-tag-color-l: var(--bulma-success-invert-l);
+}
+
+a.tag.is-danger.is-light:hover,
+a.tag.is-danger.is-light:focus-visible {
+  --bulma-tag-h: var(--bulma-danger-h);
+  --bulma-tag-s: var(--bulma-danger-s);
+  --bulma-tag-background-l: var(--bulma-danger-l);
+  --bulma-tag-color-l: var(--bulma-danger-invert-l);
+}

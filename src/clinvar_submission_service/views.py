@@ -125,7 +125,7 @@ def index(request: HttpRequest) -> HttpResponse:
             | Q(records__hgvs__icontains=query)
         )
         submissions = submissions.filter(matches).distinct()
-    table = SubmissionTable(submissions)
+    table = SubmissionTable(submissions, affiliation=affiliation)
     RequestConfig(request, paginate={"per_page": PAGE_SIZE}).configure(table)
     template = (
         "clinvar_submission_service/partials/results.html"

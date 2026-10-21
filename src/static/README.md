@@ -3,7 +3,8 @@
 This directory holds the static files Django serves. The files under `tools/` are
 vendored from `node_modules` or bundled from `src/auth_/js/` by `build.js`
 (`just js-build`); don't edit them by hand. To upgrade one, update `package.json` and
-rerun `just js-build`. The exception is `tools/js/tooltips.js`, which we wrote.
+rerun `just js-build`. The exceptions are `tools/css/custom.css` and
+`tools/js/tooltips.js`, which we wrote.
 
 ### `tools/css/bootstrap-icons.css`
 
@@ -16,6 +17,12 @@ The Bulma CSS framework.
 ### `tools/css/tippy.css`
 
 The Tippy.js stylesheet, for tooltips.
+
+### `tools/css/custom.css`
+
+Our own styles, which Bulma has no class for: a status tag that's a link shows its solid
+color, without `is-light`, on hover or keyboard focus, using the variables Bulma's color
+classes set. A grey tag turns dark grey, since a plain tag is as light as `is-light`.
 
 ### `tools/css/fonts/bootstrap-icons.woff`
 
