@@ -2,14 +2,15 @@ from dataclasses import dataclass
 from urllib.parse import urlencode
 
 from django.contrib import messages
-from django.core.paginator import Paginator
 from django.db.models import Count, OuterRef, Q, QuerySet, Subquery
 from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
+from django_tables2 import RequestConfig
 
 from auth_.permissions import tool_permission_required
 from clinvar_submission_service.models import Record, Submission
 from clinvar_submission_service.services import forward_submission
+from clinvar_submission_service.tables import SubmissionTable
 from core.tools import get_tool
 
 # How many submissions the list shows on a page.
@@ -94,10 +95,12 @@ def index(request: HttpRequest) -> HttpResponse:
 
     The sent= filter narrows the list to submissions ClinVar never got or ones it did,
     and the affiliation= filter to one affiliation's, by its ID. The q= search matches
-    a submission's ID, ClinVar ID, or affiliation, or a record's gene or HGVS.
+    a submission's ID, ClinVar ID, or affiliation, or a record's gene or HGVS. The
+    table's sort= and page= parameters sort and page the results.
 
     Returns:
-        The list page.
+        The list page, or just its results for an HTMX request, which the search box
+        and the table's links send.
     """
     query = request.GET.get("q", "").strip()
     sent = request.GET.get("sent", "")
@@ -123,13 +126,19 @@ def index(request: HttpRequest) -> HttpResponse:
             | Q(records__hgvs__icontains=query)
         )
         submissions = submissions.filter(matches).distinct()
-    page = Paginator(submissions, PAGE_SIZE).get_page(request.GET.get("page"))
+    table = SubmissionTable(submissions)
+    RequestConfig(request, paginate={"per_page": PAGE_SIZE}).configure(table)
+    template = (
+        "clinvar_submission_service/partials/results.html"
+        if request.headers.get("HX-Request")
+        else "clinvar_submission_service/list.html"
+    )
     return render(
         request,
-        "clinvar_submission_service/list.html",
+        template,
         {
             "tool": get_tool("css"),
-            "page": page,
+            "table": table,
             "query": query,
             "sent": sent,
             "affiliation": affiliation,
@@ -142,7 +151,6 @@ def index(request: HttpRequest) -> HttpResponse:
                     ("Sent to ClinVar", "sent"),
                 )
             ],
-            "page_query": _query_string(q=query, sent=sent, affiliation=affiliation),
         },
     )
 

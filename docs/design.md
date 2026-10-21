@@ -85,6 +85,7 @@ the UI, with HTMX where a page needs a little interactivity.
 - **Error monitoring**: Sentry
 - **Frontend CSS**: Bulma
 - **Partial page updates**: HTMX
+- **Tables**: django-tables2
 - **Authentication**: Clerk + custom `ClerkBackend`
 - **API framework**: Django Ninja
 - **AWS client (ETS)**: boto3
@@ -296,16 +297,18 @@ exits cleanly on SIGTERM after finishing the submission it's working on.
 The CSS's pages list every submission, newest first, with its affiliation and the genes
 of its records. A filter shows all of them, only the ones ClinVar never got (`received`
 and `send_failed`), or only the ones sent to ClinVar, and a search matches a
-submission's ID, ClinVar ID, or affiliation, or a record's gene or HGVS. A submission's
-page says in plain words what its status means and lists its records: each one's
-variant, condition, classification, inheritance, date last evaluated, whether it's new
-or updates an SCV, and, once ClinVar has reported, whether ClinVar accepted it and its
-SCV. An Affiliations page lists each affiliation that has submissions, with how many are
-not sent, being checked by ClinVar, accepted, and with errors, and links to the list
-filtered to that affiliation. Like the ETS's pages, they never show raw JSON or
-ClinVar's error text; developers see those, and each submission's change history, in the
-Django admin. Staff need `has_css_permissions`, and every staff member with it sees
-every submission. The page of a `send_failed` submission has a Resend button.
+submission's ID, ClinVar ID, or affiliation, or a record's gene or HGVS. As in the HCI,
+the list is a django-tables2 table that sorts by its columns, and the search updates the
+results as you type. A submission's page says in plain words what its status means and
+lists its records: each one's variant, condition, classification, inheritance, date last
+evaluated, whether it's new or updates an SCV, and, once ClinVar has reported, whether
+ClinVar accepted it and its SCV. An Affiliations page lists each affiliation that has
+submissions, with how many are not sent, being checked by ClinVar, accepted, and with
+errors, and links to the list filtered to that affiliation. Like the ETS's pages, they
+never show raw JSON or ClinVar's error text; developers see those, and each submission's
+change history, in the Django admin. Staff need `has_css_permissions`, and every staff
+member with it sees every submission. The page of a `send_failed` submission has a
+Resend button.
 
 The CSS reads the ClinVar API key and base from the environment. It never logs the
 ClinVar API key or a client's API key.

@@ -1,3 +1,4 @@
+from typing import TYPE_CHECKING
 from unittest import mock
 
 from django.contrib.auth.models import User
@@ -14,6 +15,9 @@ from clinvar_submission_service.fakes import (
 )
 from clinvar_submission_service.models import ApiKey, Record, Submission
 from clinvar_submission_service.views import PAGE_SIZE
+
+if TYPE_CHECKING:
+    from django.test.client import _MonkeyPatchedWSGIResponse as Response
 
 REPORT = {
     "totalCount": 2,
@@ -34,6 +38,11 @@ def _make_user(username: str, *, css: bool = False) -> User:
     user = User.objects.create_user(username=username, email=username)
     UserProfile.objects.create(user=user, has_css_permissions=css)
     return user
+
+
+def _listed(response: "Response") -> list[Submission]:
+    """Returns the submissions on the list page's current page, in order."""
+    return [row.record for row in response.context["table"].paginated_rows]
 
 
 class CssViewTestCase(TestCase):
@@ -75,7 +84,7 @@ class ListViewTest(CssViewTestCase):
         newer = self._make(clinvar_submission_id="SUB000002")
         response = self.client.get(reverse("css:index"))
         self.assertTemplateUsed(response, "clinvar_submission_service/list.html")
-        self.assertEqual(list(response.context["page"]), [newer, older])
+        self.assertEqual(_listed(response), [newer, older])
         self.assertContains(response, newer.get_absolute_url())
         self.assertContains(response, "GCI")
         self.assertContains(response, "SUB000002")
@@ -86,7 +95,7 @@ class ListViewTest(CssViewTestCase):
         for query in ("SUB123456", "sub1234", match.slug):
             with self.subTest(query=query):
                 response = self.client.get(reverse("css:index"), {"q": query})
-                self.assertEqual(list(response.context["page"]), [match])
+                self.assertEqual(_listed(response), [match])
         self.assertNotContains(
             self.client.get(reverse("css:index"), {"q": "SUB123456"}), other.slug
         )
@@ -95,7 +104,7 @@ class ListViewTest(CssViewTestCase):
         for _ in range(PAGE_SIZE + 1):
             self._make()
         response = self.client.get(reverse("css:index"), {"page": 2})
-        self.assertEqual(len(response.context["page"]), 1)
+        self.assertEqual(len(_listed(response)), 1)
 
     def test_shows_each_submissions_affiliation_and_variants(self):
         self._make(
@@ -133,7 +142,7 @@ class ListViewTest(CssViewTestCase):
         for sent, expected in cases.items():
             with self.subTest(sent=sent):
                 response = self.client.get(reverse("css:index"), {"sent": sent})
-                self.assertEqual(set(response.context["page"]), expected)
+                self.assertEqual(set(_listed(response)), expected)
 
     def test_the_active_filter_is_marked(self):
         response = self.client.get(reverse("css:index"), {"sent": "not_sent"})
@@ -161,15 +170,53 @@ class ListViewTest(CssViewTestCase):
         for query in ("tp53 vcep", "BRCA1", "43045712T>C"):
             with self.subTest(query=query):
                 response = self.client.get(reverse("css:index"), {"q": query})
-                self.assertEqual(list(response.context["page"]), [match])
+                self.assertEqual(_listed(response), [match])
 
     def test_search_keeps_the_filter(self):
         self._make(status=Submission.Status.SUBMITTED, clinvar_submission_id="SUB1")
         response = self.client.get(
             reverse("css:index"), {"q": "SUB1", "sent": "not_sent"}
         )
-        self.assertEqual(list(response.context["page"]), [])
+        self.assertEqual(_listed(response), [])
         self.assertContains(response, 'name="sent" value="not_sent"')
+
+    def test_sorts_by_a_column(self):
+        first = self._make(clinvar_submission_id="SUB000001")
+        second = self._make(clinvar_submission_id="SUB000002")
+        for sort, expected in (
+            ("clinvar_submission_id", [first, second]),
+            ("-clinvar_submission_id", [second, first]),
+        ):
+            with self.subTest(sort=sort):
+                response = self.client.get(reverse("css:index"), {"sort": sort})
+                self.assertEqual(_listed(response), expected)
+
+    def test_page_links_keep_the_search_and_filters(self):
+        for _ in range(PAGE_SIZE + 1):
+            self._make(status=Submission.Status.RECEIVED)
+        params = {"q": "Hearing", "sent": "not_sent", "affiliation": "10007"}
+        response = self.client.get(reverse("css:index"), params)
+        self.assertContains(
+            response, "?q=Hearing&amp;sent=not_sent&amp;affiliation=10007&amp;page=2"
+        )
+
+    def test_an_htmx_request_gets_only_the_results(self):
+        self._make()
+        response = self.client.get(reverse("css:index"), HTTP_HX_REQUEST="true")
+        self.assertTemplateUsed(
+            response, "clinvar_submission_service/partials/results.html"
+        )
+        self.assertTemplateNotUsed(response, "clinvar_submission_service/list.html")
+        self.assertContains(response, "1 submission")
+
+    def test_the_search_box_sends_the_filters_as_you_type(self):
+        response = self.client.get(reverse("css:index"), {"affiliation": "10007"})
+        self.assertContains(response, 'hx-include="closest form"')
+        self.assertContains(response, 'name="affiliation" value="10007"')
+
+    def test_says_when_the_css_received_each_submission(self):
+        self._make()
+        self.assertContains(self.client.get(reverse("css:index")), "Received by CSS")
 
     def test_says_so_when_there_are_none(self):
         response = self.client.get(reverse("css:index"))
@@ -366,9 +413,9 @@ class AffiliationTestCase(TestCase):
 class AffiliationFilterTest(AffiliationTestCase):
     def test_filters_the_list_to_one_affiliation(self):
         response = self.client.get(reverse("css:index"), {"affiliation": "10901"})
-        names = {s.affiliation_name for s in response.context["page"]}
+        names = {s.affiliation_name for s in _listed(response)}
         self.assertEqual(names, {"Cardiomyopathy VCEP"})
-        self.assertEqual(len(response.context["page"]), 3)
+        self.assertEqual(len(_listed(response)), 3)
         self.assertContains(response, "Showing submissions from Cardiomyopathy VCEP.")
 
     def test_combines_with_the_sent_filter(self):
@@ -376,7 +423,7 @@ class AffiliationFilterTest(AffiliationTestCase):
             reverse("css:index"), {"affiliation": "10901", "sent": "not_sent"}
         )
         self.assertEqual(
-            [s.status for s in response.context["page"]], [Submission.Status.RECEIVED]
+            [s.status for s in _listed(response)], [Submission.Status.RECEIVED]
         )
         self.assertContains(response, 'href="?affiliation=10901&amp;sent=sent"')
 
@@ -384,7 +431,7 @@ class AffiliationFilterTest(AffiliationTestCase):
         for value in ("99999", "not-a-number"):
             with self.subTest(value=value):
                 response = self.client.get(reverse("css:index"), {"affiliation": value})
-                self.assertEqual(list(response.context["page"]), [])
+                self.assertEqual(_listed(response), [])
 
 
 class AffiliationsViewTest(AffiliationTestCase):

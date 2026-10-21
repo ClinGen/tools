@@ -23,77 +23,28 @@
                 {% endfor %}
             </ul>
         </div>
-        <form method="get" class="block">
+        <form method="get">
             {% if sent %}<input type="hidden" name="sent" value="{{ sent }}">{% endif %}
             {% if affiliation %}<input type="hidden" name="affiliation" value="{{ affiliation }}">{% endif %}
-            <div class="field has-addons">
-                <div class="control">
+            <div class="field mb-4">
+                <div class="control has-icons-left">
                     <input class="input"
-                           type="search"
+                           type="text"
                            name="q"
                            value="{{ query }}"
                            aria-label="Search by ID, ClinVar ID, affiliation, gene, or HGVS"
-                           placeholder="ID, affiliation, gene, or HGVS">
-                </div>
-                <div class="control">
-                    <button type="submit" class="button is-link">Search</button>
+                           placeholder="Search by ID, ClinVar ID, affiliation, gene, or HGVS..."
+                           hx-get="{{ request.path }}"
+                           hx-include="closest form"
+                           hx-target="#search-results"
+                           hx-trigger="keyup changed delay:500ms"
+                           hx-push-url="true">
+                    <span class="icon is-left">
+                        <i class="bi bi-search"></i>
+                    </span>
                 </div>
             </div>
         </form>
-        {% if page.object_list %}
-            <div class="block table-container">
-                <table class="table is-hoverable">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Affiliation</th>
-                            <th>Variants</th>
-                            <th>Sent By</th>
-                            <th>Status</th>
-                            <th>ClinVar ID</th>
-                            <th>Received</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for submission in page %}
-                            <tr>
-                                <td><a href="{{ submission.get_absolute_url }}">{{ submission.slug }}</a></td>
-                                <td>
-                                    {% if submission.affiliation_id %}
-                                        <a href="?affiliation={{ submission.affiliation_id }}">{{ submission.affiliation_name }}</a>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% for record in submission.records.all %}
-                                        {{ record.gene_symbol|default:record.hgvs }}{% if not forloop.last %},{% endif %}
-                                    {% endfor %}
-                                </td>
-                                <td>{{ submission.api_key.name|default:"" }}</td>
-                                <td>{% include "clinvar_submission_service/partials/status.html" %}</td>
-                                <td>{{ submission.clinvar_submission_id }}</td>
-                                <td>{{ submission.added_at|date:"Y-m-d H:i" }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% if page.has_other_pages %}
-                <nav class="pagination" aria-label="Pages">
-                    {% if page.has_previous %}
-                        <a class="pagination-previous" href="{{ page_query }}&page={{ page.previous_page_number }}">Previous</a>
-                    {% endif %}
-                    {% if page.has_next %}
-                        <a class="pagination-next" href="{{ page_query }}&page={{ page.next_page_number }}">Next</a>
-                    {% endif %}
-                    <p>Page {{ page.number }} of {{ page.paginator.num_pages }}</p>
-                </nav>
-            {% endif %}
-        {% elif query %}
-            <p>No submissions match “{{ query }}”.</p>
-        {% elif sent %}
-            <p>No submissions here.</p>
-        {% else %}
-            <p>No submissions yet.</p>
-        {% endif %}
+        <div id="search-results">{% include "clinvar_submission_service/partials/results.html" %}</div>
     </div>
 {% endblock %}
