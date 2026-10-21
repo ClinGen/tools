@@ -4,8 +4,10 @@ from unittest.mock import MagicMock, patch
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.http import HttpRequest, HttpResponse
+from django.template.loader import render_to_string
+from django.templatetags.static import static
 from django.test import TestCase, override_settings
-from django.urls import include, path
+from django.urls import include, path, reverse
 
 from auth_.models import UserProfile
 from common.models import make_slug
@@ -72,3 +74,32 @@ class UserProfileIdTest(TestCase):
         profile = UserProfile.objects.create(user=user)
         self.assertIsInstance(profile.pk, uuid.UUID)
         self.assertIsInstance(profile.history.first().history_id, uuid.UUID)  # type: ignore
+
+
+class TooltipTest(TestCase):
+    """The tooltip template shows its text in a Tippy tooltip, never beside it."""
+
+    def test_has_the_text_in_a_tooltip_and_for_screen_readers(self):
+        html = render_to_string(
+            "common/tooltip.html", {"icon_name": "info-circle", "text": "Some help."}
+        )
+        self.assertIn('data-tippy-content="Some help."', html)
+        self.assertIn('<span class="is-sr-only">Some help.</span>', html)
+        self.assertIn("bi-info-circle", html)
+        self.assertNotIn("title=", html)
+
+    def test_is_keyboard_focusable(self):
+        html = render_to_string("common/tooltip.html", {"text": "Some help."})
+        self.assertIn('tabindex="0"', html)
+
+    def test_base_layout_loads_tippy(self):
+        self.client.force_login(User.objects.create_user(username="staff@example.com"))
+        html = self.client.get(reverse("home")).content.decode()
+        for asset in (
+            "tools/css/tippy.css",
+            "tools/js/popper.min.js",
+            "tools/js/tippy.umd.min.js",
+            "tools/js/tooltips.js",
+        ):
+            with self.subTest(asset=asset):
+                self.assertIn(static(asset), html)

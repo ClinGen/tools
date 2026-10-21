@@ -3,7 +3,7 @@
 This directory holds the static files Django serves. The files under `tools/` are
 vendored from `node_modules` or bundled from `src/auth_/js/` by `build.js`
 (`just js-build`); don't edit them by hand. To upgrade one, update `package.json` and
-rerun `just js-build`.
+rerun `just js-build`. The exception is `tools/js/tooltips.js`, which we wrote.
 
 ### `tools/css/bootstrap-icons.css`
 
@@ -12,6 +12,10 @@ The Bootstrap Icons stylesheet.
 ### `tools/css/bulma.css`
 
 The Bulma CSS framework.
+
+### `tools/css/tippy.css`
+
+The Tippy.js stylesheet, for tooltips.
 
 ### `tools/css/fonts/bootstrap-icons.woff`
 
@@ -30,6 +34,28 @@ The bundled Clerk token-exchange script for the sign-in callback page, built fro
 
 HTMX, for partial page updates.
 
+### `tools/js/popper.min.js`
+
+Popper, which positions Tippy.js's tooltips. Tippy needs it loaded first.
+
+### `tools/js/popper.min.js.map`
+
+Popper's source map, which `collectstatic` needs.
+
 ### `tools/js/sign-in.js`
 
 The bundled Clerk sign-in widget, built from `src/auth_/js/sign-in.jsx`.
+
+### `tools/js/tippy.umd.min.js`
+
+Tippy.js, for tooltips.
+
+### `tools/js/tippy.umd.min.js.map`
+
+Tippy.js's source map, which `collectstatic` needs.
+
+### `tools/js/tooltips.js`
+
+Adds a Tippy.js tooltip to every element with a `data-tippy-content` attribute,
+including elements HTMX swaps in later. Screen readers get the text from the element's
+`is-sr-only` span instead, so Tippy doesn't add `aria-describedby`. Ported from the HCI.

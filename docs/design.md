@@ -85,6 +85,7 @@ the UI, with HTMX where a page needs a little interactivity.
 - **Error monitoring**: Sentry
 - **Frontend CSS**: Bulma
 - **Partial page updates**: HTMX
+- **Tooltips**: Tippy.js (with Popper)
 - **Tables**: django-tables2
 - **Authentication**: Clerk + custom `ClerkBackend`
 - **API framework**: Django Ninja
