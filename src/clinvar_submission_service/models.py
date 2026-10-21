@@ -143,16 +143,26 @@ class Submission(SlugModel):
     slug_prefix = "S"
 
     class Status(models.TextChoices):
-        RECEIVED = "received", "Received"
-        SEND_FAILED = "send_failed", "Send Failed"
-        SUBMITTED = "submitted", "Submitted"
-        PROCESSING = "processing", "Processing"
-        PROCESSED = "processed", "Processed"
-        ERROR = "error", "Error"
+        """Where the submission is, relative to ClinVar.
 
-    # The statuses the poller checks on. A received submission hasn't been sent yet,
-    # and a send_failed one has no ClinVar ID to poll; the rest are final.
-    POLLABLE_STATUSES: ClassVar[list[str]] = [Status.SUBMITTED, Status.PROCESSING]
+        The first two are the CSS's own: ClinVar doesn't have the submission. The rest
+        are ClinVar's statuses from its Submission API (submitted, processing,
+        processed, and error), which the poller reads.
+        """
+
+        NOT_SENT_TO_CLINVAR = "not_sent_to_clinvar", "Not Sent"
+        SEND_TO_CLINVAR_FAILED = "send_to_clinvar_failed", "Send Failed"
+        SUBMITTED_TO_CLINVAR = "submitted_to_clinvar", "Submitted"
+        PROCESSING_AT_CLINVAR = "processing_at_clinvar", "Processing"
+        PROCESSED_BY_CLINVAR = "processed_by_clinvar", "Processed"
+        ERROR_AT_CLINVAR = "error_at_clinvar", "Error"
+
+    # The statuses the poller checks on. A submission not sent to ClinVar, or whose send
+    # failed, has no ClinVar ID to poll; the rest are final.
+    POLLABLE_STATUSES: ClassVar[list[str]] = [
+        Status.SUBMITTED_TO_CLINVAR,
+        Status.PROCESSING_AT_CLINVAR,
+    ]
 
     api_key = models.ForeignKey(
         "ApiKey",
@@ -222,8 +232,8 @@ class Submission(SlugModel):
     )
     status = models.CharField(
         choices=Status.choices,
-        default=Status.RECEIVED,
-        max_length=16,
+        default=Status.NOT_SENT_TO_CLINVAR,
+        max_length=32,
         verbose_name="Status",
         help_text="Where the submission is between receipt and a final ClinVar status.",
     )

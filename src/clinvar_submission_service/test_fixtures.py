@@ -7,10 +7,10 @@ from clinvar_submission_service.models import Record, Submission
 from common.models import make_slug
 
 FORWARDED_STATUSES = {
-    Submission.Status.SUBMITTED,
-    Submission.Status.PROCESSING,
-    Submission.Status.PROCESSED,
-    Submission.Status.ERROR,
+    Submission.Status.SUBMITTED_TO_CLINVAR,
+    Submission.Status.PROCESSING_AT_CLINVAR,
+    Submission.Status.PROCESSED_BY_CLINVAR,
+    Submission.Status.ERROR_AT_CLINVAR,
 }
 
 
@@ -45,8 +45,8 @@ class SubmissionFixtureTest(TestCase):
         for submission in Submission.objects.all():
             with self.subTest(submission.status):
                 finished = submission.status in {
-                    Submission.Status.PROCESSED,
-                    Submission.Status.ERROR,
+                    Submission.Status.PROCESSED_BY_CLINVAR,
+                    Submission.Status.ERROR_AT_CLINVAR,
                 }
                 self.assertEqual(submission.summary_report is not None, finished)
 

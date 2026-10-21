@@ -1,12 +1,12 @@
-{% if submission.status == "processed" %}
+{% if submission.status == "processed_by_clinvar" %}
     <span class="tag is-success is-light">Accepted</span>
-{% elif submission.status == "error" %}
+{% elif submission.status == "error_at_clinvar" %}
     <span class="tag is-danger is-light">Has Errors</span>
-{% elif submission.status == "send_failed" %}
+{% elif submission.status == "send_to_clinvar_failed" %}
     <span class="tag is-danger is-light">Not Sent</span>
-{% elif submission.status == "processing" %}
+{% elif submission.status == "processing_at_clinvar" %}
     <span class="tag is-light">ClinVar Is Checking</span>
-{% elif submission.status == "submitted" %}
+{% elif submission.status == "submitted_to_clinvar" %}
     <span class="tag is-light">Sent</span>
 {% else %}
     <span class="tag is-light">Not Sent Yet</span>

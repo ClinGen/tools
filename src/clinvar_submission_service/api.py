@@ -74,8 +74,9 @@ def create_submission(
 
     The body is the client's affiliation and the ClinVar content, which holds germline
     records. The CSS wraps the content in ClinVar's AddData action and forwards it as
-    sent. A body that doesn't match gets a 422. The response's status is submitted if
-    ClinVar accepted it, or send_failed, with an error message, if it didn't.
+    sent. A body that doesn't match gets a 422. The response's status is
+    submitted_to_clinvar if ClinVar accepted it, or send_to_clinvar_failed, with an
+    error message, if it didn't.
 
     Returns:
         201 and the submission.

@@ -25,7 +25,10 @@ NOT_RESENDABLE_MESSAGE = "Only a submission ClinVar never got can be resent."
 
 # The list's filters, by their sent= value: submissions ClinVar never got, and ones it
 # did. Any other value shows every submission.
-NOT_SENT_STATUSES = [Submission.Status.RECEIVED, Submission.Status.SEND_FAILED]
+NOT_SENT_STATUSES = [
+    Submission.Status.NOT_SENT_TO_CLINVAR,
+    Submission.Status.SEND_TO_CLINVAR_FAILED,
+]
 SENT_FILTERS = {
     "not_sent": Q(status__in=NOT_SENT_STATUSES),
     "sent": ~Q(status__in=NOT_SENT_STATUSES),
@@ -35,8 +38,8 @@ SENT_FILTERS = {
 AFFILIATION_COUNTS = {
     "not_sent": Q(status__in=NOT_SENT_STATUSES),
     "waiting": Q(status__in=Submission.POLLABLE_STATUSES),
-    "accepted": Q(status=Submission.Status.PROCESSED),
-    "errors": Q(status=Submission.Status.ERROR),
+    "accepted": Q(status=Submission.Status.PROCESSED_BY_CLINVAR),
+    "errors": Q(status=Submission.Status.ERROR_AT_CLINVAR),
 }
 
 
@@ -216,8 +219,11 @@ def resend(request: HttpRequest, slug: str) -> HttpResponse:
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
     submission = get_object_or_404(Submission, slug=slug)
-    if submission.status != Submission.Status.SEND_FAILED:
+    if submission.status != Submission.Status.SEND_TO_CLINVAR_FAILED:
         messages.error(request, NOT_RESENDABLE_MESSAGE)
-    elif forward_submission(submission).status == Submission.Status.SEND_FAILED:
+    elif (
+        forward_submission(submission).status
+        == Submission.Status.SEND_TO_CLINVAR_FAILED
+    ):
         messages.error(request, RESEND_FAILED_MESSAGE)
     return redirect(submission)

@@ -57,7 +57,7 @@ class ForwardSubmissionTest(ApiTestCase):
         submission = Submission.objects.create(payload=CONTENT)
         forward_submission(submission)
         submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.SUBMITTED)
+        self.assertEqual(submission.status, Submission.Status.SUBMITTED_TO_CLINVAR)
         self.assertEqual(submission.clinvar_submission_id, "SUB000001")
         self.assertIsNotNone(submission.next_poll_at)
         self.assertEqual(self.fake.submitted, [CONTENT])
@@ -67,7 +67,7 @@ class ForwardSubmissionTest(ApiTestCase):
         submission = Submission.objects.create(payload=CONTENT)
         forward_submission(submission)
         submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.SEND_FAILED)
+        self.assertEqual(submission.status, Submission.Status.SEND_TO_CLINVAR_FAILED)
         self.assertEqual(submission.error_message, "ClinVar returned 400")
         self.assertEqual(submission.clinvar_submission_id, "")
 
@@ -85,7 +85,7 @@ class ForwardSubmissionTest(ApiTestCase):
         ):
             forward_submission(submission)
         submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.SEND_FAILED)
+        self.assertEqual(submission.status, Submission.Status.SEND_TO_CLINVAR_FAILED)
 
 
 class CreateSubmissionTest(ApiTestCase):
@@ -96,7 +96,7 @@ class CreateSubmissionTest(ApiTestCase):
         self.assertEqual(submission.api_key, self.api_key)
         self.assertEqual(submission.payload, CONTENT)
         self.assertEqual(json.loads(response.content)["slug"], submission.slug)
-        self.assertEqual(json.loads(response.content)["status"], "submitted")
+        self.assertEqual(json.loads(response.content)["status"], "submitted_to_clinvar")
         self.assertEqual(
             json.loads(response.content)["clinvar_submission_id"], "SUB000001"
         )
@@ -105,7 +105,9 @@ class CreateSubmissionTest(ApiTestCase):
         self.fake.submit_error = ClinVarError("ClinVar returned 400", retryable=False)
         response = self.post(CONTENT)
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(json.loads(response.content)["status"], "send_failed")
+        self.assertEqual(
+            json.loads(response.content)["status"], "send_to_clinvar_failed"
+        )
         self.assertEqual(
             json.loads(response.content)["error_message"], "ClinVar returned 400"
         )
@@ -265,7 +267,7 @@ class ReadSubmissionTest(ApiTestCase):
             affiliation_id=10007,
             affiliation_name="Hearing Loss VCEP",
             payload=CONTENT,
-            status=Submission.Status.PROCESSED,
+            status=Submission.Status.PROCESSED_BY_CLINVAR,
             clinvar_submission_id="SUB000009",
             latest_response={"actions": []},
             summary_report={"totalCount": 1},
@@ -274,7 +276,7 @@ class ReadSubmissionTest(ApiTestCase):
         self.assertEqual(response.status_code, 200)
         body = json.loads(response.content)
         self.assertEqual(body["affiliation"], AFFILIATION)
-        self.assertEqual(body["status"], "processed")
+        self.assertEqual(body["status"], "processed_by_clinvar")
         self.assertEqual(body["clinvar_submission_id"], "SUB000009")
         self.assertEqual(body["latest_response"], {"actions": []})
         self.assertEqual(body["summary_report"], {"totalCount": 1})

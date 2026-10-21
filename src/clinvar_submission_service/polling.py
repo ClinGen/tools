@@ -24,13 +24,16 @@ logger = logging.getLogger(__name__)
 
 # ClinVar's statuses, and ours for each.
 STATUSES = {
-    "submitted": Submission.Status.SUBMITTED,
-    "processing": Submission.Status.PROCESSING,
-    "processed": Submission.Status.PROCESSED,
-    "error": Submission.Status.ERROR,
+    "submitted": Submission.Status.SUBMITTED_TO_CLINVAR,
+    "processing": Submission.Status.PROCESSING_AT_CLINVAR,
+    "processed": Submission.Status.PROCESSED_BY_CLINVAR,
+    "error": Submission.Status.ERROR_AT_CLINVAR,
 }
 
-FINAL_STATUSES = {Submission.Status.PROCESSED, Submission.Status.ERROR}
+FINAL_STATUSES = {
+    Submission.Status.PROCESSED_BY_CLINVAR,
+    Submission.Status.ERROR_AT_CLINVAR,
+}
 
 
 class StatusReader(Protocol):

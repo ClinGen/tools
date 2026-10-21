@@ -221,34 +221,45 @@ terms the VCI uses. Records extend `UUIDModel`, since staff find them by their l
 or SCV.
 
 1. A client POSTs a submission to the CSS API.
-2. The CSS saves a `Submission` with status `received`, then forwards it to ClinVar.
-   Saving first means the CSS keeps a record of every request, even ones ClinVar never
-   got.
+2. The CSS saves a `Submission` with status `not_sent_to_clinvar`, then forwards it to
+   ClinVar. Saving first means the CSS keeps a record of every request, even ones
+   ClinVar never got.
 3. If ClinVar accepts it, the CSS saves the ClinVar submission ID, sets the status to
-   `submitted`, and sets `next_poll_at`. If ClinVar rejects it or can't be reached, the
-   CSS sets the status to `send_failed` and saves the error message.
+   `submitted_to_clinvar`, and sets `next_poll_at`. If ClinVar rejects it or can't be
+   reached, the CSS sets the status to `send_to_clinvar_failed` and saves the error
+   message.
 4. The CSS responds with the submission's slug and status.
-5. The poller checks ClinVar for each `submitted` or `processing` submission whose
-   `next_poll_at` has passed, saves the response, and either records a final status or
-   pushes `next_poll_at` further out. When a submission reaches a final status, the
-   poller downloads its summary report.
+5. The poller checks ClinVar for each `submitted_to_clinvar` or `processing_at_clinvar`
+   submission whose `next_poll_at` has passed, saves the response, and either records a
+   final status or pushes `next_poll_at` further out. When a submission reaches a final
+   status, the poller downloads its summary report.
 6. Clients and staff read the status through the API or the UI at any time.
 
-The statuses are:
+Every status names ClinVar, so it's clear which tool it's relative to: `submitted` alone
+could mean submitted to the CSS. The first two are the CSS's own, for a submission
+ClinVar doesn't have. The other four are ClinVar's statuses from its
+[Submission API](https://www.ncbi.nlm.nih.gov/clinvar/docs/api_http/), which the poller
+reads and maps onto them. Pages label each one in ClinVar's words, with ClinVar's
+description in a tooltip. The statuses are:
 
-- **`received`**: saved, but not yet sent to ClinVar. Not final.
-- **`send_failed`**: the POST to ClinVar never succeeded, so there's no ClinVar ID.
-  Final; staff can resend it.
-- **`submitted`**: ClinVar has it and hasn't started validating. Not final.
-- **`processing`**: ClinVar is validating it. Not final.
-- **`processed`**: every record succeeded. Final.
-- **`error`**: one or more records failed. ClinVar's `errorCode` is 1 if some records
-  failed and 2 if all of them did. Final.
+- **`not_sent_to_clinvar`** (Not Sent): saved, but not yet sent to ClinVar. Not final.
+- **`send_to_clinvar_failed`** (Send Failed): the POST to ClinVar never succeeded, so
+  there's no ClinVar ID. Final; staff can resend it.
+- **`submitted_to_clinvar`** (Submitted, ClinVar's `submitted`): "The submission has
+  been received and is waiting to be validated." Not final.
+- **`processing_at_clinvar`** (Processing, ClinVar's `processing`): "The submission is
+  being validated and should be done soon." Not final.
+- **`processed_by_clinvar`** (Processed, ClinVar's `processed`): "All records in the
+  batch succeeded." Final.
+- **`error_at_clinvar`** (Error, ClinVar's `error`): "One or more records in the batch
+  failed." ClinVar's `errorCode` is 1 if some records failed and 2 if all of them did.
+  Final.
 
-`send_failed` and `error` stay separate: `send_failed` means ClinVar never got the
-submission, and `error` means ClinVar processed it and reported record errors. The CSS
-never resends a submission on its own. Staff resend a `send_failed` submission from its
-page, which repeats step 3, or the client sends a new submission.
+`send_to_clinvar_failed` and `error_at_clinvar` stay separate: the first means ClinVar
+never got the submission, and the second means ClinVar processed it and reported record
+errors. The CSS never resends a submission on its own. Staff resend a
+`send_to_clinvar_failed` submission from its page, which repeats step 3, or the client
+sends a new submission.
 
 #### API
 
@@ -296,20 +307,20 @@ exits cleanly on SIGTERM after finishing the submission it's working on.
 #### Staff Pages
 
 The CSS's pages list every submission, newest first, with its affiliation and the genes
-of its records. A filter shows all of them, only the ones ClinVar never got (`received`
-and `send_failed`), or only the ones sent to ClinVar, and a search matches a
-submission's ID, ClinVar ID, or affiliation, or a record's gene or HGVS. As in the HCI,
-the list is a django-tables2 table that sorts by its columns, and the search updates the
-results as you type. A submission's page says in plain words what its status means and
-lists its records: each one's variant, condition, classification, inheritance, date last
-evaluated, whether it's new or updates an SCV, and, once ClinVar has reported, whether
-ClinVar accepted it and its SCV. An Affiliations page lists each affiliation that has
-submissions, with how many are not sent, being checked by ClinVar, accepted, and with
-errors, and links to the list filtered to that affiliation. Like the ETS's pages, they
-never show raw JSON or ClinVar's error text; developers see those, and each submission's
-change history, in the Django admin. Staff need `has_css_permissions`, and every staff
-member with it sees every submission. The page of a `send_failed` submission has a
-Resend button.
+of its records. A filter shows all of them, only the ones ClinVar never got
+(`not_sent_to_clinvar` and `send_to_clinvar_failed`), or only the ones sent to ClinVar,
+and a search matches a submission's ID, ClinVar ID, or affiliation, or a record's gene
+or HGVS. As in the HCI, the list is a django-tables2 table that sorts by its columns,
+and the search updates the results as you type. A submission's page says in plain words
+what its status means and lists its records: each one's variant, condition,
+classification, inheritance, date last evaluated, whether it's new or updates an SCV,
+and, once ClinVar has reported, whether ClinVar accepted it and its SCV. An Affiliations
+page lists each affiliation that has submissions, with how many are not sent, being
+checked by ClinVar, accepted, and with errors, and links to the list filtered to that
+affiliation. Like the ETS's pages, they never show raw JSON or ClinVar's error text;
+developers see those, and each submission's change history, in the Django admin. Staff
+need `has_css_permissions`, and every staff member with it sees every submission. The
+page of a `send_to_clinvar_failed` submission has a Resend button.
 
 The CSS reads the ClinVar API key and base from the environment. It never logs the
 ClinVar API key or a client's API key.

@@ -32,7 +32,7 @@ FIRST_POLL_DELAY = timedelta(minutes=5)
 def save_submission(
     *, api_key: ApiKey | None, affiliation: Affiliation, payload: dict[str, Any]
 ) -> Submission:
-    """Saves a received submission and a Record for each of its records.
+    """Saves a submission not yet sent to ClinVar, and a Record for each of its records.
 
     Args:
         api_key: The key of the client that sent it.
@@ -40,7 +40,7 @@ def save_submission(
         payload: The ClinVar content as the client sent it.
 
     Returns:
-        The submission, received and not yet forwarded.
+        The submission, not yet sent to ClinVar.
     """
     content = Content.model_validate(payload)
     with transaction.atomic():
@@ -62,8 +62,9 @@ def save_submission(
 def forward_submission(submission: Submission) -> Submission:
     """Sends a submission to ClinVar once and saves the result.
 
-    If ClinVar accepts it, the submission is submitted, with its ClinVar ID and a time
-    for the poller's first check. Otherwise it's send_failed, with the error. It's
+    If ClinVar accepts it, the submission is submitted_to_clinvar, with its ClinVar ID
+    and a time for the poller's first check. Otherwise it's send_to_clinvar_failed,
+    with the error. It's
     never retried here; staff resend it from its page.
 
     Args:
@@ -76,11 +77,11 @@ def forward_submission(submission: Submission) -> Submission:
         clinvar_id = ClinVarClient.from_settings().submit(submission.payload)
     except (ClinVarError, ImproperlyConfigured) as error:
         logger.warning("Couldn't send %s to ClinVar: %s", submission.slug, error)
-        submission.status = Submission.Status.SEND_FAILED
+        submission.status = Submission.Status.SEND_TO_CLINVAR_FAILED
         submission.error_message = str(error)
     else:
         logger.info("Sent %s to ClinVar as %s.", submission.slug, clinvar_id)
-        submission.status = Submission.Status.SUBMITTED
+        submission.status = Submission.Status.SUBMITTED_TO_CLINVAR
         submission.clinvar_submission_id = clinvar_id or ""
         submission.error_message = ""
         submission.next_poll_at = timezone.now() + FIRST_POLL_DELAY

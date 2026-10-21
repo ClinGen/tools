@@ -1,6 +1,8 @@
+import importlib
 import uuid
 from datetime import datetime, timedelta
 
+from django.apps import apps
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
@@ -36,7 +38,7 @@ class SubmissionTest(TestCase):
     def test_slug_does_not_change_on_later_saves(self):
         submission = Submission.objects.create(payload={})
         slug = submission.slug
-        submission.status = Submission.Status.SUBMITTED
+        submission.status = Submission.Status.SUBMITTED_TO_CLINVAR
         submission.save()
         submission.refresh_from_db()
         self.assertEqual(submission.slug, slug)
@@ -51,17 +53,17 @@ class SubmissionTest(TestCase):
         self.assertNotEqual(submission.pk, colliding)
         self.assertNotEqual(submission.slug, taken.slug)
 
-    def test_new_submission_is_received(self):
+    def test_new_submission_is_not_sent_to_clinvar(self):
         submission = Submission.objects.create(payload={})
-        self.assertEqual(submission.status, Submission.Status.RECEIVED)
+        self.assertEqual(submission.status, Submission.Status.NOT_SENT_TO_CLINVAR)
 
     def test_history_records_status_change(self):
         submission = Submission.objects.create(payload={})
-        submission.status = Submission.Status.SUBMITTED
+        submission.status = Submission.Status.SUBMITTED_TO_CLINVAR
         submission.save()
         records = submission.history.order_by("history_date")  # type: ignore
         statuses = list(records.values_list("status", flat=True))
-        self.assertEqual(statuses, ["received", "submitted"])
+        self.assertEqual(statuses, ["not_sent_to_clinvar", "submitted_to_clinvar"])
 
 
 def _make_record(submission: Submission, local_id: str, **fields: object) -> Record:
@@ -130,15 +132,15 @@ class DueToPollTest(TestCase):
     def test_returns_only_non_final_submissions_that_are_due(self):
         past = timezone.now() - timedelta(hours=1)
         future = timezone.now() + timedelta(hours=1)
-        due_submitted = self._make(Submission.Status.SUBMITTED, past)
-        due_processing = self._make(Submission.Status.PROCESSING, past)
-        self._make(Submission.Status.SUBMITTED, future)
-        self._make(Submission.Status.PROCESSING, None)
+        due_submitted = self._make(Submission.Status.SUBMITTED_TO_CLINVAR, past)
+        due_processing = self._make(Submission.Status.PROCESSING_AT_CLINVAR, past)
+        self._make(Submission.Status.SUBMITTED_TO_CLINVAR, future)
+        self._make(Submission.Status.PROCESSING_AT_CLINVAR, None)
         for status in (
-            Submission.Status.RECEIVED,
-            Submission.Status.SEND_FAILED,
-            Submission.Status.PROCESSED,
-            Submission.Status.ERROR,
+            Submission.Status.NOT_SENT_TO_CLINVAR,
+            Submission.Status.SEND_TO_CLINVAR_FAILED,
+            Submission.Status.PROCESSED_BY_CLINVAR,
+            Submission.Status.ERROR_AT_CLINVAR,
         ):
             self._make(status, past)
         self.assertQuerySetEqual(
@@ -200,3 +202,35 @@ class IndexViewTest(TestCase):
         response = self.client.get(reverse("home"))
         self.assertContains(response, "ClinVar Submission Service")
         self.assertContains(response, reverse("css:index"))
+
+
+class StatusMigrationTest(TestCase):
+    """The migration that names each status relative to ClinVar."""
+
+    migration = importlib.import_module(
+        "clinvar_submission_service.migrations.0005_status_relative_to_clinvar"
+    )
+
+    def _set_raw_status(self, submission: Submission, status: str) -> None:
+        """Gives the submission and its history a status as an old row had it."""
+        Submission.objects.filter(pk=submission.pk).update(status=status)
+        submission.history.update(status=status)  # type: ignore
+
+    def test_renames_every_old_status_and_back(self):
+        for old, new in self.migration.RENAMES.items():
+            with self.subTest(old=old):
+                submission = Submission.objects.create(payload={})
+                self._set_raw_status(submission, old)
+                self.migration.rename_statuses(apps, None)
+                submission.refresh_from_db()
+                self.assertEqual(submission.status, new)
+                history = submission.history.values_list("status", flat=True)  # type: ignore
+                self.assertEqual(set(history), {new})
+                self.migration.restore_statuses(apps, None)
+                submission.refresh_from_db()
+                self.assertEqual(submission.status, old)
+
+    def test_renames_to_the_current_statuses(self):
+        self.assertEqual(
+            set(self.migration.RENAMES.values()), set(Submission.Status.values)
+        )

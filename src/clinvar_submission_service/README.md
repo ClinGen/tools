@@ -69,11 +69,11 @@ replaced, and `make_content()` wraps records in content.
 ### `fixtures/test_submissions.json`
 
 A Django fixture with a VCI API key and eight submissions from five made-up
-affiliations, with at least one in each status and one to three records each: received
-and send_failed ones ClinVar never got, and submitted, processing, processed, and error
-ones forwarded to ClinVar, with made-up ClinVar IDs, responses, and summary reports with
-SCVs and an error. None is due to poll. Load it with `just django-loaddata-test`; tests
-load it with `fixtures = ["test_submissions.json"]`.
+affiliations, with at least one in each status and one to three records each: ones
+ClinVar never got (not sent and send failed), and submitted, processing, processed, and
+error ones forwarded to ClinVar, with made-up ClinVar IDs, responses, and summary
+reports with SCVs and an error. None is due to poll. Load it with
+`just django-loaddata-test`; tests load it with `fixtures = ["test_submissions.json"]`.
 
 ### `management/__init__.py`
 
@@ -94,17 +94,18 @@ runs one pass and exits. Run it locally with `just django-poll-clinvar`.
 
 Defines `Submission`, one request to ClinVar: the affiliation the client sent it for
 (its AS ID and name), the ClinVar content as the client sent it, the ClinVar submission
-ID, its status, ClinVar's latest response, `updated` timestamp, error code, and summary
-report, any error message, and when it was last and will next be polled, plus the
-content's assertion criteria, the organization it's on behalf of, and its release
-status. It extends `common.models.SlugModel`, so its ID is a UUID and its slug is `S`
-and the first 8 hex characters of the UUID, such as `S3f2a9c1e`. It keeps its change
-history, and `get_absolute_url()` returns its page. `Submission.objects.due_to_poll()`
-returns the submitted and processing submissions whose next poll time has passed, oldest
-first. Also defines `Record`, one germline variant classification in a submission and a
-copy of one item in its payload's `germlineSubmission`: the variant's HGVS and assembly,
-the condition, the classification, mode of inheritance, date last evaluated, comment,
-how the evidence was gathered, and the record's SCV for an update. Its choices, defined
+ID, its status (named relative to ClinVar, such as `submitted_to_clinvar`), ClinVar's
+latest response, `updated` timestamp, error code, and summary report, any error message,
+and when it was last and will next be polled, plus the content's assertion criteria, the
+organization it's on behalf of, and its release status. It extends
+`common.models.SlugModel`, so its ID is a UUID and its slug is `S` and the first 8 hex
+characters of the UUID, such as `S3f2a9c1e`. It keeps its change history, and
+`get_absolute_url()` returns its page. `Submission.objects.due_to_poll()` returns the
+submitted and processing submissions whose next poll time has passed, oldest first. Also
+defines `Record`, one germline variant classification in a submission and a copy of one
+item in its payload's `germlineSubmission`: the variant's HGVS and assembly, the
+condition, the classification, mode of inheritance, date last evaluated, comment, how
+the evidence was gathered, and the record's SCV for an update. Its choices, defined
 above the models, are ClinVar's terms, so a value is exactly what ClinVar expects; the
 classifications are the five ACMG terms the VCI uses. Also defines `ApiKey`, the key one
 client system sends to use the API. Only its SHA-256 hash and a short prefix are stored,
@@ -122,12 +123,12 @@ status as it was, and doesn't stop the batch.
 
 ### `services.py`
 
-Saves a received submission and a `Record` for each of its records, in one transaction,
-with `save_submission()`. Forwards a saved submission to ClinVar once with
+Saves a not-yet-sent submission and a `Record` for each of its records, in one
+transaction, with `save_submission()`. Forwards a saved submission to ClinVar once with
 `forward_submission()`, which the API and the staff Resend button share. If ClinVar
 accepts it, the submission is submitted, with its ClinVar ID and a first poll time; if
-ClinVar rejects it, can't be reached, or the CSS has no ClinVar key, it's send_failed,
-with the error. It never retries.
+ClinVar rejects it, can't be reached, or the CSS has no ClinVar key, it's
+send_to_clinvar_failed, with the error. It never retries.
 
 ### `templates/clinvar_submission_service/affiliations.html`
 
@@ -141,8 +142,8 @@ A submission's page, in plain language: its status, affiliation, who sent it, it
 ClinVar ID, when it arrived and was last checked, and what its status means. Its records
 table shows each record's variant, condition, classification, inheritance, date last
 evaluated, and whether it's new or an update, with ClinVar's result and SCV once ClinVar
-has reported. A send_failed submission's page has a Resend button. It never shows raw
-JSON or ClinVar's error text; developers see those in the Django admin.
+has reported. A send_to_clinvar_failed submission's page has a Resend button. It never
+shows raw JSON or ClinVar's error text; developers see those in the Django admin.
 
 ### `templates/clinvar_submission_service/list.html`
 
@@ -214,11 +215,12 @@ renders.
 
 ### `test_polling.py`
 
-Tests the poller against `FakeClinVarClient`: the backoff and its cap, each status
-change, storing the summary report, retrying a failed report download, backing off on
-errors and 429s, that one failing submission doesn't block the rest, that send_failed
-and received submissions are never polled, batch size, and stopping mid-pass. Also tests
-the command's `--once` and that SIGTERM stops its loop.
+Tests the poller against `FakeClinVarClient`: the backoff and its cap, that it maps each
+of ClinVar's statuses onto ours, each status change, storing the summary report,
+retrying a failed report download, backing off on errors and 429s, that one failing
+submission doesn't block the rest, that submissions not sent to ClinVar, or whose send
+failed, are never polled, batch size, and stopping mid-pass. Also tests the command's
+`--once` and that SIGTERM stops its loop.
 
 ### `test_views.py`
 
@@ -228,10 +230,10 @@ unknown ID), search by ID, affiliation, gene, or HGVS, sorting, pagination that 
 the search and filters, the results-only response to HTMX, and header; each status's tag
 color; the detail page's records, with ClinVar's result matched by local ID, an update's
 SCV, and records ClinVar never got or hasn't reported on; its plain-language error; that
-only a send_failed submission has a Resend button; and that resending sends it again,
-records who did, keeps a failed resend's new error, and rejects other statuses and GET
-requests. Against the fixtures, tests the affiliations page's counts, order, links, and
-tab.
+only a send_to_clinvar_failed submission has a Resend button; and that resending sends
+it again, records who did, keeps a failed resend's new error, and rejects other statuses
+and GET requests. Against the fixtures, tests the affiliations page's counts, order,
+links, and tab.
 
 ### `tests.py`
 
@@ -239,7 +241,8 @@ Tests the `Submission` slug, including a colliding one, its default status, and 
 history; a `Record`'s order, history, and classifications, and that it's deleted with
 its submission; which submissions are due to poll; the admin pages, including a
 submission's records; and that only users with CSS permissions can open the home page,
-which the landing page links to.
+which the landing page links to. Also tests that the migration naming each status
+relative to ClinVar renames old rows and their history, and back.
 
 ### `urls.py`
 
@@ -254,6 +257,6 @@ and affiliation filters, search, sorting, and pagination, and just its results f
 HTMX request; the affiliations page, which counts each affiliation's submissions by
 status and names it from its newest submission; and each submission's page, which pairs
 each `Record` with its result in ClinVar's summary report. The resend view, which takes
-only POSTs, forwards a send_failed submission again through
+only POSTs, forwards a send_to_clinvar_failed submission again through
 `services.forward_submission()` and shows a plain error message if ClinVar still didn't
 get it.

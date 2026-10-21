@@ -66,7 +66,7 @@ class CssViewTestCase(TestCase):
 
 class PermissionTest(CssViewTestCase):
     def test_every_page_needs_css_permissions(self):
-        submission = self._make(status=Submission.Status.SEND_FAILED)
+        submission = self._make(status=Submission.Status.SEND_TO_CLINVAR_FAILED)
         pages = [
             ("get", reverse("css:index")),
             ("get", submission.get_absolute_url()),
@@ -127,12 +127,12 @@ class ListViewTest(CssViewTestCase):
         self.assertContains(response, "MYH7")
 
     def test_filters_to_submissions_clinvar_never_got_or_got(self):
-        received = self._make(status=Submission.Status.RECEIVED)
-        send_failed = self._make(status=Submission.Status.SEND_FAILED)
-        submitted = self._make(status=Submission.Status.SUBMITTED)
-        processing = self._make(status=Submission.Status.PROCESSING)
-        processed = self._make(status=Submission.Status.PROCESSED)
-        error = self._make(status=Submission.Status.ERROR)
+        received = self._make(status=Submission.Status.NOT_SENT_TO_CLINVAR)
+        send_failed = self._make(status=Submission.Status.SEND_TO_CLINVAR_FAILED)
+        submitted = self._make(status=Submission.Status.SUBMITTED_TO_CLINVAR)
+        processing = self._make(status=Submission.Status.PROCESSING_AT_CLINVAR)
+        processed = self._make(status=Submission.Status.PROCESSED_BY_CLINVAR)
+        error = self._make(status=Submission.Status.ERROR_AT_CLINVAR)
         cases = {
             "": {received, send_failed, submitted, processing, processed, error},
             "not_sent": {received, send_failed},
@@ -173,7 +173,9 @@ class ListViewTest(CssViewTestCase):
                 self.assertEqual(_listed(response), [match])
 
     def test_search_keeps_the_filter(self):
-        self._make(status=Submission.Status.SUBMITTED, clinvar_submission_id="SUB1")
+        self._make(
+            status=Submission.Status.SUBMITTED_TO_CLINVAR, clinvar_submission_id="SUB1"
+        )
         response = self.client.get(
             reverse("css:index"), {"q": "SUB1", "sent": "not_sent"}
         )
@@ -193,7 +195,7 @@ class ListViewTest(CssViewTestCase):
 
     def test_page_links_keep_the_search_and_filters(self):
         for _ in range(PAGE_SIZE + 1):
-            self._make(status=Submission.Status.RECEIVED)
+            self._make(status=Submission.Status.NOT_SENT_TO_CLINVAR)
         params = {"q": "Hearing", "sent": "not_sent", "affiliation": "10007"}
         response = self.client.get(reverse("css:index"), params)
         self.assertContains(
@@ -234,12 +236,12 @@ class ListViewTest(CssViewTestCase):
 class StatusTagTest(CssViewTestCase):
     def test_each_status_has_its_color(self):
         colors = {
-            Submission.Status.RECEIVED: 'class="tag is-light"',
-            Submission.Status.SUBMITTED: 'class="tag is-light"',
-            Submission.Status.PROCESSING: 'class="tag is-light"',
-            Submission.Status.SEND_FAILED: 'class="tag is-danger is-light"',
-            Submission.Status.ERROR: 'class="tag is-danger is-light"',
-            Submission.Status.PROCESSED: 'class="tag is-success is-light"',
+            Submission.Status.NOT_SENT_TO_CLINVAR: 'class="tag is-light"',
+            Submission.Status.SUBMITTED_TO_CLINVAR: 'class="tag is-light"',
+            Submission.Status.PROCESSING_AT_CLINVAR: 'class="tag is-light"',
+            Submission.Status.SEND_TO_CLINVAR_FAILED: 'class="tag is-danger is-light"',
+            Submission.Status.ERROR_AT_CLINVAR: 'class="tag is-danger is-light"',
+            Submission.Status.PROCESSED_BY_CLINVAR: 'class="tag is-success is-light"',
         }
         for status, css_class in colors.items():
             with self.subTest(status=status):
@@ -253,7 +255,7 @@ class DetailViewTest(CssViewTestCase):
         submission = self._make(
             make_record("var-1"),
             make_record("var-2"),
-            status=Submission.Status.ERROR,
+            status=Submission.Status.ERROR_AT_CLINVAR,
             clinvar_submission_id="SUB000009",
             summary_report=REPORT,
         )
@@ -275,7 +277,7 @@ class DetailViewTest(CssViewTestCase):
         submission = self._make(
             make_record("var-1"),
             make_record("var-2"),
-            status=Submission.Status.ERROR,
+            status=Submission.Status.ERROR_AT_CLINVAR,
             summary_report=REPORT,
         )
         response = self.client.get(submission.get_absolute_url())
@@ -299,7 +301,7 @@ class DetailViewTest(CssViewTestCase):
 
     def test_records_have_no_result_before_clinvar_reports(self):
         submission = self._make(
-            make_record("var-1"), status=Submission.Status.SUBMITTED
+            make_record("var-1"), status=Submission.Status.SUBMITTED_TO_CLINVAR
         )
         response = self.client.get(submission.get_absolute_url())
         (row,) = response.context["rows"]
@@ -308,7 +310,7 @@ class DetailViewTest(CssViewTestCase):
 
     def test_records_clinvar_never_got_say_so(self):
         submission = self._make(
-            make_record("var-1"), status=Submission.Status.SEND_FAILED
+            make_record("var-1"), status=Submission.Status.SEND_TO_CLINVAR_FAILED
         )
         response = self.client.get(submission.get_absolute_url())
         self.assertContains(response, "Not Sent")
@@ -323,7 +325,7 @@ class DetailViewTest(CssViewTestCase):
 
     def test_never_shows_the_raw_error(self):
         submission = self._make(
-            status=Submission.Status.SEND_FAILED,
+            status=Submission.Status.SEND_TO_CLINVAR_FAILED,
             error_message="ClinVar returned 401: No valid API key provided",
         )
         response = self.client.get(submission.get_absolute_url())
@@ -340,7 +342,7 @@ class DetailViewTest(CssViewTestCase):
                 submission = self._make(status=status)
                 response = self.client.get(submission.get_absolute_url())
                 resend_url = reverse("css:resend", kwargs={"slug": submission.slug})
-                if status == Submission.Status.SEND_FAILED:
+                if status == Submission.Status.SEND_TO_CLINVAR_FAILED:
                     self.assertContains(response, resend_url)
                 else:
                     self.assertNotContains(response, resend_url)
@@ -363,29 +365,30 @@ class ResendViewTest(CssViewTestCase):
         )
 
     def test_a_successful_resend_sends_it_to_clinvar(self):
-        submission = self._make(status=Submission.Status.SEND_FAILED)
+        submission = self._make(status=Submission.Status.SEND_TO_CLINVAR_FAILED)
         response = self.resend(submission)
         self.assertRedirects(response, submission.get_absolute_url())
         submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.SUBMITTED)
+        self.assertEqual(submission.status, Submission.Status.SUBMITTED_TO_CLINVAR)
         self.assertEqual(submission.clinvar_submission_id, "SUB000001")
         self.assertEqual(submission.history.first().history_user, self.user)  # type: ignore
 
     def test_a_failed_resend_stays_send_failed_with_the_new_error(self):
         self.fake.submit_error = ClinVarError("ClinVar returned 503", retryable=True)
         submission = self._make(
-            status=Submission.Status.SEND_FAILED, error_message="old error"
+            status=Submission.Status.SEND_TO_CLINVAR_FAILED, error_message="old error"
         )
         response = self.resend(submission)
         submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.SEND_FAILED)
+        self.assertEqual(submission.status, Submission.Status.SEND_TO_CLINVAR_FAILED)
         self.assertEqual(submission.error_message, "ClinVar returned 503")
         self.assertContains(response, "ClinVar still didn&#x27;t get the submission.")
         self.assertNotContains(response, "503")
 
     def test_only_send_failed_submissions_can_be_resent(self):
         submission = self._make(
-            status=Submission.Status.SUBMITTED, clinvar_submission_id="SUB000005"
+            status=Submission.Status.SUBMITTED_TO_CLINVAR,
+            clinvar_submission_id="SUB000005",
         )
         response = self.resend(submission)
         self.assertContains(
@@ -396,7 +399,7 @@ class ResendViewTest(CssViewTestCase):
         self.assertEqual(self.fake.submitted, [])
 
     def test_resend_needs_a_post(self):
-        submission = self._make(status=Submission.Status.SEND_FAILED)
+        submission = self._make(status=Submission.Status.SEND_TO_CLINVAR_FAILED)
         response = self.client.get(
             reverse("css:resend", kwargs={"slug": submission.slug})
         )
@@ -423,7 +426,8 @@ class AffiliationFilterTest(AffiliationTestCase):
             reverse("css:index"), {"affiliation": "10901", "sent": "not_sent"}
         )
         self.assertEqual(
-            [s.status for s in _listed(response)], [Submission.Status.RECEIVED]
+            [s.status for s in _listed(response)],
+            [Submission.Status.NOT_SENT_TO_CLINVAR],
         )
         self.assertContains(response, 'href="?affiliation=10901&amp;sent=sent"')
 

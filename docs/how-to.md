@@ -193,10 +193,11 @@ submission it's polling before it stops.
   ```
 
   This adds a VCI API key and eight submissions from five affiliations, with their
-  records. Two never reached ClinVar (`received` and `send_failed`), and six were
-  forwarded (`submitted`, `processing`, `processed`, and `error`). The affiliation IDs
-  and ClinVar IDs are made up, and none of the submissions is due to poll, so a local
-  poller leaves them alone. The API key has no raw value, so it can't call the API;
-  create a key in the Django admin for that.
+  records. Two never reached ClinVar (`not_sent_to_clinvar` and
+  `send_to_clinvar_failed`), and six were forwarded (`submitted_to_clinvar`,
+  `processing_at_clinvar`, `processed_by_clinvar`, and `error_at_clinvar`). The
+  affiliation IDs and ClinVar IDs are made up, and none of the submissions is due to
+  poll, so a local poller leaves them alone. The API key has no raw value, so it can't
+  call the API; create a key in the Django admin for that.
 
 - Open `/css/` to see them. Loading the fixtures again resets them.

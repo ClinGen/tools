@@ -16,7 +16,7 @@
                 </tbody>
             </table>
         </div>
-        {% if submission.status == "send_failed" %}
+        {% if submission.status == "send_to_clinvar_failed" %}
             <div class="notification is-danger is-light block">
                 <p class="has-text-weight-bold">ClinVar never got this submission.</p>
                 <p class="block">You can send it again. If it still doesn't go through, ask a
@@ -28,17 +28,17 @@
                     <button type="submit" class="button is-link">Resend</button>
                 </form>
             </div>
-        {% elif submission.status == "received" %}
+        {% elif submission.status == "not_sent_to_clinvar" %}
             <p class="block">This submission hasn't been sent to ClinVar yet.</p>
-        {% elif submission.status == "submitted" or submission.status == "processing" %}
+        {% elif submission.status == "submitted_to_clinvar" or submission.status == "processing_at_clinvar" %}
             <p class="block">ClinVar has this submission and is checking it. This can take a few
                 days. The CSS checks with ClinVar regularly, so look back here later.</p>
-        {% elif submission.status == "error" %}
+        {% elif submission.status == "error_at_clinvar" %}
             <div class="notification is-danger is-light block">
                 <p class="has-text-weight-bold">ClinVar found problems with some records.</p>
                 <p>The records marked Not Accepted below weren't accepted.</p>
             </div>
-        {% elif submission.status == "processed" %}
+        {% elif submission.status == "processed_by_clinvar" %}
             <p class="block">ClinVar accepted every record. They'll be public after ClinVar's next
                 weekly release.</p>
         {% endif %}
@@ -79,7 +79,7 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if submission.status == "received" or submission.status == "send_failed" %}
+                                    {% if submission.status == "not_sent_to_clinvar" or submission.status == "send_to_clinvar_failed" %}
                                         <span class="tag is-light">Not Sent</span>
                                     {% elif row.accepted is None %}
                                         <span class="tag is-light">Waiting for ClinVar</span>

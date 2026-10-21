@@ -30,7 +30,7 @@ class PollerTestCase(TestCase):
     def _make(self, clinvar_id: str = "SUB000001", **fields: object) -> Submission:
         """Returns a submitted submission that's due to poll."""
         defaults = {
-            "status": Submission.Status.SUBMITTED,
+            "status": Submission.Status.SUBMITTED_TO_CLINVAR,
             "clinvar_submission_id": clinvar_id,
             "next_poll_at": timezone.now() - timedelta(minutes=1),
         }
@@ -57,12 +57,29 @@ class NextDelayTest(PollerTestCase):
 
 
 class PollTest(PollerTestCase):
+    def test_maps_each_clinvar_status_to_ours(self):
+        expected = {
+            "submitted": Submission.Status.SUBMITTED_TO_CLINVAR,
+            "processing": Submission.Status.PROCESSING_AT_CLINVAR,
+            "processed": Submission.Status.PROCESSED_BY_CLINVAR,
+            "error": Submission.Status.ERROR_AT_CLINVAR,
+        }
+        for clinvar_status, ours in expected.items():
+            with self.subTest(clinvar_status=clinvar_status):
+                submission = self._make(clinvar_id=f"SUB-{clinvar_status}")
+                self.fake.set_status(
+                    submission.clinvar_submission_id, clinvar_status, report={}
+                )
+                self.poller.run_pass()
+                submission.refresh_from_db()
+                self.assertEqual(submission.status, ours)
+
     def test_a_processing_submission_is_polled_again_later(self):
         submission = self._make()
         self.fake.set_status("SUB000001", "processing")
         self.poller.run_pass()
         submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.PROCESSING)
+        self.assertEqual(submission.status, Submission.Status.PROCESSING_AT_CLINVAR)
         self.assertIsNotNone(submission.last_polled_at)
         self.assertIsNotNone(submission.clinvar_updated_at)
         self.assertEqual(
@@ -74,7 +91,8 @@ class PollTest(PollerTestCase):
     def test_the_delay_grows_while_clinvar_is_still_processing(self):
         last_polled_at = timezone.now() - timedelta(minutes=30)
         submission = self._make(
-            status=Submission.Status.PROCESSING, last_polled_at=last_polled_at
+            status=Submission.Status.PROCESSING_AT_CLINVAR,
+            last_polled_at=last_polled_at,
         )
         self.fake.set_status("SUB000001", "processing")
         self.poller.run_pass()
@@ -89,7 +107,7 @@ class PollTest(PollerTestCase):
         self.fake.set_status("SUB000001", "processed", report=report)
         self.poller.run_pass()
         submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.PROCESSED)
+        self.assertEqual(submission.status, Submission.Status.PROCESSED_BY_CLINVAR)
         self.assertEqual(submission.summary_report, report)
         self.assertIsNone(submission.next_poll_at)
         self.assertFalse(Submission.objects.due_to_poll().exists())
@@ -101,7 +119,7 @@ class PollTest(PollerTestCase):
         )
         self.poller.run_pass()
         submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.ERROR)
+        self.assertEqual(submission.status, Submission.Status.ERROR_AT_CLINVAR)
         self.assertEqual(submission.clinvar_error_code, 2)
 
     def test_a_failed_report_download_is_retried_without_changing_the_status(self):
@@ -110,7 +128,7 @@ class PollTest(PollerTestCase):
         self.fake.report_error = ClinVarError("ClinVar returned 503", retryable=True)
         self.poller.run_pass()
         submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.SUBMITTED)
+        self.assertEqual(submission.status, Submission.Status.SUBMITTED_TO_CLINVAR)
         self.assertIsNone(submission.summary_report)
         self.assertIsNotNone(submission.next_poll_at)
 
@@ -121,7 +139,7 @@ class PollTest(PollerTestCase):
             self.poller.run_pass()
         sentry.capture_exception.assert_called_once()
         submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.SUBMITTED)
+        self.assertEqual(submission.status, Submission.Status.SUBMITTED_TO_CLINVAR)
         assert submission.next_poll_at
         self.assertGreater(submission.next_poll_at, timezone.now())
 
@@ -145,13 +163,16 @@ class PollTest(PollerTestCase):
         self.poller.run_pass()
         failing.refresh_from_db()
         working.refresh_from_db()
-        self.assertEqual(failing.status, Submission.Status.SUBMITTED)
-        self.assertEqual(working.status, Submission.Status.PROCESSING)
+        self.assertEqual(failing.status, Submission.Status.SUBMITTED_TO_CLINVAR)
+        self.assertEqual(working.status, Submission.Status.PROCESSING_AT_CLINVAR)
         assert failing.next_poll_at
         self.assertGreater(failing.next_poll_at, timezone.now())
 
     def test_send_failed_and_received_submissions_are_never_polled(self):
-        for status in (Submission.Status.SEND_FAILED, Submission.Status.RECEIVED):
+        for status in (
+            Submission.Status.SEND_TO_CLINVAR_FAILED,
+            Submission.Status.NOT_SENT_TO_CLINVAR,
+        ):
             self._make(clinvar_id="", status=status)
         with mock.patch.object(self.fake, "get_status") as get_status:
             self.assertEqual(self.poller.run_pass(), 0)
@@ -200,14 +221,14 @@ class CommandTest(TestCase):
     def test_once_runs_one_pass(self):
         submission = Submission.objects.create(
             payload={},
-            status=Submission.Status.SUBMITTED,
+            status=Submission.Status.SUBMITTED_TO_CLINVAR,
             clinvar_submission_id="SUB000001",
             next_poll_at=timezone.now(),
         )
         self.fake.set_status("SUB000001", "processing")
         call_command("poll_clinvar", "--once")
         submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.PROCESSING)
+        self.assertEqual(submission.status, Submission.Status.PROCESSING_AT_CLINVAR)
 
     def test_sigterm_stops_the_loop(self):
         handlers = {}
