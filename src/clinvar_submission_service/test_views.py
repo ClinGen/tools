@@ -4,6 +4,7 @@ from unittest import mock
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
+from django.utils.html import escape
 
 from auth_.models import UserProfile
 from clinvar_submission_service.clients import ClinVarError
@@ -234,6 +235,56 @@ class ListViewTest(CssViewTestCase):
 
 
 class StatusTagTest(CssViewTestCase):
+    def test_each_status_has_clinvars_wording_and_a_tooltip(self):
+        labels = {
+            Submission.Status.NOT_SENT_TO_CLINVAR: "Not Sent",
+            Submission.Status.SEND_TO_CLINVAR_FAILED: "Send Failed",
+            Submission.Status.SUBMITTED_TO_CLINVAR: "Submitted",
+            Submission.Status.PROCESSING_AT_CLINVAR: "Processing",
+            Submission.Status.PROCESSED_BY_CLINVAR: "Processed",
+            Submission.Status.ERROR_AT_CLINVAR: "Error",
+        }
+        for status, label in labels.items():
+            with self.subTest(status=status):
+                submission = self._make(status=status)
+                html = self.client.get(submission.get_absolute_url()).content.decode()
+                self.assertRegex(html, rf'<span class="tag[^"]*">{label}</span>')
+                help_text = Submission.STATUS_HELP[status]
+                self.assertIn(f'data-tippy-content="{escape(help_text)}"', html)
+
+    def test_an_errors_tooltip_says_whether_some_or_all_records_failed(self):
+        for code, text in (
+            (1, "Some records in the submission succeeded, and others failed."),
+            (2, "All records in the submission failed."),
+            (None, "One or more records in the submission failed."),
+        ):
+            with self.subTest(code=code):
+                submission = self._make(
+                    status=Submission.Status.ERROR_AT_CLINVAR, clinvar_error_code=code
+                )
+                self.assertEqual(submission.status_help, text)
+                response = self.client.get(submission.get_absolute_url())
+                self.assertContains(response, f'data-tippy-content="{escape(text)}"')
+
+    def test_the_list_shows_each_status_tooltip(self):
+        self._make(status=Submission.Status.SUBMITTED_TO_CLINVAR)
+        help_text = Submission.STATUS_HELP[Submission.Status.SUBMITTED_TO_CLINVAR]
+        response = self.client.get(reverse("css:index"))
+        self.assertContains(response, f'data-tippy-content="{escape(help_text)}"')
+
+    def test_no_page_uses_the_old_wording(self):
+        for status in Submission.Status.values:
+            self._make(make_record("var-1"), status=status)
+        pages = [reverse("css:index"), reverse("css:affiliations")]
+        pages += [s.get_absolute_url() for s in Submission.objects.all()]
+        old = ["Not Sent Yet", "ClinVar Is Checking", "Has Errors", "Accepted<"]
+        old += ["Not Accepted", "Waiting for ClinVar", ">Sent<", ">Sent to ClinVar<"]
+        for url in pages:
+            html = self.client.get(url).content.decode()
+            for text in old:
+                with self.subTest(url=url, text=text):
+                    self.assertNotIn(text, html)
+
     def test_each_status_has_its_color(self):
         colors = {
             Submission.Status.NOT_SENT_TO_CLINVAR: 'class="tag is-light"',
@@ -294,7 +345,8 @@ class DetailViewTest(CssViewTestCase):
             "Autosomal Dominant",
             "2026-10-01",
             "SCV000000001",
-            "Not Accepted",
+            '<span class="tag is-success is-light">Success</span>',
+            '<span class="tag is-danger is-light">Error</span>',
         ):
             with self.subTest(text=text):
                 self.assertContains(response, text)
@@ -306,15 +358,15 @@ class DetailViewTest(CssViewTestCase):
         response = self.client.get(submission.get_absolute_url())
         (row,) = response.context["rows"]
         self.assertIsNone(row.accepted)
-        self.assertContains(response, "Waiting for ClinVar")
+        self.assertContains(response, "No Result Yet")
 
     def test_records_clinvar_never_got_say_so(self):
         submission = self._make(
             make_record("var-1"), status=Submission.Status.SEND_TO_CLINVAR_FAILED
         )
         response = self.client.get(submission.get_absolute_url())
-        self.assertContains(response, "Not Sent")
-        self.assertNotContains(response, "Waiting for ClinVar")
+        self.assertContains(response, '<span class="tag is-light">Not Sent</span>')
+        self.assertNotContains(response, "No Result Yet")
 
     def test_an_update_names_the_record_it_updates(self):
         submission = self._make(
@@ -475,6 +527,17 @@ class AffiliationsViewTest(AffiliationTestCase):
         names = [row["name"] for row in response.context["affiliations"]]
         self.assertEqual(names, sorted(names))
         self.assertContains(response, f"{reverse('css:index')}?affiliation=10901")
+
+    def test_the_headers_use_clinvars_wording(self):
+        response = self.client.get(reverse("css:affiliations"))
+        for header in (
+            "Not Sent or Send Failed",
+            "Submitted or Processing",
+            "Processed",
+            "Error",
+        ):
+            with self.subTest(header=header):
+                self.assertContains(response, f"<th>{header} ")
 
     def test_the_header_has_an_affiliations_tab(self):
         response = self.client.get(reverse("css:affiliations"))

@@ -151,7 +151,7 @@ def index(request: HttpRequest) -> HttpResponse:
                 for label, value in (
                     ("All", ""),
                     ("Not Sent to ClinVar", "not_sent"),
-                    ("Sent to ClinVar", "sent"),
+                    ("Submitted to ClinVar", "sent"),
                 )
             ],
         },

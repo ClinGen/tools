@@ -157,6 +157,32 @@ class Submission(SlugModel):
         PROCESSED_BY_CLINVAR = "processed_by_clinvar", "Processed"
         ERROR_AT_CLINVAR = "error_at_clinvar", "Error"
 
+    # What each status means, for its tooltip. ClinVar's four follow the descriptions in
+    # its Submission API docs, with "submission" for ClinVar's "batch".
+    STATUS_HELP: ClassVar[dict[str, str]] = {
+        Status.NOT_SENT_TO_CLINVAR: (
+            "The CSS has this submission but hasn't sent it to ClinVar yet."
+        ),
+        Status.SEND_TO_CLINVAR_FAILED: (
+            "The CSS tried to send this submission to ClinVar, but ClinVar didn't get "
+            "it. You can resend it from its page."
+        ),
+        Status.SUBMITTED_TO_CLINVAR: (
+            "ClinVar has received the submission, and it's waiting to be validated."
+        ),
+        Status.PROCESSING_AT_CLINVAR: (
+            "ClinVar is validating the submission, which should be done soon."
+        ),
+        Status.PROCESSED_BY_CLINVAR: "All records in the submission succeeded.",
+        Status.ERROR_AT_CLINVAR: "One or more records in the submission failed.",
+    }
+
+    # What an error status means, by ClinVar's error code.
+    ERROR_CODE_HELP: ClassVar[dict[int, str]] = {
+        1: "Some records in the submission succeeded, and others failed.",
+        2: "All records in the submission failed.",
+    }
+
     # The statuses the poller checks on. A submission not sent to ClinVar, or whose send
     # failed, has no ClinVar ID to poll; the rest are final.
     POLLABLE_STATUSES: ClassVar[list[str]] = [
@@ -311,6 +337,15 @@ class Submission(SlugModel):
     def get_absolute_url(self) -> str:
         """Returns the submission's page."""
         return reverse("css:detail", kwargs={"slug": self.slug})
+
+    @property
+    def status_help(self) -> str:
+        """What the submission's status means, in plain words, for its tooltip."""
+        if self.status == self.Status.ERROR_AT_CLINVAR:
+            by_code = self.ERROR_CODE_HELP.get(self.clinvar_error_code or 0)
+            if by_code:
+                return by_code
+        return self.STATUS_HELP[self.status]
 
 
 class Record(UUIDModel):

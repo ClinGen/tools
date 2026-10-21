@@ -311,16 +311,18 @@ of its records. A filter shows all of them, only the ones ClinVar never got
 (`not_sent_to_clinvar` and `send_to_clinvar_failed`), or only the ones sent to ClinVar,
 and a search matches a submission's ID, ClinVar ID, or affiliation, or a record's gene
 or HGVS. As in the HCI, the list is a django-tables2 table that sorts by its columns,
-and the search updates the results as you type. A submission's page says in plain words
-what its status means and lists its records: each one's variant, condition,
-classification, inheritance, date last evaluated, whether it's new or updates an SCV,
-and, once ClinVar has reported, whether ClinVar accepted it and its SCV. An Affiliations
-page lists each affiliation that has submissions, with how many are not sent, being
-checked by ClinVar, accepted, and with errors, and links to the list filtered to that
-affiliation. Like the ETS's pages, they never show raw JSON or ClinVar's error text;
-developers see those, and each submission's change history, in the Django admin. Staff
-need `has_css_permissions`, and every staff member with it sees every submission. The
-page of a `send_to_clinvar_failed` submission has a Resend button.
+and the search updates the results as you type. Every status tag uses ClinVar's word for
+the status, with what it means in a tooltip (`common/tooltip.html`); an Error's tooltip
+says whether some or all records failed. A submission's page says in plain words what
+its status means and lists its records: each one's variant, condition, classification,
+inheritance, date last evaluated, whether it's new or updates an SCV, and, once ClinVar
+has reported, its result in ClinVar's words (Success or Error) and its SCV. An
+Affiliations page lists each affiliation that has submissions, with how many are not
+sent or failed to send, submitted or processing, processed, and in error, and links to
+the list filtered to that affiliation. Like the ETS's pages, they never show raw JSON or
+ClinVar's error text; developers see those, and each submission's change history, in the
+Django admin. Staff need `has_css_permissions`, and every staff member with it sees
+every submission. The page of a `send_to_clinvar_failed` submission has a Resend button.
 
 The CSS reads the ClinVar API key and base from the environment. It never logs the
 ClinVar API key or a client's API key.

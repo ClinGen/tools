@@ -94,22 +94,23 @@ runs one pass and exits. Run it locally with `just django-poll-clinvar`.
 
 Defines `Submission`, one request to ClinVar: the affiliation the client sent it for
 (its AS ID and name), the ClinVar content as the client sent it, the ClinVar submission
-ID, its status (named relative to ClinVar, such as `submitted_to_clinvar`), ClinVar's
-latest response, `updated` timestamp, error code, and summary report, any error message,
-and when it was last and will next be polled, plus the content's assertion criteria, the
-organization it's on behalf of, and its release status. It extends
-`common.models.SlugModel`, so its ID is a UUID and its slug is `S` and the first 8 hex
-characters of the UUID, such as `S3f2a9c1e`. It keeps its change history, and
-`get_absolute_url()` returns its page. `Submission.objects.due_to_poll()` returns the
-submitted and processing submissions whose next poll time has passed, oldest first. Also
-defines `Record`, one germline variant classification in a submission and a copy of one
-item in its payload's `germlineSubmission`: the variant's HGVS and assembly, the
-condition, the classification, mode of inheritance, date last evaluated, comment, how
-the evidence was gathered, and the record's SCV for an update. Its choices, defined
-above the models, are ClinVar's terms, so a value is exactly what ClinVar expects; the
-classifications are the five ACMG terms the VCI uses. Also defines `ApiKey`, the key one
-client system sends to use the API. Only its SHA-256 hash and a short prefix are stored,
-and each submission records the key that sent it.
+ID, its status (named relative to ClinVar, such as `submitted_to_clinvar`, and labeled
+in ClinVar's words, with `status_help` saying what it means), ClinVar's latest response,
+`updated` timestamp, error code, and summary report, any error message, and when it was
+last and will next be polled, plus the content's assertion criteria, the organization
+it's on behalf of, and its release status. It extends `common.models.SlugModel`, so its
+ID is a UUID and its slug is `S` and the first 8 hex characters of the UUID, such as
+`S3f2a9c1e`. It keeps its change history, and `get_absolute_url()` returns its page.
+`Submission.objects.due_to_poll()` returns the submitted and processing submissions
+whose next poll time has passed, oldest first. Also defines `Record`, one germline
+variant classification in a submission and a copy of one item in its payload's
+`germlineSubmission`: the variant's HGVS and assembly, the condition, the
+classification, mode of inheritance, date last evaluated, comment, how the evidence was
+gathered, and the record's SCV for an update. Its choices, defined above the models, are
+ClinVar's terms, so a value is exactly what ClinVar expects; the classifications are the
+five ACMG terms the VCI uses. Also defines `ApiKey`, the key one client system sends to
+use the API. Only its SHA-256 hash and a short prefix are stored, and each submission
+records the key that sent it.
 
 ### `polling.py`
 
@@ -133,17 +134,18 @@ send_to_clinvar_failed, with the error. It never retries.
 ### `templates/clinvar_submission_service/affiliations.html`
 
 The Affiliations tab: each affiliation that has submissions, by name, with how many of
-its submissions ClinVar never got, ClinVar is checking, ClinVar accepted, and have
-errors. Each name links to the list filtered to that affiliation.
+its submissions are Not Sent or Send Failed, Submitted or Processing, Processed, and
+Error, with a tooltip on each header. Each name links to the list filtered to that
+affiliation.
 
 ### `templates/clinvar_submission_service/detail.html`
 
 A submission's page, in plain language: its status, affiliation, who sent it, its
 ClinVar ID, when it arrived and was last checked, and what its status means. Its records
 table shows each record's variant, condition, classification, inheritance, date last
-evaluated, and whether it's new or an update, with ClinVar's result and SCV once ClinVar
-has reported. A send_to_clinvar_failed submission's page has a Resend button. It never
-shows raw JSON or ClinVar's error text; developers see those in the Django admin.
+evaluated, and whether it's new or an update, with its result and SCV once ClinVar has
+reported. A send_to_clinvar_failed submission's page has a Resend button. It never shows
+raw JSON or ClinVar's error text; developers see those in the Django admin.
 
 ### `templates/clinvar_submission_service/list.html`
 
@@ -167,8 +169,16 @@ Affiliations, with the current page's tab active.
 
 ### `templates/clinvar_submission_service/partials/status.html`
 
-A submission's status tag, in plain words and in the color key's colors: green when
-ClinVar accepted it, red when it wasn't sent or has errors, and grey otherwise.
+A submission's status tag, in ClinVar's words (the status's label), with
+`Submission.status_help` in a tooltip from `common/tooltip.html`. Its color follows the
+color key: green when processed, red when the send failed or ClinVar reported an error,
+and grey otherwise.
+
+### `templates/clinvar_submission_service/partials/record_result.html`
+
+A record's result on a submission's page, with a tooltip: Not Sent when ClinVar doesn't
+have the submission, No Result Yet before ClinVar reports, and then ClinVar's own words
+from the summary report, Success or Error.
 
 ### `tables.py`
 
@@ -228,12 +238,13 @@ Tests the staff pages: that each needs CSS permissions; the list's order, affili
 and variants, sent filter, affiliation filter (alone, with the sent filter, and with an
 unknown ID), search by ID, affiliation, gene, or HGVS, sorting, pagination that keeps
 the search and filters, the results-only response to HTMX, and header; each status's tag
-color; the detail page's records, with ClinVar's result matched by local ID, an update's
-SCV, and records ClinVar never got or hasn't reported on; its plain-language error; that
-only a send_to_clinvar_failed submission has a Resend button; and that resending sends
-it again, records who did, keeps a failed resend's new error, and rejects other statuses
-and GET requests. Against the fixtures, tests the affiliations page's counts, order,
-links, and tab.
+color, ClinVar's wording, and tooltip, on the list and the detail page, and an Error's
+tooltip by error code; that no page uses the old wording; the detail page's records,
+with ClinVar's result matched by local ID, an update's SCV, and records ClinVar never
+got or hasn't reported on; its plain-language error; that only a send_to_clinvar_failed
+submission has a Resend button; and that resending sends it again, records who did,
+keeps a failed resend's new error, and rejects other statuses and GET requests. Against
+the fixtures, tests the affiliations page's counts, order, links, headers, and tab.
 
 ### `tests.py`
 

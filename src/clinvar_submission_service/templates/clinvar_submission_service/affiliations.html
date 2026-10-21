@@ -10,10 +10,10 @@
                     <thead>
                         <tr>
                             <th>Affiliation</th>
-                            <th>Not Sent to ClinVar</th>
-                            <th>ClinVar Is Checking</th>
-                            <th>Accepted</th>
-                            <th>Has Errors</th>
+                            <th>Not Sent or Send Failed {% include "common/tooltip.html" with icon_name="info-circle" text="ClinVar doesn't have these submissions: the CSS hasn't sent them yet, or sending them failed." classes="has-text-grey" %}</th>
+                            <th>Submitted or Processing {% include "common/tooltip.html" with icon_name="info-circle" text="ClinVar has these submissions and hasn't finished processing them." classes="has-text-grey" %}</th>
+                            <th>Processed {% include "common/tooltip.html" with icon_name="info-circle" text="All records in these submissions succeeded." classes="has-text-grey" %}</th>
+                            <th>Error {% include "common/tooltip.html" with icon_name="info-circle" text="One or more records in each of these submissions failed." classes="has-text-grey" %}</th>
                             <th>Total</th>
                         </tr>
                     </thead>

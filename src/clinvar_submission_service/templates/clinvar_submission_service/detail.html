@@ -11,7 +11,7 @@
                     <tr><td>Affiliation</td><td>{{ submission.affiliation_name }}</td></tr>
                     <tr><td>Sent By</td><td>{{ submission.api_key.name|default:"" }}</td></tr>
                     <tr><td>ClinVar ID</td><td>{{ submission.clinvar_submission_id }}</td></tr>
-                    <tr><td>Received</td><td>{{ submission.added_at|date:"Y-m-d H:i" }} UTC</td></tr>
+                    <tr><td>Received by CSS</td><td>{{ submission.added_at|date:"Y-m-d H:i" }} UTC</td></tr>
                     <tr><td>Last Checked With ClinVar</td><td>{{ submission.last_polled_at|date:"Y-m-d H:i"|default:"Not yet" }}{% if submission.last_polled_at %} UTC{% endif %}</td></tr>
                 </tbody>
             </table>
@@ -31,16 +31,16 @@
         {% elif submission.status == "not_sent_to_clinvar" %}
             <p class="block">This submission hasn't been sent to ClinVar yet.</p>
         {% elif submission.status == "submitted_to_clinvar" or submission.status == "processing_at_clinvar" %}
-            <p class="block">ClinVar has this submission and is checking it. This can take a few
-                days. The CSS checks with ClinVar regularly, so look back here later.</p>
+            <p class="block">ClinVar has this submission and hasn't finished processing it. This can
+                take a few days. The CSS checks with ClinVar regularly, so look back here later.</p>
         {% elif submission.status == "error_at_clinvar" %}
             <div class="notification is-danger is-light block">
-                <p class="has-text-weight-bold">ClinVar found problems with some records.</p>
-                <p>The records marked Not Accepted below weren't accepted.</p>
+                <p class="has-text-weight-bold">{{ submission.status_help }}</p>
+                <p>The records marked Error below weren't accepted.</p>
             </div>
         {% elif submission.status == "processed_by_clinvar" %}
-            <p class="block">ClinVar accepted every record. They'll be public after ClinVar's next
-                weekly release.</p>
+            <p class="block">{{ submission.status_help }} ClinVar makes accepted records public in
+                its next weekly release.</p>
         {% endif %}
         {% if rows %}
             <h3 class="title is-5">Records</h3>
@@ -79,15 +79,7 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if submission.status == "not_sent_to_clinvar" or submission.status == "send_to_clinvar_failed" %}
-                                        <span class="tag is-light">Not Sent</span>
-                                    {% elif row.accepted is None %}
-                                        <span class="tag is-light">Waiting for ClinVar</span>
-                                    {% elif row.accepted %}
-                                        <span class="tag is-success is-light">Accepted</span>
-                                    {% else %}
-                                        <span class="tag is-danger is-light">Not Accepted</span>
-                                    {% endif %}
+                                    {% include "clinvar_submission_service/partials/record_result.html" %}
                                 </td>
                                 <td>{{ row.scv }}</td>
                             </tr>

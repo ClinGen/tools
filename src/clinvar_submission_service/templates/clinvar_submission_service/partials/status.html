@@ -1,13 +1,9 @@
+{# A submission's status tag, in ClinVar's words, with what it means in a tooltip. #}
 {% if submission.status == "processed_by_clinvar" %}
-    <span class="tag is-success is-light">Accepted</span>
-{% elif submission.status == "error_at_clinvar" %}
-    <span class="tag is-danger is-light">Has Errors</span>
-{% elif submission.status == "send_to_clinvar_failed" %}
-    <span class="tag is-danger is-light">Not Sent</span>
-{% elif submission.status == "processing_at_clinvar" %}
-    <span class="tag is-light">ClinVar Is Checking</span>
-{% elif submission.status == "submitted_to_clinvar" %}
-    <span class="tag is-light">Sent</span>
+    <span class="tag is-success is-light">{{ submission.get_status_display }}</span>
+{% elif submission.status == "error_at_clinvar" or submission.status == "send_to_clinvar_failed" %}
+    <span class="tag is-danger is-light">{{ submission.get_status_display }}</span>
 {% else %}
-    <span class="tag is-light">Not Sent Yet</span>
+    <span class="tag is-light">{{ submission.get_status_display }}</span>
 {% endif %}
+{% include "common/tooltip.html" with icon_name="info-circle" text=submission.status_help classes="has-text-grey" %}
