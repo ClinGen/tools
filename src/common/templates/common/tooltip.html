@@ -1,8 +1,8 @@
-{# Shows a Tippy tooltip on an icon with no visible text, or, with a label, on the label itself. Pass text, icon_name or label, and optionally classes. #}
+{# Shows a Tippy tooltip on an icon with no visible text, or, with a label, on the label itself. Pass text, icon_name or label, and optionally classes. The arrow cursor stays, so the browser doesn't show the text cursor over it. #}
 {% if label %}
-    <span{% if classes %} class="{{ classes }}"{% endif %} data-tippy-content="{{ text }}" tabindex="0">{{ label }}<span class="is-sr-only">: {{ text }}</span></span>
+    <span{% if classes %} class="{{ classes }}"{% endif %} data-tippy-content="{{ text }}" tabindex="0" style="cursor: default">{{ label }}<span class="is-sr-only">: {{ text }}</span></span>
 {% else %}
-    <span class="icon{% if classes %} {{ classes }}{% endif %}" data-tippy-content="{{ text }}" tabindex="0">
+    <span class="icon{% if classes %} {{ classes }}{% endif %}" data-tippy-content="{{ text }}" tabindex="0" style="cursor: default">
         <i class="bi bi-{{ icon_name }}" aria-hidden="true"></i>
         <span class="is-sr-only">{{ text }}</span>
     </span>

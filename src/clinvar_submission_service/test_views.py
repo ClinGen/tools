@@ -253,7 +253,7 @@ class StatusTagTest(CssViewTestCase):
                 self.assertRegex(
                     html,
                     rf'<span class="tag[^"]*" data-tippy-content="{help_text}" '
-                    rf'tabindex="0">{label}<span class="is-sr-only">',
+                    rf'tabindex="0"[^>]*>{label}<span class="is-sr-only">',
                 )
                 self.assertNotIn("bi-info-circle", html)
 
@@ -352,7 +352,7 @@ class DetailViewTest(CssViewTestCase):
             "SCV000000001",
             (
                 '<span class="tag is-success is-light" data-tippy-content="ClinVar '
-                'accepted this record." tabindex="0">Success<'
+                'accepted this record." tabindex="0"'
             ),
             (
                 '<span class="tag is-danger is-light" data-tippy-content="ClinVar '
@@ -376,7 +376,10 @@ class DetailViewTest(CssViewTestCase):
             make_record("var-1"), status=Submission.Status.SEND_TO_CLINVAR_FAILED
         )
         response = self.client.get(submission.get_absolute_url())
-        self.assertContains(response, 'tabindex="0">Not Sent<span class="is-sr-only">')
+        self.assertContains(
+            response,
+            '">Not Sent<span class="is-sr-only">',
+        )
         self.assertNotContains(response, "No Result Yet")
 
     def test_an_update_names_the_record_it_updates(self):
@@ -548,7 +551,7 @@ class AffiliationsViewTest(AffiliationTestCase):
             "Error",
         ):
             with self.subTest(header=header):
-                self.assertContains(response, f'tabindex="0">{header}<span')
+                self.assertContains(response, f'">{header}<span class="is-sr-only">')
         self.assertNotContains(response, "bi-info-circle")
 
     def test_the_header_has_an_affiliations_tab(self):

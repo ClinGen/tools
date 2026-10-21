@@ -94,11 +94,20 @@ class TooltipTest(TestCase):
             {"label": "Processed", "text": "Some help.", "classes": "tag is-light"},
         )
         self.assertIn(
-            '<span class="tag is-light" data-tippy-content="Some help." tabindex="0">'
+            '<span class="tag is-light" data-tippy-content="Some help." tabindex="0" '
+            'style="cursor: default">'
             'Processed<span class="is-sr-only">: Some help.</span></span>',
             html,
         )
         self.assertNotIn("bi-", html)
+
+    def test_keeps_the_arrow_cursor(self):
+        for context in ({"icon_name": "info-circle"}, {"label": "Processed"}):
+            with self.subTest(context=context):
+                html = render_to_string(
+                    "common/tooltip.html", {"text": "Some help.", **context}
+                )
+                self.assertIn('style="cursor: default"', html)
 
     def test_is_keyboard_focusable(self):
         html = render_to_string("common/tooltip.html", {"text": "Some help."})

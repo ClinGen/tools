@@ -27,7 +27,8 @@ Renders a Bootstrap Icons icon. Pass the icon's name as `icon_name`.
 
 A Tippy.js tooltip, ported from the HCI. Callers pass `text` and optional `classes`, and
 either `icon_name`, for an icon with no visible text, or `label`, which puts the tooltip
-on the label itself, such as a tag. Either is keyboard-focusable, and the text is also
+on the label itself, such as a tag. Either is keyboard-focusable and keeps the arrow
+cursor, since the browser would show the text cursor over a label, and the text is also
 in an `is-sr-only` span for screen readers. `tools/js/tooltips.js` attaches the tooltip.
 
 ### `models.py`
