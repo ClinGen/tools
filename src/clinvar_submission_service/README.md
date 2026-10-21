@@ -135,8 +135,8 @@ send_to_clinvar_failed, with the error. It never retries.
 
 The Affiliations tab: each affiliation that has submissions, by name, with how many of
 its submissions are Not Sent or Send Failed, Submitted or Processing, Processed, and
-Error, with a tooltip on each header. Each name links to the list filtered to that
-affiliation.
+Error, with a tooltip on each header's text. Each name links to the list filtered to
+that affiliation.
 
 ### `templates/clinvar_submission_service/detail.html`
 
@@ -170,15 +170,15 @@ Affiliations, with the current page's tab active.
 ### `templates/clinvar_submission_service/partials/status.html`
 
 A submission's status tag, in ClinVar's words (the status's label), with
-`Submission.status_help` in a tooltip from `common/tooltip.html`. Its color follows the
-color key: green when processed, red when the send failed or ClinVar reported an error,
-and grey otherwise.
+`Submission.status_help` in a tooltip on the tag, from `common/tooltip.html`. Its color
+follows the color key: green when processed, red when the send failed or ClinVar
+reported an error, and grey otherwise.
 
 ### `templates/clinvar_submission_service/partials/record_result.html`
 
-A record's result on a submission's page, with a tooltip: Not Sent when ClinVar doesn't
-have the submission, No Result Yet before ClinVar reports, and then ClinVar's own words
-from the summary report, Success or Error.
+A record's result on a submission's page, with a tooltip on the tag: Not Sent when
+ClinVar doesn't have the submission, No Result Yet before ClinVar reports, and then
+ClinVar's own words from the summary report, Success or Error.
 
 ### `tables.py`
 

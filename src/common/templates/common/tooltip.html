@@ -1,5 +1,9 @@
-{# Shows an icon with a Tippy tooltip and no visible text. Pass icon_name, text, and optionally classes. #}
-<span class="icon{% if classes %} {{ classes }}{% endif %}" data-tippy-content="{{ text }}" tabindex="0">
-    <i class="bi bi-{{ icon_name }}" aria-hidden="true"></i>
-    <span class="is-sr-only">{{ text }}</span>
-</span>
+{# Shows a Tippy tooltip on an icon with no visible text, or, with a label, on the label itself. Pass text, icon_name or label, and optionally classes. #}
+{% if label %}
+    <span{% if classes %} class="{{ classes }}"{% endif %} data-tippy-content="{{ text }}" tabindex="0">{{ label }}<span class="is-sr-only">: {{ text }}</span></span>
+{% else %}
+    <span class="icon{% if classes %} {{ classes }}{% endif %}" data-tippy-content="{{ text }}" tabindex="0">
+        <i class="bi bi-{{ icon_name }}" aria-hidden="true"></i>
+        <span class="is-sr-only">{{ text }}</span>
+    </span>
+{% endif %}

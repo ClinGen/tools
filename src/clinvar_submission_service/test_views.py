@@ -248,9 +248,14 @@ class StatusTagTest(CssViewTestCase):
             with self.subTest(status=status):
                 submission = self._make(status=status)
                 html = self.client.get(submission.get_absolute_url()).content.decode()
-                self.assertRegex(html, rf'<span class="tag[^"]*">{label}</span>')
-                help_text = Submission.STATUS_HELP[status]
-                self.assertIn(f'data-tippy-content="{escape(help_text)}"', html)
+                help_text = escape(Submission.STATUS_HELP[status])
+                # The tooltip is on the tag itself, not on an icon beside it.
+                self.assertRegex(
+                    html,
+                    rf'<span class="tag[^"]*" data-tippy-content="{help_text}" '
+                    rf'tabindex="0">{label}<span class="is-sr-only">',
+                )
+                self.assertNotIn("bi-info-circle", html)
 
     def test_an_errors_tooltip_says_whether_some_or_all_records_failed(self):
         for code, text in (
@@ -345,8 +350,14 @@ class DetailViewTest(CssViewTestCase):
             "Autosomal Dominant",
             "2026-10-01",
             "SCV000000001",
-            '<span class="tag is-success is-light">Success</span>',
-            '<span class="tag is-danger is-light">Error</span>',
+            (
+                '<span class="tag is-success is-light" data-tippy-content="ClinVar '
+                'accepted this record." tabindex="0">Success<'
+            ),
+            (
+                '<span class="tag is-danger is-light" data-tippy-content="ClinVar '
+                "didn't accept this record."
+            ),
         ):
             with self.subTest(text=text):
                 self.assertContains(response, text)
@@ -365,7 +376,7 @@ class DetailViewTest(CssViewTestCase):
             make_record("var-1"), status=Submission.Status.SEND_TO_CLINVAR_FAILED
         )
         response = self.client.get(submission.get_absolute_url())
-        self.assertContains(response, '<span class="tag is-light">Not Sent</span>')
+        self.assertContains(response, 'tabindex="0">Not Sent<span class="is-sr-only">')
         self.assertNotContains(response, "No Result Yet")
 
     def test_an_update_names_the_record_it_updates(self):
@@ -537,7 +548,8 @@ class AffiliationsViewTest(AffiliationTestCase):
             "Error",
         ):
             with self.subTest(header=header):
-                self.assertContains(response, f"<th>{header} ")
+                self.assertContains(response, f'tabindex="0">{header}<span')
+        self.assertNotContains(response, "bi-info-circle")
 
     def test_the_header_has_an_affiliations_tab(self):
         response = self.client.get(reverse("css:affiliations"))

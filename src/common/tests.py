@@ -88,6 +88,18 @@ class TooltipTest(TestCase):
         self.assertIn("bi-info-circle", html)
         self.assertNotIn("title=", html)
 
+    def test_a_label_carries_the_tooltip_instead_of_an_icon(self):
+        html = render_to_string(
+            "common/tooltip.html",
+            {"label": "Processed", "text": "Some help.", "classes": "tag is-light"},
+        )
+        self.assertIn(
+            '<span class="tag is-light" data-tippy-content="Some help." tabindex="0">'
+            'Processed<span class="is-sr-only">: Some help.</span></span>',
+            html,
+        )
+        self.assertNotIn("bi-", html)
+
     def test_is_keyboard_focusable(self):
         html = render_to_string("common/tooltip.html", {"text": "Some help."})
         self.assertIn('tabindex="0"', html)

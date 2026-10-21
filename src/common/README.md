@@ -25,10 +25,10 @@ Renders a Bootstrap Icons icon. Pass the icon's name as `icon_name`.
 
 ### `templates/common/tooltip.html`
 
-An icon with a Tippy.js tooltip and no visible text, ported from the HCI. Callers pass
-`icon_name`, `text`, and optional `classes`. The icon is keyboard-focusable, and the
-text is also in an `is-sr-only` span for screen readers. `tools/js/tooltips.js` attaches
-the tooltip.
+A Tippy.js tooltip, ported from the HCI. Callers pass `text` and optional `classes`, and
+either `icon_name`, for an icon with no visible text, or `label`, which puts the tooltip
+on the label itself, such as a tag. Either is keyboard-focusable, and the text is also
+in an `is-sr-only` span for screen readers. `tools/js/tooltips.js` attaches the tooltip.
 
 ### `models.py`
 
@@ -43,5 +43,5 @@ Tests that `ToolTagMiddleware` tags tool requests and leaves other requests unta
 (through a test URLconf, defined in this file, that adds a fake ETS to the project's
 URLconf), that backups go to a local directory and are named with the subdomain, that
 `make_slug()` builds a slug, that `UserProfile` and its history rows have UUID IDs, and
-that the tooltip template puts its text in a focusable tooltip and the base layout loads
-Tippy.js.
+that the tooltip template puts its text in a focusable tooltip, on an icon or a label,
+and the base layout loads Tippy.js.

@@ -1,14 +1,10 @@
 {# A record's result, in ClinVar's words (its summary report's processingStatus), with what it means in a tooltip. #}
 {% if submission.status == "not_sent_to_clinvar" or submission.status == "send_to_clinvar_failed" %}
-    <span class="tag is-light">Not Sent</span>
-    {% include "common/tooltip.html" with icon_name="info-circle" text="ClinVar doesn't have this record, because the submission hasn't reached ClinVar." classes="has-text-grey" %}
+    {% include "common/tooltip.html" with label="Not Sent" text="ClinVar doesn't have this record, because the submission hasn't reached ClinVar." classes="tag is-light" %}
 {% elif row.accepted is None %}
-    <span class="tag is-light">No Result Yet</span>
-    {% include "common/tooltip.html" with icon_name="info-circle" text="ClinVar reports each record's result when it finishes processing the submission." classes="has-text-grey" %}
+    {% include "common/tooltip.html" with label="No Result Yet" text="ClinVar reports each record's result when it finishes processing the submission." classes="tag is-light" %}
 {% elif row.accepted %}
-    <span class="tag is-success is-light">Success</span>
-    {% include "common/tooltip.html" with icon_name="info-circle" text="ClinVar accepted this record." classes="has-text-grey" %}
+    {% include "common/tooltip.html" with label="Success" text="ClinVar accepted this record." classes="tag is-success is-light" %}
 {% else %}
-    <span class="tag is-danger is-light">Error</span>
-    {% include "common/tooltip.html" with icon_name="info-circle" text="ClinVar didn't accept this record. A developer can see ClinVar's reason in the admin." classes="has-text-grey" %}
+    {% include "common/tooltip.html" with label="Error" text="ClinVar didn't accept this record. A developer can see ClinVar's reason in the admin." classes="tag is-danger is-light" %}
 {% endif %}
