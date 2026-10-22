@@ -20,6 +20,7 @@ from clinvar_submission_service.models import (
     RecordStatus,
     Submission,
 )
+from common.models import make_slug
 
 
 def _make_user(username: str, *, css: bool = False) -> User:
@@ -66,8 +67,10 @@ class SubmissionTest(TestCase):
         self.assertEqual(statuses, ["not_sent_to_clinvar", "submitted_to_clinvar"])
 
 
-def _make_record(submission: Submission, local_id: str, **fields: object) -> Record:
-    """Returns a likely pathogenic record in the submission."""
+def _make_record(
+    submission: Submission | None, local_id: str, **fields: object
+) -> Record:
+    """Returns a likely pathogenic record, in the submission if one is given."""
     defaults = {
         "record_status": RecordStatus.NOVEL,
         "local_id": local_id,
@@ -121,6 +124,59 @@ class RecordTest(TestCase):
         _make_record(self.submission, "var-1")
         self.submission.delete()
         self.assertFalse(Record.objects.exists())
+
+
+class StandaloneRecordTest(TestCase):
+    def test_slug_is_r_and_the_start_of_its_uuid(self):
+        record = _make_record(None, "var-1")
+        self.assertEqual(record.slug, make_slug("R", record.pk))
+
+    def test_a_new_record_waits_for_a_batch_outside_any_submission(self):
+        record = _make_record(None, "var-1")
+        self.assertIsNone(record.submission)
+        self.assertEqual(record.status, Record.Status.WAITING_FOR_BATCH)
+
+    def test_history_records_a_status_change(self):
+        record = _make_record(None, "var-1")
+        record.status = Record.Status.WITHDRAWN
+        record.save()
+        statuses = record.history.order_by("history_date").values_list(  # type: ignore
+            "status", flat=True
+        )
+        self.assertEqual(list(statuses), ["waiting_for_batch", "withdrawn"])
+
+    def test_bulk_slugs_avoid_saved_and_repeated_ones(self):
+        taken = _make_record(None, "var-1")
+        # Same first 8 hex characters as the saved record and as each other.
+        prefix = taken.pk.hex[:8]
+        records = [
+            Record(id=uuid.UUID(f"{prefix}-0000-4000-8000-{n:012x}"), local_id=f"v{n}")
+            for n in range(1, 4)
+        ]
+        Record.set_unique_slugs(records)
+        slugs = [record.slug for record in records]
+        self.assertEqual(len(set(slugs)), 3)
+        self.assertNotIn(taken.slug, slugs)
+        for record in records:
+            self.assertEqual(record.slug, make_slug("R", record.pk))
+
+    def test_every_status_has_help_for_its_tooltip(self):
+        for status in Record.Status.values:
+            with self.subTest(status=status):
+                record = Record(status=status)
+                self.assertTrue(record.status_help)
+                self.assertEqual(record.status_help, Record.STATUS_HELP[status])
+
+    def test_every_status_names_where_the_record_is(self):
+        self.assertEqual(
+            Record.Status.values,
+            [
+                "waiting_for_batch",
+                "in_batch",
+                "succeeded_at_clinvar",
+                "withdrawn",
+            ],
+        )
 
 
 class DueToPollTest(TestCase):

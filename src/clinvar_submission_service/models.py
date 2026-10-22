@@ -348,19 +348,83 @@ class Submission(SlugModel):
         return self.STATUS_HELP[self.status]
 
 
-class Record(UUIDModel):
-    """One germline variant classification in a submission.
+class Record(SlugModel):
+    """One germline variant classification a client sent to the CSS.
 
-    Each record is one variant-condition pair, a copy of one item in the payload's
-    germlineSubmission, so pages and search can use its fields.
+    Each record is one variant-condition pair: its ClinVar JSON as the client sent it,
+    and a copy of its fields, so pages and search can use them. It waits in the CSS
+    until it's sent to ClinVar. Its slug is R and the start of its UUID, such as
+    R3f2a9c1e.
     """
+
+    slug_prefix = "R"
+
+    class Status(models.TextChoices):
+        """Where the record is, relative to the CSS's batches and ClinVar."""
+
+        WAITING_FOR_BATCH = "waiting_for_batch", "Waiting"
+        IN_BATCH = "in_batch", "In a Batch"
+        SUCCEEDED_AT_CLINVAR = "succeeded_at_clinvar", "Success"
+        WITHDRAWN = "withdrawn", "Withdrawn"
+
+    # What each status means, for its tooltip. Success is ClinVar's word for a record
+    # it accepted, from its summary report.
+    STATUS_HELP: ClassVar[dict[str, str]] = {
+        Status.WAITING_FOR_BATCH: (
+            "The CSS has this record, and it's waiting to be added to a batch for "
+            "ClinVar."
+        ),
+        Status.IN_BATCH: (
+            "This record is in a batch that's been or is being sent to ClinVar."
+        ),
+        Status.SUCCEEDED_AT_CLINVAR: "ClinVar accepted this record.",
+        Status.WITHDRAWN: "This record was withdrawn, so it won't be sent to ClinVar.",
+    }
 
     submission = models.ForeignKey(
         Submission,
+        blank=True,
+        null=True,
         on_delete=models.CASCADE,
         related_name="records",
         verbose_name="Submission",
-        help_text="The submission the record came in.",
+        help_text="The submission the record is in, if any.",
+    )
+    api_key = models.ForeignKey(
+        "ApiKey",
+        blank=True,
+        null=True,
+        on_delete=models.PROTECT,
+        related_name="records",
+        verbose_name="Client",
+        help_text="The API key of the client that sent the record.",
+    )
+    affiliation_id = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        db_index=True,
+        verbose_name="Affiliation ID",
+        help_text="The AS ID of the curation group whose classification this is.",
+    )
+    affiliation_name = models.CharField(
+        blank=True,
+        default="",
+        max_length=255,
+        verbose_name="Affiliation",
+        help_text="The curation group's name, as the client sent it.",
+    )
+    payload = models.JSONField(
+        blank=True,
+        default=dict,
+        verbose_name="Payload",
+        help_text="The record's ClinVar JSON as the client sent it.",
+    )
+    status = models.CharField(
+        choices=Status.choices,
+        default=Status.WAITING_FOR_BATCH,
+        max_length=32,
+        verbose_name="Status",
+        help_text="Where the record is, relative to the CSS's batches and ClinVar.",
     )
     record_status = models.CharField(
         choices=RecordStatus.choices,
@@ -462,6 +526,16 @@ class Record(UUIDModel):
         verbose_name="Collection Method",
         help_text="How the evidence for the classification was gathered.",
     )
+    added_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Added At",
+        help_text="When the CSS received the record.",
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Updated At",
+        help_text="When the record was last updated.",
+    )
     history = HistoricalRecords()
 
     class Meta:  # ty: ignore[invalid-attribute-override] (Each Django model declares its own Meta.)
@@ -475,6 +549,11 @@ class Record(UUIDModel):
     def __str__(self) -> str:
         """Returns the record's variant and classification."""
         return f"{self.hgvs}: {self.classification}"
+
+    @property
+    def status_help(self) -> str:
+        """What the record's status means, in plain words, for its tooltip."""
+        return self.STATUS_HELP[self.status]
 
 
 def _hash(raw_key: str) -> str:

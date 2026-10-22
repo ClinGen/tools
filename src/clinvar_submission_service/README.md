@@ -103,14 +103,16 @@ ID is a UUID and its slug is `S` and the first 8 hex characters of the UUID, suc
 `S3f2a9c1e`. It keeps its change history, and `get_absolute_url()` returns its page.
 `Submission.objects.due_to_poll()` returns the submitted and processing submissions
 whose next poll time has passed, oldest first. Also defines `Record`, one germline
-variant classification in a submission and a copy of one item in its payload's
-`germlineSubmission`: the variant's HGVS and assembly, the condition, the
-classification, mode of inheritance, date last evaluated, comment, how the evidence was
-gathered, and the record's SCV for an update. Its choices, defined above the models, are
-ClinVar's terms, so a value is exactly what ClinVar expects; the classifications are the
-five ACMG terms the VCI uses. Also defines `ApiKey`, the key one client system sends to
-use the API. Only its SHA-256 hash and a short prefix are stored, and each submission
-records the key that sent it.
+variant classification a client sent, with slug `R` and the start of its UUID, its own
+ClinVar JSON, affiliation, client, the submission it's in (if any), a status relative to
+the CSS's batches and ClinVar with `status_help` for its tooltip, and a copy of its
+fields: the variant's HGVS and assembly, the condition, the classification, mode of
+inheritance, date last evaluated, comment, how the evidence was gathered, and the
+record's SCV for an update. Its choices, defined above the models, are ClinVar's terms,
+so a value is exactly what ClinVar expects; the classifications are the five ACMG terms
+the VCI uses. Also defines `ApiKey`, the key one client system sends to use the API.
+Only its SHA-256 hash and a short prefix are stored, and each submission records the key
+that sent it.
 
 ### `polling.py`
 
@@ -255,8 +257,10 @@ Tests the `Submission` slug, including a colliding one, its default status, and 
 history; a `Record`'s order, history, and classifications, and that it's deleted with
 its submission; which submissions are due to poll; the admin pages, including a
 submission's records; and that only users with CSS permissions can open the home page,
-which the landing page links to. Also tests that the migration naming each status
-relative to ClinVar renames old rows and their history, and back.
+which the landing page links to. Also tests a standalone `Record`: its R slug, default
+status, history, status help, and bulk slugs that avoid taken ones. Also tests that the
+migration naming each status relative to ClinVar renames old rows and their history, and
+back.
 
 ### `urls.py`
 

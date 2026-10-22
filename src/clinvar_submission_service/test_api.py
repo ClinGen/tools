@@ -15,6 +15,7 @@ from clinvar_submission_service.fakes import (
 )
 from clinvar_submission_service.models import ApiKey, Record, Submission
 from clinvar_submission_service.services import forward_submission
+from common.models import make_slug
 
 CONTENT = make_content()
 
@@ -204,6 +205,19 @@ class CreateSubmissionTest(ApiTestCase):
         self.assertEqual(second.record_status, "update")
         self.assertEqual(second.clinvar_accession, "SCV000000002")
         self.assertEqual(first.history.count(), 1)
+
+    def test_each_record_keeps_its_own_json_affiliation_and_client(self):
+        content = make_content(make_record("var-1"), make_record("var-2"))
+        self.post(content)
+        records = Record.objects.order_by("local_id")
+        for record, item in zip(records, content["germlineSubmission"], strict=True):
+            with self.subTest(record.local_id):
+                self.assertEqual(record.payload, item)
+                self.assertEqual(record.slug, make_slug("R", record.pk))
+                self.assertEqual(record.affiliation_id, AFFILIATION["id"])
+                self.assertEqual(record.affiliation_name, AFFILIATION["name"])
+                self.assertEqual(record.api_key, self.api_key)
+                self.assertEqual(record.status, Record.Status.IN_BATCH)
 
     def test_forwards_the_payload_as_sent(self):
         self.post(CONTENT)

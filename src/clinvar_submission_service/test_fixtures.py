@@ -3,7 +3,7 @@ from django.test import TestCase
 
 from auth_.models import UserProfile
 from clinvar_submission_service.content import Content, record_fields
-from clinvar_submission_service.models import Record, Submission
+from clinvar_submission_service.models import Submission
 from common.models import make_slug
 
 FORWARDED_STATUSES = {
@@ -51,14 +51,20 @@ class SubmissionFixtureTest(TestCase):
                 self.assertEqual(submission.summary_report is not None, finished)
 
     def test_each_submissions_records_match_its_payload(self):
-        fields = [field.name for field in Record._meta.fields]  # ruff: ignore[private-member-access] (Django's documented API.)
-        fields = [name for name in fields if name not in ("id", "submission")]
         for submission in Submission.objects.all():
             with self.subTest(submission.slug):
                 content = Content.model_validate(submission.payload)
-                records = submission.records.order_by("local_id").values(*fields)  # type: ignore
                 expected = sorted(record_fields(content), key=lambda r: r["local_id"])
-                self.assertEqual(list(records), expected)
+                records = submission.records.order_by("local_id")  # type: ignore
+                fields = list(expected[0])
+                self.assertEqual(list(records.values(*fields)), expected)
+                items = {
+                    item["localID"]: item
+                    for item in submission.payload["germlineSubmission"]
+                }
+                for record in records:
+                    self.assertEqual(record.payload, items[record.local_id])
+                    self.assertEqual(record.affiliation_id, submission.affiliation_id)
 
     def test_every_submissions_page_renders(self):
         user = User.objects.create_user(username="staff@example.com")

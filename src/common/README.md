@@ -37,7 +37,9 @@ cursor over a label, and the text is also in an `is-sr-only` span for screen rea
 Defines the abstract models every tool's models extend: `UUIDModel`, which gives a model
 a random UUID primary key, and `SlugModel`, which adds a unique slug made from the
 model's `slug_prefix` and the first 8 hex characters of its UUID. If a new object's slug
-is taken, `SlugModel` gives it a new UUID. `make_slug()` builds the slug.
+is taken, `SlugModel` gives it a new UUID. `make_slug()` builds the slug, and
+`set_unique_slugs()` sets them for objects saved with `bulk_create()`, which skips
+`save()`.
 
 ### `tests.py`
 

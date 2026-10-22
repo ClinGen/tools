@@ -217,8 +217,11 @@ copy of one item in the payload's `germlineSubmission`. A record is one
 variant-condition pair, so it has one HGVS variant, one condition, and one observation,
 in fields that pages and search can use. The payload stays the copy that's forwarded to
 ClinVar. Choices hold ClinVar's terms exactly; the classifications are the five ACMG
-terms the VCI uses. Records extend `UUIDModel`, since staff find them by their local ID
-or SCV.
+terms the VCI uses. Records extend `SlugModel` with the prefix R, since staff will refer
+to them as records come to wait in the CSS for a batch. Each keeps its own ClinVar JSON,
+affiliation, and client, and a status relative to the CSS's batches and ClinVar:
+`waiting_for_batch` (Waiting), `in_batch` (In a Batch), `succeeded_at_clinvar` (Success,
+ClinVar's word), or `withdrawn`.
 
 1. A client POSTs a submission to the CSS API.
 2. The CSS saves a `Submission` with status `not_sent_to_clinvar`, then forwards it to

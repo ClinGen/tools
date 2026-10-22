@@ -51,10 +51,23 @@ def save_submission(
             payload=payload,
             **submission_fields(content),
         )
+        # Each record keeps its own JSON, so it can be sent again in another batch.
         records = [
-            Record(submission=submission, **fields) for fields in record_fields(content)
+            Record(
+                submission=submission,
+                api_key=api_key,
+                affiliation_id=affiliation.id,
+                affiliation_name=affiliation.name,
+                payload=item,
+                status=Record.Status.IN_BATCH,
+                **fields,
+            )
+            for item, fields in zip(
+                payload["germlineSubmission"], record_fields(content), strict=True
+            )
         ]
-        # bulk_create skips save(), so the history is added for it.
+        # bulk_create skips save(), so the slugs and history are added for it.
+        Record.set_unique_slugs(records)
         bulk_create_with_history(records, Record)
     return submission
 
