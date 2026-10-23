@@ -14,7 +14,8 @@ Empty file that marks `clinvar_submission_service` as a Python package.
 
 Registers `Batch`, `Record`, and `ApiKey` in the Django admin, with their history. A
 batch's ClinVar fields are read-only, since only ClinVar's responses should change them,
-and its records are listed read-only on its page. Adding an API key generates its value
+and its records are listed read-only, in order, with each one's result, on its page. A
+record's page lists the batches it was sent in. Adding an API key generates its value
 and shows it once, in a warning message; after that, only its prefix is shown.
 
 ### `api.py`
@@ -92,25 +93,29 @@ one pass and exits. Run it locally with `just django-poll-clinvar`.
 ### `models.py`
 
 Defines `Batch`, one request to ClinVar: the affiliation the client sent it for (its AS
-ID and name), the ClinVar content as the client sent it, the ClinVar submission ID, its
-status (named relative to ClinVar, such as `submitted_to_clinvar`, and labeled in
-ClinVar's words, with `status_help` saying what it means), ClinVar's latest response,
-`updated` timestamp, error code, and summary report, any error message, and when it was
-last and will next be polled, plus the content's assertion criteria, the organization
-it's on behalf of, and its release status. It extends `common.models.SlugModel`, so its
-ID is a UUID and its slug is `B` and the first 8 hex characters of the UUID, such as
+ID and name), its records, through `BatchRecord`, the ClinVar submission ID, its status
+(named relative to ClinVar, such as `submitted_to_clinvar`, and labeled in ClinVar's
+words, with `status_help` saying what it means), ClinVar's latest response, `updated`
+timestamp, error code, and summary report, any error message, and when it was last and
+will next be polled, plus the content's assertion criteria, the organization it's on
+behalf of, and its release status. It extends `common.models.SlugModel`, so its ID is a
+UUID and its slug is `B` and the first 8 hex characters of the UUID, such as
 `B3f2a9c1e`. It keeps its change history, and `get_absolute_url()` returns its page.
 `Batch.objects.due_to_poll()` returns the submitted and processing batches whose next
 poll time has passed, oldest first. Also defines `Record`, one germline variant
 classification a client sent, with slug `R` and the start of its UUID, its own ClinVar
-JSON, affiliation, client, the batch it's in (if any), a status relative to the CSS's
-batches and ClinVar with `status_help` for its tooltip, and a copy of its fields: the
-variant's HGVS and assembly, the condition, the classification, mode of inheritance,
-date last evaluated, comment, how the evidence was gathered, and the record's SCV for an
-update. Its choices, defined above the models, are ClinVar's terms, so a value is
-exactly what ClinVar expects; the classifications are the five ACMG terms the VCI uses.
-Also defines `ApiKey`, the key one client system sends to use the API. Only its SHA-256
-hash and a short prefix are stored, and each batch records the key that sent it.
+JSON, affiliation, client, a status relative to the CSS's batches and ClinVar with
+`status_help` for its tooltip, and a copy of its fields: the variant's HGVS and
+assembly, the condition, the classification, mode of inheritance, date last evaluated,
+comment, how the evidence was gathered, and the record's SCV for an update. Its choices,
+defined above the models, are ClinVar's terms, so a value is exactly what ClinVar
+expects; the classifications are the five ACMG terms the VCI uses. Also defines
+`BatchRecord`, one attempt to send a record in a batch: its position in the batch's
+`germlineSubmission` and ClinVar's result for it (Success or Error, the SCV, and
+ClinVar's errors for developers). A record is in a batch at most once, and can be in
+several batches over time. Also defines `ApiKey`, the key one client system sends to use
+the API. Only its SHA-256 hash and a short prefix are stored, and each batch records the
+key that sent it.
 
 ### `polling.py`
 
@@ -120,16 +125,17 @@ that reaches processed or error gets its summary report and stops being polled.
 Otherwise, `next_delay()` doubles the wait from `CSS_POLL_MIN_DELAY` up to
 `CSS_POLL_MAX_DELAY`, and waits at least as long as a 429's `Retry-After`. A failed
 poll, including a failed report download, is logged and sent to Sentry, leaves the
-status as it was, and doesn't stop the batch.
+status as it was, and doesn't stop the pass.
 
 ### `services.py`
 
 Saves a not-yet-sent batch and a `Record` for each of its records, in one transaction,
-with `save_batch()`. Forwards a saved batch to ClinVar once with `forward_batch()`,
-which the API and the staff Resend button share. If ClinVar accepts it, the batch is
-submitted, with its ClinVar ID and a first poll time; if ClinVar rejects it, can't be
-reached, or the CSS has no ClinVar key, it's send_to_clinvar_failed, with the error. It
-never retries.
+with `save_batch()`. `build_payload()` builds a batch's ClinVar content from its
+records' JSON, in order, and the batch's submission-level fields. Forwards a saved batch
+to ClinVar once with `forward_batch()`, which sends that built content and which the API
+and the staff Resend button share. If ClinVar accepts it, the batch is submitted, with
+its ClinVar ID and a first poll time; if ClinVar rejects it, can't be reached, or the
+CSS has no ClinVar key, it's send_to_clinvar_failed, with the error. It never retries.
 
 ### `templates/clinvar_submission_service/affiliations.html`
 
@@ -253,6 +259,8 @@ Tests the `Batch` slug, including a colliding one, its default status, and its h
 a `Record`'s order, history, and classifications, and that it's deleted with its batch;
 which batches are due to poll; the admin pages, including a batch's records; and that
 only users with CSS permissions can open the home page, which the landing page links to.
+Also tests `BatchRecord`: a record's order in a batch, that it's in a batch once but can
+be tried in several, that deleting a batch keeps its records, and `build_payload()`.
 Also tests a standalone `Record`: its R slug, default status, history, status help, and
 bulk slugs that avoid taken ones. Also tests that the migration naming each status
 relative to ClinVar renames old rows and their history, and back.

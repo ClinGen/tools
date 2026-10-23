@@ -56,7 +56,7 @@ class BatchTable(tables.Table):
 
     def render_variants(self, record: Batch) -> str:
         """Returns each record's gene, or its HGVS if it has no gene."""
-        records = record.records.all()  # type: ignore
+        records = record.records.all()
         return format_html_join(
             ", ", "{}", ((r.gene_symbol or r.hgvs,) for r in records)
         )

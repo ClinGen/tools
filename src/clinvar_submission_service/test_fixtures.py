@@ -4,6 +4,7 @@ from django.test import TestCase
 from auth_.models import UserProfile
 from clinvar_submission_service.content import Content, record_fields
 from clinvar_submission_service.models import Batch
+from clinvar_submission_service.services import build_payload
 from common.models import make_slug
 
 FORWARDED_STATUSES = {
@@ -50,20 +51,21 @@ class BatchFixtureTest(TestCase):
                 }
                 self.assertEqual(batch.summary_report is not None, finished)
 
-    def test_each_submissions_records_match_its_payload(self):
+    def test_each_batchs_records_match_its_payload(self):
         for batch in Batch.objects.all():
             with self.subTest(batch.slug):
-                content = Content.model_validate(batch.payload)
-                expected = sorted(record_fields(content), key=lambda r: r["local_id"])
-                records = batch.records.order_by("local_id")  # type: ignore
-                fields = list(expected[0])
-                self.assertEqual(list(records.values(*fields)), expected)
-                items = {
-                    item["localID"]: item
-                    for item in batch.payload["germlineSubmission"]
-                }
-                for record in records:
-                    self.assertEqual(record.payload, items[record.local_id])
+                payload = build_payload(batch)
+                content = Content.model_validate(payload)
+                attempts = batch.batch_records.select_related("record")  # type: ignore
+                records = [attempt.record for attempt in attempts]
+                self.assertEqual(
+                    [record.payload for record in records],
+                    payload["germlineSubmission"],
+                )
+                fields = record_fields(content)
+                for record, expected in zip(records, fields, strict=True):
+                    for name, value in expected.items():
+                        self.assertEqual(getattr(record, name), value, name)
                     self.assertEqual(record.affiliation_id, batch.affiliation_id)
 
     def test_every_submissions_page_renders(self):

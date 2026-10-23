@@ -43,7 +43,7 @@ class ApiKeyTest(TestCase):
 
     def test_a_batch_belongs_to_a_key(self):
         api_key, _ = ApiKey.objects.create_key(name="GCI")
-        batch = Batch.objects.create(api_key=api_key, payload={})
+        batch = Batch.objects.create(api_key=api_key)
         self.assertEqual(list(api_key.batches.all()), [batch])  # type: ignore
 
 

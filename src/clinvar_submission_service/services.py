@@ -20,7 +20,7 @@ from clinvar_submission_service.content import (
     batch_fields,
     record_fields,
 )
-from clinvar_submission_service.models import ApiKey, Batch, Record
+from clinvar_submission_service.models import ApiKey, Batch, BatchRecord, Record
 
 logger = logging.getLogger(__name__)
 
@@ -48,13 +48,11 @@ def save_batch(
             api_key=api_key,
             affiliation_id=affiliation.id,
             affiliation_name=affiliation.name,
-            payload=payload,
             **batch_fields(content),
         )
         # Each record keeps its own JSON, so it can be sent again in another batch.
         records = [
             Record(
-                batch=batch,
                 api_key=api_key,
                 affiliation_id=affiliation.id,
                 affiliation_name=affiliation.name,
@@ -69,7 +67,37 @@ def save_batch(
         # bulk_create skips save(), so the slugs and history are added for it.
         Record.set_unique_slugs(records)
         bulk_create_with_history(records, Record)
+        attempts = [
+            BatchRecord(batch=batch, record=record, position=position)
+            for position, record in enumerate(records)
+        ]
+        bulk_create_with_history(attempts, BatchRecord)
     return batch
+
+
+def build_payload(batch: Batch) -> dict[str, Any]:
+    """Returns the ClinVar content for a batch, built from its records.
+
+    The records' JSON goes in germlineSubmission in the batch's order, followed by the
+    batch's submission-level fields, if it has them.
+
+    Returns:
+        The content to send to ClinVar.
+    """
+    attempts = batch.batch_records.select_related("record")  # type: ignore
+    payload: dict[str, Any] = {
+        "germlineSubmission": [attempt.record.payload for attempt in attempts]
+    }
+    if batch.assertion_criteria_db:
+        payload["assertionCriteria"] = {
+            "db": batch.assertion_criteria_db,
+            "id": batch.assertion_criteria_id,
+        }
+    if batch.behalf_org_id:
+        payload["behalfOrgID"] = batch.behalf_org_id
+    if batch.release_status:
+        payload["clinvarSubmissionReleaseStatus"] = batch.release_status
+    return payload
 
 
 def forward_batch(batch: Batch) -> Batch:
@@ -77,8 +105,7 @@ def forward_batch(batch: Batch) -> Batch:
 
     If ClinVar accepts it, the batch is submitted_to_clinvar, with its ClinVar ID
     and a time for the poller's first check. Otherwise it's send_to_clinvar_failed,
-    with the error. It's
-    never retried here; staff resend it from its page.
+    with the error. It's never retried here; staff resend it from its page.
 
     Args:
         batch: A saved batch that hasn't reached ClinVar.
@@ -87,7 +114,7 @@ def forward_batch(batch: Batch) -> Batch:
         The batch, saved.
     """
     try:
-        clinvar_id = ClinVarClient.from_settings().submit(batch.payload)
+        clinvar_id = ClinVarClient.from_settings().submit(build_payload(batch))
     except (ClinVarError, ImproperlyConfigured) as error:
         logger.warning("Couldn't send %s to ClinVar: %s", batch.slug, error)
         batch.status = Batch.Status.SEND_TO_CLINVAR_FAILED

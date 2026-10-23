@@ -5,7 +5,7 @@ from typing import ClassVar
 
 from django.apps import apps
 from django.contrib.auth.models import User
-from django.db import models
+from django.db import IntegrityError, models, transaction
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -16,12 +16,14 @@ from clinvar_submission_service.models import (
     AlleleOrigin,
     Assembly,
     Batch,
+    BatchRecord,
     Classification,
     CollectionMethod,
     ConditionDb,
     Record,
     RecordStatus,
 )
+from clinvar_submission_service.services import build_payload
 from common.models import make_slug
 
 
@@ -34,12 +36,12 @@ def _make_user(username: str, *, css: bool = False) -> User:
 
 class SubmissionTest(TestCase):
     def test_slug_is_b_and_the_start_of_the_uuid(self):
-        batch = Batch.objects.create(payload={})
+        batch = Batch.objects.create()
         self.assertEqual(batch.slug, f"B{batch.pk.hex[:8]}")
         self.assertEqual(str(batch), batch.slug)
 
     def test_slug_does_not_change_on_later_saves(self):
-        batch = Batch.objects.create(payload={})
+        batch = Batch.objects.create()
         slug = batch.slug
         batch.status = Batch.Status.SUBMITTED_TO_CLINVAR
         batch.save()
@@ -48,20 +50,20 @@ class SubmissionTest(TestCase):
 
     def test_colliding_slug_gets_a_new_uuid(self):
         taken = Batch.objects.create(
-            id=uuid.UUID("3f2a9c1e-0000-4000-8000-000000000000"), payload={}
+            id=uuid.UUID("3f2a9c1e-0000-4000-8000-000000000000")
         )
         # Same first 8 hex characters as the taken one, so the slug collides.
         colliding = uuid.UUID("3f2a9c1e-ffff-4fff-8fff-ffffffffffff")
-        batch = Batch.objects.create(id=colliding, payload={})
+        batch = Batch.objects.create(id=colliding)
         self.assertNotEqual(batch.pk, colliding)
         self.assertNotEqual(batch.slug, taken.slug)
 
     def test_new_batch_is_not_sent_to_clinvar(self):
-        batch = Batch.objects.create(payload={})
+        batch = Batch.objects.create()
         self.assertEqual(batch.status, Batch.Status.NOT_SENT_TO_CLINVAR)
 
     def test_history_records_status_change(self):
-        batch = Batch.objects.create(payload={})
+        batch = Batch.objects.create()
         batch.status = Batch.Status.SUBMITTED_TO_CLINVAR
         batch.save()
         records = batch.history.order_by("history_date")  # type: ignore
@@ -83,17 +85,25 @@ def _make_record(batch: Batch | None, local_id: str, **fields: object) -> Record
         "affected_status": AffectedStatus.NOT_PROVIDED,
         "collection_method": CollectionMethod.CURATION,
     }
-    return Record.objects.create(batch=batch, **(defaults | fields))
+    record = Record.objects.create(**(defaults | fields))
+    if batch:
+        BatchRecord.objects.create(
+            batch=batch,
+            record=record,
+            position=batch.batch_records.count(),  # type: ignore
+        )
+    return record
 
 
 class RecordTest(TestCase):
     def setUp(self):
-        self.batch = Batch.objects.create(payload={})
+        self.batch = Batch.objects.create()
 
-    def test_belongs_to_a_batch_in_local_id_order(self):
+    def test_a_batchs_records_are_in_the_order_they_were_added(self):
         second = _make_record(self.batch, "var-2")
         first = _make_record(self.batch, "var-1")
-        self.assertEqual(list(self.batch.records.all()), [first, second])  # type: ignore
+        attempts = self.batch.batch_records.all()  # type: ignore
+        self.assertEqual([attempt.record for attempt in attempts], [second, first])
 
     def test_string_representation_is_the_variant_and_classification(self):
         record = _make_record(self.batch, "var-1")
@@ -120,10 +130,60 @@ class RecordTest(TestCase):
         )
         self.assertEqual(list(classifications), ["Likely pathogenic", "Pathogenic"])
 
-    def test_deleting_the_batch_deletes_its_records(self):
-        _make_record(self.batch, "var-1")
+    def test_deleting_a_batch_keeps_its_records_but_not_its_attempts(self):
+        record = _make_record(self.batch, "var-1")
         self.batch.delete()
-        self.assertFalse(Record.objects.exists())
+        self.assertTrue(Record.objects.filter(pk=record.pk).exists())
+        self.assertFalse(BatchRecord.objects.exists())
+
+
+class BatchRecordTest(TestCase):
+    def test_a_record_is_in_a_batch_once(self):
+        batch = Batch.objects.create()
+        record = _make_record(batch, "var-1")
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            BatchRecord.objects.create(batch=batch, record=record, position=1)
+
+    def test_a_record_can_be_tried_in_several_batches(self):
+        first, second = Batch.objects.create(), Batch.objects.create()
+        record = _make_record(first, "var-1")
+        BatchRecord.objects.create(batch=second, record=record, position=0)
+        self.assertEqual(set(record.batches.all()), {first, second})  # type: ignore
+
+    def test_an_attempt_starts_with_no_result_and_keeps_history(self):
+        batch = Batch.objects.create()
+        _make_record(batch, "var-1")
+        attempt = BatchRecord.objects.get()
+        self.assertEqual((attempt.result, attempt.scv, attempt.errors), ("", "", None))
+        attempt.result = BatchRecord.Result.SUCCESS
+        attempt.save()
+        self.assertEqual(attempt.history.count(), 2)  # type: ignore
+
+
+class BuildPayloadTest(TestCase):
+    def test_lists_each_records_json_in_order_with_the_batchs_fields(self):
+        batch = Batch.objects.create(
+            assertion_criteria_db="PubMed",
+            assertion_criteria_id="25741868",
+            behalf_org_id=506185,
+            release_status="public",
+        )
+        first = _make_record(batch, "var-2")
+        second = _make_record(batch, "var-1")
+        self.assertEqual(
+            build_payload(batch),
+            {
+                "germlineSubmission": [first.payload, second.payload],
+                "assertionCriteria": {"db": "PubMed", "id": "25741868"},
+                "behalfOrgID": 506185,
+                "clinvarSubmissionReleaseStatus": "public",
+            },
+        )
+
+    def test_leaves_out_fields_the_batch_doesnt_have(self):
+        batch = Batch.objects.create()
+        record = _make_record(batch, "var-1")
+        self.assertEqual(build_payload(batch), {"germlineSubmission": [record.payload]})
 
 
 class StandaloneRecordTest(TestCase):
@@ -133,7 +193,7 @@ class StandaloneRecordTest(TestCase):
 
     def test_a_new_record_waits_for_a_batch_outside_any_batch(self):
         record = _make_record(None, "var-1")
-        self.assertIsNone(record.batch)
+        self.assertFalse(record.batches.exists())  # type: ignore
         self.assertEqual(record.status, Record.Status.WAITING_FOR_BATCH)
 
     def test_history_records_a_status_change(self):
@@ -181,9 +241,7 @@ class StandaloneRecordTest(TestCase):
 
 class DueToPollTest(TestCase):
     def _make(self, status: str, next_poll_at: datetime | None) -> Batch:
-        return Batch.objects.create(
-            payload={}, status=status, next_poll_at=next_poll_at
-        )
+        return Batch.objects.create(status=status, next_poll_at=next_poll_at)
 
     def test_returns_only_non_final_submissions_that_are_due(self):
         past = timezone.now() - timedelta(hours=1)
@@ -209,7 +267,7 @@ class DueToPollTest(TestCase):
 class BatchAdminTest(TestCase):
     def setUp(self):
         self.client.force_login(User.objects.create_superuser(username="admin"))
-        self.batch = Batch.objects.create(payload={"records": []})
+        self.batch = Batch.objects.create()
 
     def test_list_page_renders(self):
         url = reverse("admin:clinvar_submission_service_batch_changelist")
@@ -232,8 +290,18 @@ class BatchAdminTest(TestCase):
             args=[self.batch.pk],
         )
         response = self.client.get(url)
-        self.assertContains(response, "var-1")
-        self.assertContains(response, "NC_000017.11:g.43045712T&gt;C")
+        self.assertContains(
+            response, "NC_000017.11:g.43045712T&gt;C: Likely pathogenic"
+        )
+
+    def test_a_records_page_lists_its_batches(self):
+        record = _make_record(self.batch, "var-1")
+        url = reverse(
+            "admin:clinvar_submission_service_record_change", args=[record.pk]
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.batch.slug)
 
 
 class IndexViewTest(TestCase):
@@ -291,7 +359,7 @@ class StatusMigrationTest(TestCase):
     def test_renames_every_old_status_and_back(self):
         for old, new in self.migration.RENAMES.items():
             with self.subTest(old=old):
-                batch = Batch.objects.create(payload={})
+                batch = Batch.objects.create()
                 self._set_raw_status(batch, old)
                 self.migration.rename_statuses(_RenamedModels(), None)
                 batch.refresh_from_db()

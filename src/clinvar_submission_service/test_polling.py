@@ -34,7 +34,7 @@ class PollerTestCase(TestCase):
             "clinvar_submission_id": clinvar_id,
             "next_poll_at": timezone.now() - timedelta(minutes=1),
         }
-        return Batch.objects.create(payload={}, **(defaults | fields))
+        return Batch.objects.create(**(defaults | fields))
 
 
 class NextDelayTest(PollerTestCase):
@@ -218,7 +218,6 @@ class CommandTest(TestCase):
 
     def test_once_runs_one_pass(self):
         batch = Batch.objects.create(
-            payload={},
             status=Batch.Status.SUBMITTED_TO_CLINVAR,
             clinvar_submission_id="SUB000001",
             next_poll_at=timezone.now(),

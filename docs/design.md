@@ -208,20 +208,24 @@ requests.
 #### Batch Lifecycle
 
 A `Batch` is one submission to ClinVar. Its slug is `B` and the start of its UUID, such
-as `B3f2a9c1e`. It records the client that sent it, the payload as the client sent it,
-the ClinVar submission ID, its status, ClinVar's latest response and that response's
-`updated` timestamp and `errorCode`, the summary report, and any error message.
+as `B3f2a9c1e`. It records the client that sent it, its records, the ClinVar submission
+ID, its status, ClinVar's latest response and that response's `updated` timestamp and
+`errorCode`, the summary report, and any error message.
 
-Each of a submission's records is a `Record`: one germline variant classification, a
-copy of one item in the payload's `germlineSubmission`. A record is one
-variant-condition pair, so it has one HGVS variant, one condition, and one observation,
-in fields that pages and search can use. The payload stays the copy that's forwarded to
-ClinVar. Choices hold ClinVar's terms exactly; the classifications are the five ACMG
-terms the VCI uses. Records extend `SlugModel` with the prefix R, since staff will refer
-to them as records come to wait in the CSS for a batch. Each keeps its own ClinVar JSON,
-affiliation, and client, and a status relative to the CSS's batches and ClinVar:
-`waiting_for_batch` (Waiting), `in_batch` (In a Batch), `succeeded_at_clinvar` (Success,
-ClinVar's word), or `withdrawn`.
+Each of a batch's records is a `Record`: one germline variant classification, with its
+ClinVar JSON as the client sent it, one item of ClinVar's `germlineSubmission`. A record
+is one variant-condition pair, so it has one HGVS variant, one condition, and one
+observation, copied into fields that pages and search can use. A `BatchRecord` joins a
+batch to each of its records in order, and holds that attempt's result from ClinVar's
+summary report, so a record that fails in one batch can be tried in another. A batch
+doesn't store its content: when it's sent, the CSS builds it from its records' JSON, in
+order, and its assertion criteria, behalf-of organization, and release status. Choices
+hold ClinVar's terms exactly; the classifications are the five ACMG terms the VCI uses.
+Records extend `SlugModel` with the prefix R, since staff will refer to them as records
+come to wait in the CSS for a batch. Each keeps its own ClinVar JSON, affiliation, and
+client, and a status relative to the CSS's batches and ClinVar: `waiting_for_batch`
+(Waiting), `in_batch` (In a Batch), `succeeded_at_clinvar` (Success, ClinVar's word), or
+`withdrawn`.
 
 1. A client POSTs a submission to the CSS API.
 2. The CSS saves a `Batch` with status `not_sent_to_clinvar`, then forwards it to

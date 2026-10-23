@@ -213,9 +213,12 @@ class Batch(SlugModel):
         verbose_name="Affiliation",
         help_text="The curation group's name, as the client sent it.",
     )
-    payload = models.JSONField(
-        verbose_name="Payload",
-        help_text="The ClinVar content as the client sent it.",
+    records = models.ManyToManyField(
+        "Record",
+        through="BatchRecord",
+        related_name="batches",
+        verbose_name="Records",
+        help_text="The records in the batch.",
     )
     assertion_criteria_db = models.CharField(
         blank=True,
@@ -381,15 +384,6 @@ class Record(SlugModel):
         Status.WITHDRAWN: "This record was withdrawn, so it won't be sent to ClinVar.",
     }
 
-    batch = models.ForeignKey(
-        Batch,
-        blank=True,
-        null=True,
-        on_delete=models.CASCADE,
-        related_name="records",
-        verbose_name="Batch",
-        help_text="The batch the record is in, if any.",
-    )
     api_key = models.ForeignKey(
         "ApiKey",
         blank=True,
@@ -542,7 +536,7 @@ class Record(SlugModel):
         """Provides metadata."""
 
         db_table = "record"
-        ordering = ["batch", "local_id"]
+        ordering = ["local_id"]
         verbose_name = "Record"
         verbose_name_plural = "Records"
 
@@ -554,6 +548,86 @@ class Record(SlugModel):
     def status_help(self) -> str:
         """What the record's status means, in plain words, for its tooltip."""
         return self.STATUS_HELP[self.status]
+
+
+class BatchRecord(UUIDModel):
+    """One attempt to send a record to ClinVar, in one batch.
+
+    A record that fails in one batch can be tried again in a later one, so each attempt
+    keeps its own result from ClinVar's summary report.
+    """
+
+    class Result(models.TextChoices):
+        """ClinVar's processingStatus for the record, from its summary report."""
+
+        SUCCESS = "Success", "Success"
+        ERROR = "Error", "Error"
+
+    batch = models.ForeignKey(
+        Batch,
+        on_delete=models.CASCADE,
+        related_name="batch_records",
+        verbose_name="Batch",
+        help_text="The batch the record was sent in.",
+    )
+    record = models.ForeignKey(
+        Record,
+        on_delete=models.CASCADE,
+        related_name="batch_records",
+        verbose_name="Record",
+        help_text="The record that was sent.",
+    )
+    position = models.PositiveIntegerField(
+        verbose_name="Position",
+        help_text="Where the record is in the batch's germlineSubmission, from 0.",
+    )
+    result = models.CharField(
+        blank=True,
+        choices=Result.choices,
+        default="",
+        max_length=8,
+        verbose_name="Result",
+        help_text="ClinVar's result for the record. Blank until ClinVar reports.",
+    )
+    scv = models.CharField(
+        blank=True,
+        default="",
+        max_length=32,
+        verbose_name="SCV",
+        help_text="The SCV accession ClinVar gave the record, if it accepted it.",
+    )
+    errors = models.JSONField(
+        blank=True,
+        null=True,
+        verbose_name="Errors",
+        help_text="ClinVar's errors for the record, if any, for developers.",
+    )
+    added_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Added At",
+        help_text="When the record was added to the batch.",
+    )
+    history = HistoricalRecords()
+
+    class Meta:  # ty: ignore[invalid-attribute-override] (Each Django model declares its own Meta.)
+        """Provides metadata."""
+
+        db_table = "batch_record"
+        ordering = ["batch", "position"]
+        verbose_name = "Batch Record"
+        verbose_name_plural = "Batch Records"
+        constraints: ClassVar[list[models.BaseConstraint]] = [
+            models.UniqueConstraint(
+                fields=["batch", "record"], name="batch_record_once_per_batch"
+            ),
+            models.UniqueConstraint(
+                fields=["batch", "position"], name="batch_record_one_per_position"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        """Returns the record's and batch's IDs."""
+        return f"{self.record.slug} in {self.batch.slug}"
 
 
 def _hash(raw_key: str) -> str:

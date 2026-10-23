@@ -76,7 +76,8 @@ def _record_rows(batch: Batch) -> list[RecordRow]:
         for result in report.get("batches") or []
     }
     rows = []
-    for record in batch.records.all():  # type: ignore
+    attempts = batch.batch_records.select_related("record")  # type: ignore
+    for record in (attempt.record for attempt in attempts):
         result = results.get(record.local_id)
         if result is None:
             rows.append(RecordRow(record=record, accepted=None, scv=""))

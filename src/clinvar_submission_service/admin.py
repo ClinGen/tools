@@ -3,42 +3,46 @@ from django.forms import ModelForm
 from django.http import HttpRequest
 from simple_history.admin import SimpleHistoryAdmin
 
-from clinvar_submission_service.models import ApiKey, Batch, Record
+from clinvar_submission_service.models import ApiKey, Batch, BatchRecord, Record
 
-# A tuple, since Django types fields and readonly_fields differently.
-RECORD_INLINE_FIELDS = (
-    "local_id",
-    "record_status",
-    "clinvar_accession",
-    "hgvs",
-    "condition_id",
-    "classification",
-    "mode_of_inheritance",
-    "date_last_evaluated",
-)
+# Tuples, since Django types fields and readonly_fields differently.
+BATCH_RECORD_FIELDS = ("position", "record", "result", "scv", "errors")
+RECORD_BATCH_FIELDS = ("batch", "position", "result", "scv", "errors")
 
 
-class RecordInline(admin.TabularInline):
-    """Lists a batch's records, which only its payload should change."""
+class _AttemptInline(admin.TabularInline):
+    """Lists attempts to send records, which only the CSS changes."""
 
-    model = Record
-    fields = RECORD_INLINE_FIELDS
-    readonly_fields = RECORD_INLINE_FIELDS
+    model = BatchRecord
     extra = 0
     can_delete = False
-    show_change_link = True
+    show_change_link = False
 
     def has_add_permission(
         self,
         request: HttpRequest,  # ruff: ignore[unused-method-argument] (Django's signature.)
-        obj: Batch | None = None,  # ruff: ignore[unused-method-argument] (Django's signature.)
+        obj: Batch | Record | None = None,  # ruff: ignore[unused-method-argument] (Django's signature.)
     ) -> bool:
-        """Keeps staff from adding records the payload doesn't have.
+        """Keeps staff from adding attempts by hand.
 
         Returns:
             False, always.
         """
         return False
+
+
+class BatchRecordInline(_AttemptInline):
+    """Lists a batch's records, in order, with each one's result."""
+
+    fields = BATCH_RECORD_FIELDS
+    readonly_fields = BATCH_RECORD_FIELDS
+
+
+class RecordBatchInline(_AttemptInline):
+    """Lists the batches a record was sent in, with each attempt's result."""
+
+    fields = RECORD_BATCH_FIELDS
+    readonly_fields = RECORD_BATCH_FIELDS
 
 
 @admin.register(Batch)
@@ -53,7 +57,7 @@ class BatchAdmin(SimpleHistoryAdmin):
     ]
     list_filter = ["status", "affiliation_name"]
     search_fields = ["slug", "clinvar_submission_id", "affiliation_name"]
-    inlines = [RecordInline]
+    inlines = [BatchRecordInline]
     readonly_fields = [
         "slug",
         "clinvar_submission_id",
@@ -69,9 +73,24 @@ class BatchAdmin(SimpleHistoryAdmin):
 
 @admin.register(Record)
 class RecordAdmin(SimpleHistoryAdmin):
-    list_display = ["local_id", "batch", "hgvs", "classification"]
-    list_filter = ["classification"]
-    search_fields = ["local_id", "clinvar_accession", "hgvs", "batch__slug"]
+    list_display = [
+        "slug",
+        "local_id",
+        "affiliation_name",
+        "status",
+        "hgvs",
+        "classification",
+    ]
+    list_filter = ["status", "classification", "affiliation_name"]
+    search_fields = [
+        "slug",
+        "local_id",
+        "clinvar_accession",
+        "hgvs",
+        "batch_records__batch__slug",
+    ]
+    readonly_fields = ["slug", "added_at", "updated_at"]
+    inlines = [RecordBatchInline]
 
 
 @admin.register(ApiKey)

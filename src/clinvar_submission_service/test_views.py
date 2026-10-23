@@ -14,7 +14,7 @@ from clinvar_submission_service.fakes import (
     make_content,
     make_record,
 )
-from clinvar_submission_service.models import ApiKey, Batch, Record
+from clinvar_submission_service.models import ApiKey, Batch, BatchRecord, Record
 from clinvar_submission_service.views import PAGE_SIZE
 
 if TYPE_CHECKING:
@@ -56,12 +56,14 @@ class CssViewTestCase(TestCase):
         """Returns a batch from the Hearing Loss VCEP with the given records."""
         payload = make_content(*records) if records else {}
         defaults = {"affiliation_id": 10007, "affiliation_name": "Hearing Loss VCEP"}
-        batch = Batch.objects.create(
-            api_key=self.api_key, payload=payload, **(defaults | fields)
-        )
+        batch = Batch.objects.create(api_key=self.api_key, **(defaults | fields))
         if records:
-            for row in record_fields(Content.model_validate(payload)):
-                Record.objects.create(batch=batch, **row)
+            content = Content.model_validate(payload)
+            for position, row in enumerate(record_fields(content)):
+                record = Record.objects.create(**row)
+                BatchRecord.objects.create(
+                    batch=batch, record=record, position=position
+                )
         return batch
 
 
