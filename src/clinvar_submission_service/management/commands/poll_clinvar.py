@@ -1,7 +1,7 @@
-"""Polls ClinVar for submission statuses until it's stopped.
+"""Polls ClinVar for batch statuses until it's stopped.
 
 systemd runs this next to Gunicorn. It sleeps CSS_POLL_SLEEP_SECONDS between passes,
-and on SIGTERM it finishes the submission it's polling and exits.
+and on SIGTERM it finishes the batch it's polling and exits.
 """
 
 import logging
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = "Polls ClinVar for the status of each submission that's due."
+    help = "Polls ClinVar for the status of each batch that's due."
 
     def add_arguments(self, parser: ArgumentParser) -> None:
         """Adds --once, which runs one pass and exits."""
@@ -40,7 +40,7 @@ class Command(BaseCommand):
                 logger.exception("A pass of the poller failed.")
                 polled = 0
             if polled:
-                logger.info("Polled %d submissions.", polled)
+                logger.info("Polled %d batches.", polled)
             if options["once"]:
                 break
             time.sleep(settings.CSS_POLL_SLEEP_SECONDS)

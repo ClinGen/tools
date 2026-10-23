@@ -112,7 +112,7 @@ class GermlineRecord(ClinVarSchema):
 class Content(ClinVarSchema):
     """A submission's ClinVar content: up to 10,000 germline records."""
 
-    germline_submission: list[GermlineRecord] = Field(
+    germline_batch: list[GermlineRecord] = Field(
         alias="germlineSubmission", min_length=1, max_length=MAX_RECORDS
     )
     assertion_criteria: AssertionCriteria | None = Field(
@@ -138,11 +138,11 @@ class SubmissionRequest(ClinVarSchema):
     content: Content
 
 
-def submission_fields(content: Content) -> dict[str, Any]:
-    """Returns the content's fields for its Submission.
+def batch_fields(content: Content) -> dict[str, Any]:
+    """Returns the content's fields for its Batch.
 
     Returns:
-        The Submission field values, by field name.
+        The Batch field values, by field name.
     """
     criteria = content.assertion_criteria
     return {
@@ -161,7 +161,7 @@ def record_fields(content: Content) -> list[dict[str, Any]]:
         content's order.
     """
     fields = []
-    for record in content.germline_submission:
+    for record in content.germline_batch:
         variant = record.variant_set.variant[0]
         condition = record.condition_set.condition[0]
         classification = record.germline_classification

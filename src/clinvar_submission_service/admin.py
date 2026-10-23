@@ -3,7 +3,7 @@ from django.forms import ModelForm
 from django.http import HttpRequest
 from simple_history.admin import SimpleHistoryAdmin
 
-from clinvar_submission_service.models import ApiKey, Record, Submission
+from clinvar_submission_service.models import ApiKey, Batch, Record
 
 # A tuple, since Django types fields and readonly_fields differently.
 RECORD_INLINE_FIELDS = (
@@ -19,7 +19,7 @@ RECORD_INLINE_FIELDS = (
 
 
 class RecordInline(admin.TabularInline):
-    """Lists a submission's records, which only its payload should change."""
+    """Lists a batch's records, which only its payload should change."""
 
     model = Record
     fields = RECORD_INLINE_FIELDS
@@ -31,7 +31,7 @@ class RecordInline(admin.TabularInline):
     def has_add_permission(
         self,
         request: HttpRequest,  # ruff: ignore[unused-method-argument] (Django's signature.)
-        obj: Submission | None = None,  # ruff: ignore[unused-method-argument] (Django's signature.)
+        obj: Batch | None = None,  # ruff: ignore[unused-method-argument] (Django's signature.)
     ) -> bool:
         """Keeps staff from adding records the payload doesn't have.
 
@@ -41,8 +41,8 @@ class RecordInline(admin.TabularInline):
         return False
 
 
-@admin.register(Submission)
-class SubmissionAdmin(SimpleHistoryAdmin):
+@admin.register(Batch)
+class BatchAdmin(SimpleHistoryAdmin):
     list_display = [
         "slug",
         "affiliation_name",
@@ -69,9 +69,9 @@ class SubmissionAdmin(SimpleHistoryAdmin):
 
 @admin.register(Record)
 class RecordAdmin(SimpleHistoryAdmin):
-    list_display = ["local_id", "submission", "hgvs", "classification"]
+    list_display = ["local_id", "batch", "hgvs", "classification"]
     list_filter = ["classification"]
-    search_fields = ["local_id", "clinvar_accession", "hgvs", "submission__slug"]
+    search_fields = ["local_id", "clinvar_accession", "hgvs", "batch__slug"]
 
 
 @admin.register(ApiKey)

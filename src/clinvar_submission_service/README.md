@@ -1,10 +1,10 @@
 # `clinvar_submission_service`
 
 This app is the ClinVar Submission Service (CSS), mounted at `/css/` with the URL
-namespace `css`. It forwards ClinGen clients' submissions to ClinVar and tracks each one
+namespace `css`. It forwards ClinGen clients' batches to ClinVar and tracks each one
 until ClinVar has processed it. Only users with `has_css_permissions` can use its pages.
-"The ClinVar Submission Service" in `docs/design.md` describes how a submission moves
-through the CSS.
+"The ClinVar Submission Service" in `docs/design.md` describes how a batch moves through
+the CSS.
 
 ### `__init__.py`
 
@@ -12,20 +12,19 @@ Empty file that marks `clinvar_submission_service` as a Python package.
 
 ### `admin.py`
 
-Registers `Submission`, `Record`, and `ApiKey` in the Django admin, with their history.
-A submission's ClinVar fields are read-only, since only ClinVar's responses should
-change them, and its records are listed read-only on its page. Adding an API key
-generates its value and shows it once, in a warning message; after that, only its prefix
-is shown.
+Registers `Batch`, `Record`, and `ApiKey` in the Django admin, with their history. A
+batch's ClinVar fields are read-only, since only ClinVar's responses should change them,
+and its records are listed read-only on its page. Adding an API key generates its value
+and shows it once, in a warning message; after that, only its prefix is shown.
 
 ### `api.py`
 
 Serves the CSS's API, version 1, as a Django Ninja `NinjaAPI` at `/css/api/v1/`, with
 OpenAPI docs at `/css/api/v1/docs`. Every endpoint needs an API key (see `api_auth.py`),
-and a client sees only its own submissions. `POST /submissions` takes the client's
-affiliation and the ClinVar content (`content.SubmissionRequest`), saves them as a
-submission with its records, and forwards the content as sent, `GET /submissions` lists
-the client's submissions a page at a time, and `GET /submissions/{slug}` reads one with
+and a client sees only its own batches. `POST /submissions` takes the client's
+affiliation and the ClinVar content (`content.SubmissionRequest`), saves them as a batch
+with its records, and forwards the content as sent, `GET /submissions` lists the
+client's batches a page at a time, and `GET /submissions/{slug}` reads one with
 ClinVar's responses. Content that doesn't match, including more than 10,000 records,
 gets a 422.
 
@@ -42,9 +41,9 @@ Configures the `clinvar_submission_service` app.
 ### `clients.py`
 
 Wraps the NCBI ClinVar Submission API in `ClinVarClient`, built on requests, with one
-method for each call the CSS makes: create a submission (or a dry run), read its status,
-and download its summary report. Every request sends the `SP-API-KEY` header and a
-timeout. A failed request raises `ClinVarError`, which says whether it's worth retrying
+method for each call the CSS makes: create a batch (or a dry run), read its status, and
+download its summary report. Every request sends the `SP-API-KEY` header and a timeout.
+A failed request raises `ClinVarError`, which says whether it's worth retrying
 (timeouts, 429s, and 5xx are; 400s and 401s aren't) and carries a 429's `Retry-After`.
 Nothing it logs or raises includes the API key. `ClinVarClient.from_settings()` builds
 one from the `CSS_` settings and raises `ImproperlyConfigured` without a key.
@@ -56,8 +55,8 @@ names as aliases: `Content` holds 1 to 10,000 germline records, each with one HG
 variant, one condition, and one observation, plus the assertion criteria, on-behalf-of
 organization, and release status. `SubmissionRequest`, the API's body, wraps the content
 with the client's `Affiliation`: its AS ID and name. A field the CSS doesn't model is
-rejected, and an update must name its SCV. `submission_fields()` and `record_fields()`
-copy validated content into `Submission` and `Record` fields.
+rejected, and an update must name its SCV. `batch_fields()` and `record_fields()` copy
+validated content into `Batch` and `Record` fields.
 
 ### `fakes.py`
 
@@ -66,14 +65,14 @@ reports in memory, so tests never reach ClinVar. Each of its calls can be told t
 Also builds sample content: `make_record()` returns a germline record, with any field
 replaced, and `make_content()` wraps records in content.
 
-### `fixtures/test_submissions.json`
+### `fixtures/test_batches.json`
 
-A Django fixture with a VCI API key and eight submissions from five made-up
-affiliations, with at least one in each status and one to three records each: ones
-ClinVar never got (not sent and send failed), and submitted, processing, processed, and
-error ones forwarded to ClinVar, with made-up ClinVar IDs, responses, and summary
-reports with SCVs and an error. None is due to poll. Load it with
-`just django-loaddata-test`; tests load it with `fixtures = ["test_submissions.json"]`.
+A Django fixture with a VCI API key and eight batches from five made-up affiliations,
+with at least one in each status and one to three records each: ones ClinVar never got
+(not sent and send failed), and submitted, processing, processed, and error ones
+forwarded to ClinVar, with made-up ClinVar IDs, responses, and summary reports with SCVs
+and an error. None is due to poll. Load it with `just django-loaddata-test`; tests load
+it with `fixtures = ["test_batches.json"]`.
 
 ### `management/__init__.py`
 
@@ -87,118 +86,116 @@ Empty file that marks `commands` as a Python package.
 
 The `poll_clinvar` command, which systemd runs next to Gunicorn. It runs a `Poller`
 pass, sleeps `CSS_POLL_SLEEP_SECONDS`, and repeats. A failed pass is logged and doesn't
-stop the loop. On SIGTERM it finishes the submission it's polling and exits. `--once`
-runs one pass and exits. Run it locally with `just django-poll-clinvar`.
+stop the loop. On SIGTERM it finishes the batch it's polling and exits. `--once` runs
+one pass and exits. Run it locally with `just django-poll-clinvar`.
 
 ### `models.py`
 
-Defines `Submission`, one request to ClinVar: the affiliation the client sent it for
-(its AS ID and name), the ClinVar content as the client sent it, the ClinVar submission
-ID, its status (named relative to ClinVar, such as `submitted_to_clinvar`, and labeled
-in ClinVar's words, with `status_help` saying what it means), ClinVar's latest response,
+Defines `Batch`, one request to ClinVar: the affiliation the client sent it for (its AS
+ID and name), the ClinVar content as the client sent it, the ClinVar submission ID, its
+status (named relative to ClinVar, such as `submitted_to_clinvar`, and labeled in
+ClinVar's words, with `status_help` saying what it means), ClinVar's latest response,
 `updated` timestamp, error code, and summary report, any error message, and when it was
 last and will next be polled, plus the content's assertion criteria, the organization
 it's on behalf of, and its release status. It extends `common.models.SlugModel`, so its
-ID is a UUID and its slug is `S` and the first 8 hex characters of the UUID, such as
-`S3f2a9c1e`. It keeps its change history, and `get_absolute_url()` returns its page.
-`Submission.objects.due_to_poll()` returns the submitted and processing submissions
-whose next poll time has passed, oldest first. Also defines `Record`, one germline
-variant classification a client sent, with slug `R` and the start of its UUID, its own
-ClinVar JSON, affiliation, client, the submission it's in (if any), a status relative to
-the CSS's batches and ClinVar with `status_help` for its tooltip, and a copy of its
-fields: the variant's HGVS and assembly, the condition, the classification, mode of
-inheritance, date last evaluated, comment, how the evidence was gathered, and the
-record's SCV for an update. Its choices, defined above the models, are ClinVar's terms,
-so a value is exactly what ClinVar expects; the classifications are the five ACMG terms
-the VCI uses. Also defines `ApiKey`, the key one client system sends to use the API.
-Only its SHA-256 hash and a short prefix are stored, and each submission records the key
-that sent it.
+ID is a UUID and its slug is `B` and the first 8 hex characters of the UUID, such as
+`B3f2a9c1e`. It keeps its change history, and `get_absolute_url()` returns its page.
+`Batch.objects.due_to_poll()` returns the submitted and processing batches whose next
+poll time has passed, oldest first. Also defines `Record`, one germline variant
+classification a client sent, with slug `R` and the start of its UUID, its own ClinVar
+JSON, affiliation, client, the batch it's in (if any), a status relative to the CSS's
+batches and ClinVar with `status_help` for its tooltip, and a copy of its fields: the
+variant's HGVS and assembly, the condition, the classification, mode of inheritance,
+date last evaluated, comment, how the evidence was gathered, and the record's SCV for an
+update. Its choices, defined above the models, are ClinVar's terms, so a value is
+exactly what ClinVar expects; the classifications are the five ACMG terms the VCI uses.
+Also defines `ApiKey`, the key one client system sends to use the API. Only its SHA-256
+hash and a short prefix are stored, and each batch records the key that sent it.
 
 ### `polling.py`
 
-Polls ClinVar for submission statuses. `Poller.run_pass()` takes a batch of the
-submissions that are due, oldest first, reads each one's status, and saves ClinVar's
-response. A submission that reaches processed or error gets its summary report and stops
-being polled. Otherwise, `next_delay()` doubles the wait from `CSS_POLL_MIN_DELAY` up to
+Polls ClinVar for batch statuses. `Poller.run_pass()` takes a batch of the batches that
+are due, oldest first, reads each one's status, and saves ClinVar's response. A batch
+that reaches processed or error gets its summary report and stops being polled.
+Otherwise, `next_delay()` doubles the wait from `CSS_POLL_MIN_DELAY` up to
 `CSS_POLL_MAX_DELAY`, and waits at least as long as a 429's `Retry-After`. A failed
 poll, including a failed report download, is logged and sent to Sentry, leaves the
 status as it was, and doesn't stop the batch.
 
 ### `services.py`
 
-Saves a not-yet-sent submission and a `Record` for each of its records, in one
-transaction, with `save_submission()`. Forwards a saved submission to ClinVar once with
-`forward_submission()`, which the API and the staff Resend button share. If ClinVar
-accepts it, the submission is submitted, with its ClinVar ID and a first poll time; if
-ClinVar rejects it, can't be reached, or the CSS has no ClinVar key, it's
-send_to_clinvar_failed, with the error. It never retries.
+Saves a not-yet-sent batch and a `Record` for each of its records, in one transaction,
+with `save_batch()`. Forwards a saved batch to ClinVar once with `forward_batch()`,
+which the API and the staff Resend button share. If ClinVar accepts it, the batch is
+submitted, with its ClinVar ID and a first poll time; if ClinVar rejects it, can't be
+reached, or the CSS has no ClinVar key, it's send_to_clinvar_failed, with the error. It
+never retries.
 
 ### `templates/clinvar_submission_service/affiliations.html`
 
-The Affiliations tab: each affiliation that has submissions, by name, with how many of
-its submissions are Not Sent or Send Failed, Submitted or Processing, Processed, and
-Error, with a tooltip on each header's text. Each name links to the list filtered to
-that affiliation.
+The Affiliations tab: each affiliation that has batches, by name, with how many of its
+batches are Not Sent or Send Failed, Submitted or Processing, Processed, and Error, with
+a tooltip on each header's text. Each name links to the list filtered to that
+affiliation.
 
 ### `templates/clinvar_submission_service/detail.html`
 
-A submission's page, in plain language: its status, affiliation, who sent it, its
-ClinVar ID, when it arrived and was last checked, and what its status means. Its records
-table shows each record's variant, condition, classification, inheritance, date last
-evaluated, and whether it's new or an update, with its result and SCV once ClinVar has
-reported. A send_to_clinvar_failed submission's page has a Resend button. It never shows
-raw JSON or ClinVar's error text; developers see those in the Django admin.
+A batch's page, in plain language: its status, affiliation, who sent it, its ClinVar ID,
+when it arrived and was last checked, and what its status means. Its records table shows
+each record's variant, condition, classification, inheritance, date last evaluated, and
+whether it's new or an update, with its result and SCV once ClinVar has reported. A
+send_to_clinvar_failed batch's page has a Resend button. It never shows raw JSON or
+ClinVar's error text; developers see those in the Django admin.
 
 ### `templates/clinvar_submission_service/list.html`
 
 The CSS's home page: the status pills, a notice when the list shows one affiliation,
 and, as in the HCI, a search box that updates the results as you type, sending the
-active filters along. Pills show all submissions or only those in one status, and the
-search matches IDs, affiliations, genes, and HGVS.
+active filters along. Pills show all batches or only those in one status, and the search
+matches IDs, affiliations, genes, and HGVS.
 
 ### `templates/clinvar_submission_service/partials/results.html`
 
-The list's results: how many submissions match and the `SubmissionTable`, or a line
-saying none do. The list page includes it, and the search box and the table's sort and
-page links fetch it alone with HTMX and swap it in.
+The list's results: how many batches match and the `BatchTable`, or a line saying none
+do. The list page includes it, and the search box and the table's sort and page links
+fetch it alone with HTMX and swap it in.
 
 ### `templates/clinvar_submission_service/partials/header.html`
 
 The top of every CSS page: the CSS's name and description from `core.tools`, and boxed
-tabs for Submissions, that submission when you're on a submission's page, and
-Affiliations, with the current page's tab active.
+tabs for Batches, that batch when you're on a batch's page, and Affiliations, with the
+current page's tab active.
 
 ### `templates/clinvar_submission_service/partials/status.html`
 
-A submission's status tag, in ClinVar's words (the status's label), with
-`Submission.status_help` in a tooltip on the tag, from `common/tooltip.html`. Given an
-`href`, as in the submissions table, the tag is a link. Its color follows the color key:
-green when processed, red when the send failed or ClinVar reported an error, and grey
-otherwise.
+A batch's status tag, in ClinVar's words (the status's label), with `Batch.status_help`
+in a tooltip on the tag, from `common/tooltip.html`. Given an `href`, as in the batches
+table, the tag is a link. Its color follows the color key: green when processed, red
+when the send failed or ClinVar reported an error, and grey otherwise.
 
 ### `templates/clinvar_submission_service/partials/record_result.html`
 
-A record's result on a submission's page, with a tooltip on the tag: Not Sent when
-ClinVar doesn't have the submission, No Result Yet before ClinVar reports, and then
-ClinVar's own words from the summary report, Success or Error.
+A record's result on a batch's page, with a tooltip on the tag: Not Sent when ClinVar
+doesn't have the batch, No Result Yet before ClinVar reports, and then ClinVar's own
+words from the summary report, Success or Error.
 
 ### `tables.py`
 
-`SubmissionTable`, the django-tables2 table on the list page: each submission's ID,
-linked to its page, its affiliation, linked to the list of that affiliation's
-submissions, its records' genes, the client that sent it, its status tag, linked to the
-list filtered to that status (keeping the affiliation filter), its ClinVar ID, and when
-the CSS received it. It sorts by every column but the genes and status.
+`BatchTable`, the django-tables2 table on the list page: each batch's ID, linked to its
+page, its affiliation, linked to the list of that affiliation's batches, its records'
+genes, the client that sent it, its status tag, linked to the list filtered to that
+status (keeping the affiliation filter), its ClinVar ID, and when the CSS received it.
+It sorts by every column but the genes and status.
 
 ### `test_api.py`
 
-Tests `forward_submission()` and each API endpoint against `FakeClinVarClient`: a
-submission ClinVar accepts or rejects, a missing ClinVar key, that a failed send isn't
-retried, that a body's affiliation, fields, and records are saved and only its content
-is forwarded, as sent, that a missing or bad affiliation gets a 422, that bodies that
+Tests `forward_batch()` and each API endpoint against `FakeClinVarClient`: a batch
+ClinVar accepts or rejects, a missing ClinVar key, that a failed send isn't retried,
+that a body's affiliation, fields, and records are saved and only its content is
+forwarded, as sent, that a missing or bad affiliation gets a 422, that bodies that
 aren't objects, hold too many records, or don't match `Content` get a 422 and save
 nothing, 401s for missing, unknown, and inactive keys, that a client can't read or list
-another client's submissions, pagination, and the OpenAPI docs and their fields.
+another client's batches, pagination, and the OpenAPI docs and their fields.
 
 ### `test_api_keys.py`
 
@@ -221,18 +218,17 @@ are set in the environment.
 
 ### `test_fixtures.py`
 
-Tests the fixture: it has a submission in every status, from several affiliations, only
-forwarded ones have a ClinVar ID, only finished ones have a summary report, each
-submission's records match what parsing its payload gives, and every submission's page
-renders.
+Tests the fixture: it has a batch in every status, from several affiliations, only
+forwarded ones have a ClinVar ID, only finished ones have a summary report, each batch's
+records match what parsing its payload gives, and every batch's page renders.
 
 ### `test_polling.py`
 
 Tests the poller against `FakeClinVarClient`: the backoff and its cap, that it maps each
 of ClinVar's statuses onto ours, each status change, storing the summary report,
 retrying a failed report download, backing off on errors and 429s, that one failing
-submission doesn't block the rest, that submissions not sent to ClinVar, or whose send
-failed, are never polled, batch size, and stopping mid-pass. Also tests the command's
+batch doesn't block the rest, that batches not sent to ClinVar, or whose send failed,
+are never polled, polls per pass, and stopping mid-pass. Also tests the command's
 `--once` and that SIGTERM stops its loop.
 
 ### `test_views.py`
@@ -246,35 +242,33 @@ detail page, the list's tags linking to their status (and the detail page's not)
 Error's tooltip by error code; that no page uses the old wording; the detail page's
 records, with ClinVar's result matched by local ID, an update's SCV, and records ClinVar
 never got or hasn't reported on; its plain-language error; that only a
-send_to_clinvar_failed submission has a Resend button; and that resending sends it
-again, records who did, keeps a failed resend's new error, and rejects other statuses
-and GET requests. Against the fixtures, tests the affiliations page's counts, order,
-links, headers, and tab.
+send_to_clinvar_failed batch has a Resend button; and that resending sends it again,
+records who did, keeps a failed resend's new error, and rejects other statuses and GET
+requests. Against the fixtures, tests the affiliations page's counts, order, links,
+headers, and tab.
 
 ### `tests.py`
 
-Tests the `Submission` slug, including a colliding one, its default status, and its
-history; a `Record`'s order, history, and classifications, and that it's deleted with
-its submission; which submissions are due to poll; the admin pages, including a
-submission's records; and that only users with CSS permissions can open the home page,
-which the landing page links to. Also tests a standalone `Record`: its R slug, default
-status, history, status help, and bulk slugs that avoid taken ones. Also tests that the
-migration naming each status relative to ClinVar renames old rows and their history, and
-back.
+Tests the `Batch` slug, including a colliding one, its default status, and its history;
+a `Record`'s order, history, and classifications, and that it's deleted with its batch;
+which batches are due to poll; the admin pages, including a batch's records; and that
+only users with CSS permissions can open the home page, which the landing page links to.
+Also tests a standalone `Record`: its R slug, default status, history, status help, and
+bulk slugs that avoid taken ones. Also tests that the migration naming each status
+relative to ClinVar renames old rows and their history, and back.
 
 ### `urls.py`
 
-Routes the CSS's pages under the `css` namespace: the submission list at the root, the
-affiliations page at `affiliations/`, each submission at `submissions/<slug>/`, its
-resend at `submissions/<slug>/resend/`, and the API at `api/v1/` under `css:api-1`.
+Routes the CSS's pages under the `css` namespace: the batch list at the root, the
+affiliations page at `affiliations/`, each batch at `batches/<slug>/`, its resend at
+`batches/<slug>/resend/`, and the API at `api/v1/` under `css:api-1`.
 
 ### `views.py`
 
-Serves the CSS's pages to users with CSS permissions: the submission list, with its
-status and affiliation filters, search, sorting, and pagination, and just its results
-for an HTMX request; the affiliations page, which counts each affiliation's submissions
-by status and names it from its newest submission; and each submission's page, which
-pairs each `Record` with its result in ClinVar's summary report. The resend view, which
-takes only POSTs, forwards a send_to_clinvar_failed submission again through
-`services.forward_submission()` and shows a plain error message if ClinVar still didn't
-get it.
+Serves the CSS's pages to users with CSS permissions: the batch list, with its status
+and affiliation filters, search, sorting, and pagination, and just its results for an
+HTMX request; the affiliations page, which counts each affiliation's batches by status
+and names it from its newest batch; and each batch's page, which pairs each `Record`
+with its result in ClinVar's summary report. The resend view, which takes only POSTs,
+forwards a send_to_clinvar_failed batch again through `services.forward_batch()` and
+shows a plain error message if ClinVar still didn't get it.

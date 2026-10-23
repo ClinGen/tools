@@ -1,8 +1,8 @@
 {# A record's result, in ClinVar's words (its summary report's processingStatus), with what it means in a tooltip. #}
-{% if submission.status == "not_sent_to_clinvar" or submission.status == "send_to_clinvar_failed" %}
-    {% include "common/tooltip.html" with label="Not Sent" text="ClinVar doesn't have this record, because the submission hasn't reached ClinVar." classes="tag is-light" %}
+{% if batch.status == "not_sent_to_clinvar" or batch.status == "send_to_clinvar_failed" %}
+    {% include "common/tooltip.html" with label="Not Sent" text="ClinVar doesn't have this record, because the batch hasn't reached ClinVar." classes="tag is-light" %}
 {% elif row.accepted is None %}
-    {% include "common/tooltip.html" with label="No Result Yet" text="ClinVar reports each record's result when it finishes processing the submission." classes="tag is-light" %}
+    {% include "common/tooltip.html" with label="No Result Yet" text="ClinVar reports each record's result when it finishes processing the batch." classes="tag is-light" %}
 {% elif row.accepted %}
     {% include "common/tooltip.html" with label="Success" text="ClinVar accepted this record." classes="tag is-success is-light" %}
 {% else %}

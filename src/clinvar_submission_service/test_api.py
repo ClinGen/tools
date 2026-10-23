@@ -13,8 +13,8 @@ from clinvar_submission_service.fakes import (
     make_content,
     make_record,
 )
-from clinvar_submission_service.models import ApiKey, Record, Submission
-from clinvar_submission_service.services import forward_submission
+from clinvar_submission_service.models import ApiKey, Batch, Record
+from clinvar_submission_service.services import forward_batch
 from common.models import make_slug
 
 CONTENT = make_content()
@@ -54,49 +54,49 @@ class ApiTestCase(TestCase):
 
 
 class ForwardSubmissionTest(ApiTestCase):
-    def test_a_submission_clinvar_accepts_is_submitted(self):
-        submission = Submission.objects.create(payload=CONTENT)
-        forward_submission(submission)
-        submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.SUBMITTED_TO_CLINVAR)
-        self.assertEqual(submission.clinvar_submission_id, "SUB000001")
-        self.assertIsNotNone(submission.next_poll_at)
+    def test_a_batch_clinvar_accepts_is_submitted(self):
+        batch = Batch.objects.create(payload=CONTENT)
+        forward_batch(batch)
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, Batch.Status.SUBMITTED_TO_CLINVAR)
+        self.assertEqual(batch.clinvar_submission_id, "SUB000001")
+        self.assertIsNotNone(batch.next_poll_at)
         self.assertEqual(self.fake.submitted, [CONTENT])
 
-    def test_a_submission_clinvar_rejects_is_send_failed(self):
+    def test_a_batch_clinvar_rejects_is_send_failed(self):
         self.fake.submit_error = ClinVarError("ClinVar returned 400", retryable=False)
-        submission = Submission.objects.create(payload=CONTENT)
-        forward_submission(submission)
-        submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.SEND_TO_CLINVAR_FAILED)
-        self.assertEqual(submission.error_message, "ClinVar returned 400")
-        self.assertEqual(submission.clinvar_submission_id, "")
+        batch = Batch.objects.create(payload=CONTENT)
+        forward_batch(batch)
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, Batch.Status.SEND_TO_CLINVAR_FAILED)
+        self.assertEqual(batch.error_message, "ClinVar returned 400")
+        self.assertEqual(batch.clinvar_submission_id, "")
 
     def test_a_failed_send_is_not_retried(self):
         self.fake.submit_error = ClinVarError("ClinVar returned 503", retryable=True)
         with mock.patch.object(self.fake, "submit", wraps=self.fake.submit) as submit:
-            forward_submission(Submission.objects.create(payload=CONTENT))
+            forward_batch(Batch.objects.create(payload=CONTENT))
         submit.assert_called_once()
 
     def test_an_unconfigured_client_is_send_failed(self):
-        submission = Submission.objects.create(payload=CONTENT)
+        batch = Batch.objects.create(payload=CONTENT)
         with mock.patch(
             "clinvar_submission_service.services.ClinVarClient.from_settings",
             side_effect=ImproperlyConfigured("Set CSS_CLINVAR_API_KEY."),
         ):
-            forward_submission(submission)
-        submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.SEND_TO_CLINVAR_FAILED)
+            forward_batch(batch)
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, Batch.Status.SEND_TO_CLINVAR_FAILED)
 
 
 class CreateSubmissionTest(ApiTestCase):
-    def test_saves_and_forwards_the_submission(self):
+    def test_saves_and_forwards_the_batch(self):
         response = self.post(CONTENT)
         self.assertEqual(response.status_code, 201)
-        submission = Submission.objects.get()
-        self.assertEqual(submission.api_key, self.api_key)
-        self.assertEqual(submission.payload, CONTENT)
-        self.assertEqual(json.loads(response.content)["slug"], submission.slug)
+        batch = Batch.objects.get()
+        self.assertEqual(batch.api_key, self.api_key)
+        self.assertEqual(batch.payload, CONTENT)
+        self.assertEqual(json.loads(response.content)["slug"], batch.slug)
         self.assertEqual(json.loads(response.content)["status"], "submitted_to_clinvar")
         self.assertEqual(
             json.loads(response.content)["clinvar_submission_id"], "SUB000001"
@@ -116,14 +116,14 @@ class CreateSubmissionTest(ApiTestCase):
     def test_rejects_a_body_that_is_not_an_object(self):
         response = self.post_body(["not", "an", "object"])
         self.assertEqual(response.status_code, 422)
-        self.assertFalse(Submission.objects.exists())
+        self.assertFalse(Batch.objects.exists())
 
     def test_saves_the_affiliation_and_forwards_only_the_content(self):
         response = self.post(CONTENT)
-        submission = Submission.objects.get()
-        self.assertEqual(submission.affiliation_id, 10007)
-        self.assertEqual(submission.affiliation_name, "Hearing Loss VCEP")
-        self.assertEqual(submission.payload, CONTENT)
+        batch = Batch.objects.get()
+        self.assertEqual(batch.affiliation_id, 10007)
+        self.assertEqual(batch.affiliation_name, "Hearing Loss VCEP")
+        self.assertEqual(batch.payload, CONTENT)
         self.assertEqual(self.fake.submitted, [CONTENT])
         self.assertEqual(json.loads(response.content)["affiliation"], AFFILIATION)
 
@@ -148,9 +148,9 @@ class CreateSubmissionTest(ApiTestCase):
         for name, body in cases.items():
             with self.subTest(name):
                 self.assertEqual(self.post_body(body).status_code, 422)
-        self.assertFalse(Submission.objects.exists())
+        self.assertFalse(Batch.objects.exists())
 
-    def test_accepts_a_full_submission_with_long_comments(self):
+    def test_accepts_a_full_batch_with_long_comments(self):
         comment = "Criteria met: PS3, PM2, PP3. " + "Evidence summary. " * 300
         records = [
             make_record(
@@ -170,13 +170,13 @@ class CreateSubmissionTest(ApiTestCase):
     def test_rejects_a_body_over_the_upload_limit(self):
         response = self.post(make_content(*[make_record(str(i)) for i in range(5)]))
         self.assertEqual(response.status_code, 400)
-        self.assertFalse(Submission.objects.exists())
+        self.assertFalse(Batch.objects.exists())
 
     def test_rejects_too_many_records(self):
         records = [make_record(str(i)) for i in range(MAX_RECORDS + 1)]
         response = self.post(make_content(*records))
         self.assertEqual(response.status_code, 422)
-        self.assertFalse(Submission.objects.exists())
+        self.assertFalse(Batch.objects.exists())
 
     def test_saves_the_contents_fields_and_records(self):
         content = make_content(
@@ -189,11 +189,11 @@ class CreateSubmissionTest(ApiTestCase):
         )
         content["behalfOrgID"] = 506185
         self.post(content)
-        submission = Submission.objects.get()
-        self.assertEqual(submission.assertion_criteria_db, "PubMed")
-        self.assertEqual(submission.assertion_criteria_id, "25741868")
-        self.assertEqual(submission.behalf_org_id, 506185)
-        first, second = submission.records.all()  # type: ignore
+        batch = Batch.objects.get()
+        self.assertEqual(batch.assertion_criteria_db, "PubMed")
+        self.assertEqual(batch.assertion_criteria_id, "25741868")
+        self.assertEqual(batch.behalf_org_id, 506185)
+        first, second = batch.records.all()  # type: ignore
         self.assertEqual(first.local_id, "var-1")
         self.assertEqual(first.hgvs, "NC_000017.11:g.43045712T>C")
         self.assertEqual(first.gene_symbol, "BRCA1")
@@ -222,7 +222,7 @@ class CreateSubmissionTest(ApiTestCase):
     def test_forwards_the_payload_as_sent(self):
         self.post(CONTENT)
         self.assertEqual(self.fake.submitted, [CONTENT])
-        self.assertEqual(Submission.objects.get().payload, CONTENT)
+        self.assertEqual(Batch.objects.get().payload, CONTENT)
 
     def test_rejects_content_that_does_not_match_and_saves_nothing(self):
         cases = {
@@ -253,7 +253,7 @@ class CreateSubmissionTest(ApiTestCase):
         for name, content in cases.items():
             with self.subTest(name):
                 self.assertEqual(self.post(content).status_code, 422)
-        self.assertFalse(Submission.objects.exists())
+        self.assertFalse(Batch.objects.exists())
         self.assertFalse(Record.objects.exists())
 
 
@@ -271,22 +271,22 @@ class AuthTest(ApiTestCase):
         for name, response in cases.items():
             with self.subTest(name):
                 self.assertEqual(response.status_code, 401)
-        self.assertFalse(Submission.objects.exists())
+        self.assertFalse(Batch.objects.exists())
 
 
 class ReadSubmissionTest(ApiTestCase):
-    def test_returns_the_clients_submission(self):
-        submission = Submission.objects.create(
+    def test_returns_the_clients_batch(self):
+        batch = Batch.objects.create(
             api_key=self.api_key,
             affiliation_id=10007,
             affiliation_name="Hearing Loss VCEP",
             payload=CONTENT,
-            status=Submission.Status.PROCESSED_BY_CLINVAR,
+            status=Batch.Status.PROCESSED_BY_CLINVAR,
             clinvar_submission_id="SUB000009",
             latest_response={"actions": []},
             summary_report={"totalCount": 1},
         )
-        response = self.get(f"{SUBMISSIONS_URL}/{submission.slug}")
+        response = self.get(f"{SUBMISSIONS_URL}/{batch.slug}")
         self.assertEqual(response.status_code, 200)
         body = json.loads(response.content)
         self.assertEqual(body["affiliation"], AFFILIATION)
@@ -295,19 +295,19 @@ class ReadSubmissionTest(ApiTestCase):
         self.assertEqual(body["latest_response"], {"actions": []})
         self.assertEqual(body["summary_report"], {"totalCount": 1})
 
-    def test_another_clients_submission_is_not_found(self):
+    def test_another_clients_batch_is_not_found(self):
         other, _ = ApiKey.objects.create_key(name="VCI")
-        submission = Submission.objects.create(api_key=other, payload=CONTENT)
-        response = self.get(f"{SUBMISSIONS_URL}/{submission.slug}")
+        batch = Batch.objects.create(api_key=other, payload=CONTENT)
+        response = self.get(f"{SUBMISSIONS_URL}/{batch.slug}")
         self.assertEqual(response.status_code, 404)
 
 
 class ListSubmissionsTest(ApiTestCase):
     def test_lists_only_the_clients_submissions_newest_first(self):
         other, _ = ApiKey.objects.create_key(name="VCI")
-        Submission.objects.create(api_key=other, payload=CONTENT)
-        older = Submission.objects.create(api_key=self.api_key, payload=CONTENT)
-        newer = Submission.objects.create(api_key=self.api_key, payload=CONTENT)
+        Batch.objects.create(api_key=other, payload=CONTENT)
+        older = Batch.objects.create(api_key=self.api_key, payload=CONTENT)
+        newer = Batch.objects.create(api_key=self.api_key, payload=CONTENT)
         response = self.get(SUBMISSIONS_URL)
         self.assertEqual(response.status_code, 200)
         body = json.loads(response.content)
@@ -317,7 +317,7 @@ class ListSubmissionsTest(ApiTestCase):
 
     def test_is_paginated(self):
         for _ in range(3):
-            Submission.objects.create(api_key=self.api_key, payload=CONTENT)
+            Batch.objects.create(api_key=self.api_key, payload=CONTENT)
         response = self.get(f"{SUBMISSIONS_URL}?limit=2")
         self.assertEqual(len(json.loads(response.content)["items"]), 2)
         self.assertEqual(json.loads(response.content)["count"], 3)
@@ -334,6 +334,4 @@ class DocsTest(TestCase):
         self.assertContains(response, "germlineClassificationDescription")
 
     def test_the_api_is_under_the_css_namespace(self):
-        self.assertEqual(
-            reverse("css:api-1:create_submission"), "/css/api/v1/submissions"
-        )
+        self.assertEqual(reverse("css:api-1:create_batch"), "/css/api/v1/submissions")

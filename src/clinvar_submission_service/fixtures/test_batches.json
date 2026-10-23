@@ -12,10 +12,10 @@
     }
   },
   {
-    "model": "clinvar_submission_service.submission",
+    "model": "clinvar_submission_service.batch",
     "pk": "84b495c1-77b8-4970-83d1-0f194239051f",
     "fields": {
-      "slug": "S84b495c1",
+      "slug": "B84b495c1",
       "api_key": "003d9a21-ce55-4f6d-ae14-c4121286c992",
       "affiliation_id": 10901,
       "affiliation_name": "Cardiomyopathy VCEP",
@@ -88,7 +88,7 @@
     "pk": "1e3215ac-0305-45de-abf5-5d4981cd7c4b",
     "fields": {
       "slug": "R1e3215ac",
-      "submission": "84b495c1-77b8-4970-83d1-0f194239051f",
+      "batch": "84b495c1-77b8-4970-83d1-0f194239051f",
       "record_status": "novel",
       "clinvar_accession": "",
       "local_id": "vci-f39405b6",
@@ -153,10 +153,10 @@
     }
   },
   {
-    "model": "clinvar_submission_service.submission",
+    "model": "clinvar_submission_service.batch",
     "pk": "ccbfbec6-e17b-430d-97ef-acfea837eb30",
     "fields": {
-      "slug": "Sccbfbec6",
+      "slug": "Bccbfbec6",
       "api_key": "003d9a21-ce55-4f6d-ae14-c4121286c992",
       "affiliation_id": 10902,
       "affiliation_name": "TP53 VCEP",
@@ -268,7 +268,7 @@
     "pk": "df386158-a6c3-4d35-9383-d1bd7174f26b",
     "fields": {
       "slug": "Rdf386158",
-      "submission": "ccbfbec6-e17b-430d-97ef-acfea837eb30",
+      "batch": "ccbfbec6-e17b-430d-97ef-acfea837eb30",
       "record_status": "novel",
       "clinvar_accession": "",
       "local_id": "vci-c0617283",
@@ -337,7 +337,7 @@
     "pk": "7d18842c-5d85-46a0-ad94-37cd4fffa1dc",
     "fields": {
       "slug": "R7d18842c",
-      "submission": "ccbfbec6-e17b-430d-97ef-acfea837eb30",
+      "batch": "ccbfbec6-e17b-430d-97ef-acfea837eb30",
       "record_status": "novel",
       "clinvar_accession": "",
       "local_id": "vci-04a516c7",
@@ -402,10 +402,10 @@
     }
   },
   {
-    "model": "clinvar_submission_service.submission",
+    "model": "clinvar_submission_service.batch",
     "pk": "f1953f98-e1d3-4bce-abf7-4a888649b629",
     "fields": {
-      "slug": "Sf1953f98",
+      "slug": "Bf1953f98",
       "api_key": "003d9a21-ce55-4f6d-ae14-c4121286c992",
       "affiliation_id": 10903,
       "affiliation_name": "Malignant Hyperthermia Susceptibility VCEP",
@@ -478,7 +478,7 @@
     "pk": "5b22051a-031c-42fb-a7a0-14c2549cc245",
     "fields": {
       "slug": "R5b22051a",
-      "submission": "f1953f98-e1d3-4bce-abf7-4a888649b629",
+      "batch": "f1953f98-e1d3-4bce-abf7-4a888649b629",
       "record_status": "novel",
       "clinvar_accession": "",
       "local_id": "vci-d1728394",
@@ -543,10 +543,10 @@
     }
   },
   {
-    "model": "clinvar_submission_service.submission",
+    "model": "clinvar_submission_service.batch",
     "pk": "c5c25c6a-8c43-421c-ab3e-12bbde98a7d9",
     "fields": {
-      "slug": "Sc5c25c6a",
+      "slug": "Bc5c25c6a",
       "api_key": "003d9a21-ce55-4f6d-ae14-c4121286c992",
       "affiliation_id": 10901,
       "affiliation_name": "Cardiomyopathy VCEP",
@@ -629,7 +629,7 @@
     "pk": "536cb411-3eea-4e3a-aad0-ab463fcd1703",
     "fields": {
       "slug": "R536cb411",
-      "submission": "c5c25c6a-8c43-421c-ab3e-12bbde98a7d9",
+      "batch": "c5c25c6a-8c43-421c-ab3e-12bbde98a7d9",
       "record_status": "novel",
       "clinvar_accession": "",
       "local_id": "vci-8c2d3e4f",
@@ -694,10 +694,10 @@
     }
   },
   {
-    "model": "clinvar_submission_service.submission",
+    "model": "clinvar_submission_service.batch",
     "pk": "e2096af8-5a4b-4656-95b6-bff07d21a17e",
     "fields": {
-      "slug": "Se2096af8",
+      "slug": "Be2096af8",
       "api_key": "003d9a21-ce55-4f6d-ae14-c4121286c992",
       "affiliation_id": 10904,
       "affiliation_name": "Phenylketonuria VCEP",
@@ -852,7 +852,7 @@
     "pk": "4bc65f3c-ffaa-4945-8a30-0a5f70bfeaa1",
     "fields": {
       "slug": "R4bc65f3c",
-      "submission": "e2096af8-5a4b-4656-95b6-bff07d21a17e",
+      "batch": "e2096af8-5a4b-4656-95b6-bff07d21a17e",
       "record_status": "novel",
       "clinvar_accession": "",
       "local_id": "vci-9d3e4f50",
@@ -921,7 +921,7 @@
     "pk": "90bccc39-c34a-4eb9-aecb-9ec4ff43a652",
     "fields": {
       "slug": "R90bccc39",
-      "submission": "e2096af8-5a4b-4656-95b6-bff07d21a17e",
+      "batch": "e2096af8-5a4b-4656-95b6-bff07d21a17e",
       "record_status": "update",
       "clinvar_accession": "SCV000575021",
       "local_id": "vci-ae4f5061",
@@ -987,10 +987,10 @@
     }
   },
   {
-    "model": "clinvar_submission_service.submission",
+    "model": "clinvar_submission_service.batch",
     "pk": "556ba054-9e9a-421b-95f1-a19a685bc1ec",
     "fields": {
-      "slug": "S556ba054",
+      "slug": "B556ba054",
       "api_key": "003d9a21-ce55-4f6d-ae14-c4121286c992",
       "affiliation_id": 10905,
       "affiliation_name": "CDH1 VCEP",
@@ -1202,7 +1202,7 @@
     "pk": "86350456-50ee-4d8a-b149-29029d0848b1",
     "fields": {
       "slug": "R86350456",
-      "submission": "556ba054-9e9a-421b-95f1-a19a685bc1ec",
+      "batch": "556ba054-9e9a-421b-95f1-a19a685bc1ec",
       "record_status": "novel",
       "clinvar_accession": "",
       "local_id": "vci-bf506172",
@@ -1271,7 +1271,7 @@
     "pk": "6f3b36a8-d281-4326-9a83-bee89e97f99a",
     "fields": {
       "slug": "R6f3b36a8",
-      "submission": "556ba054-9e9a-421b-95f1-a19a685bc1ec",
+      "batch": "556ba054-9e9a-421b-95f1-a19a685bc1ec",
       "record_status": "novel",
       "clinvar_accession": "",
       "local_id": "vci-15b627d8",
@@ -1340,7 +1340,7 @@
     "pk": "7e746a5e-c0d2-476a-95cc-0ca86f946d09",
     "fields": {
       "slug": "R7e746a5e",
-      "submission": "556ba054-9e9a-421b-95f1-a19a685bc1ec",
+      "batch": "556ba054-9e9a-421b-95f1-a19a685bc1ec",
       "record_status": "novel",
       "clinvar_accession": "",
       "local_id": "vci-26c738e9",
@@ -1405,10 +1405,10 @@
     }
   },
   {
-    "model": "clinvar_submission_service.submission",
+    "model": "clinvar_submission_service.batch",
     "pk": "4aed18b8-2301-45e7-8d6d-14bb2313c053",
     "fields": {
-      "slug": "S4aed18b8",
+      "slug": "B4aed18b8",
       "api_key": "003d9a21-ce55-4f6d-ae14-c4121286c992",
       "affiliation_id": 10901,
       "affiliation_name": "Cardiomyopathy VCEP",
@@ -1516,7 +1516,7 @@
     "pk": "aa055e62-b800-4c56-b35f-100ecabbed0f",
     "fields": {
       "slug": "Raa055e62",
-      "submission": "4aed18b8-2301-45e7-8d6d-14bb2313c053",
+      "batch": "4aed18b8-2301-45e7-8d6d-14bb2313c053",
       "record_status": "novel",
       "clinvar_accession": "",
       "local_id": "vci-7b1c2d3e",
@@ -1581,10 +1581,10 @@
     }
   },
   {
-    "model": "clinvar_submission_service.submission",
+    "model": "clinvar_submission_service.batch",
     "pk": "3c696885-c2bc-423e-a535-7ccbf6cb4eca",
     "fields": {
-      "slug": "S3c696885",
+      "slug": "B3c696885",
       "api_key": "003d9a21-ce55-4f6d-ae14-c4121286c992",
       "affiliation_id": 10902,
       "affiliation_name": "TP53 VCEP",
@@ -1704,7 +1704,7 @@
     "pk": "88b7a3ba-6744-4799-9502-efa6980e704f",
     "fields": {
       "slug": "R88b7a3ba",
-      "submission": "3c696885-c2bc-423e-a535-7ccbf6cb4eca",
+      "batch": "3c696885-c2bc-423e-a535-7ccbf6cb4eca",
       "record_status": "novel",
       "clinvar_accession": "",
       "local_id": "vci-c0617283",

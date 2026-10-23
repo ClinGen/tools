@@ -1,6 +1,6 @@
 {% extends "layouts/base.html" %}
-{% block title %}{{ submission.slug }} Details{% endblock %}
-{% block description %}See the status of submission {{ submission.slug }}.{% endblock %}
+{% block title %}{{ batch.slug }} Details{% endblock %}
+{% block description %}See the status of batch {{ batch.slug }}.{% endblock %}
 {% block main %}
     <div class="block mt-6 mb-6">
         {% include "clinvar_submission_service/partials/header.html" with active_tab="detail" %}
@@ -8,38 +8,38 @@
             <table class="table">
                 <tbody>
                     <tr><td>Status</td><td>{% include "clinvar_submission_service/partials/status.html" %}</td></tr>
-                    <tr><td>Affiliation</td><td>{{ submission.affiliation_name }}</td></tr>
-                    <tr><td>Sent By</td><td>{{ submission.api_key.name|default:"" }}</td></tr>
-                    <tr><td>ClinVar ID</td><td>{{ submission.clinvar_submission_id }}</td></tr>
-                    <tr><td>Received by CSS</td><td>{{ submission.added_at|date:"Y-m-d H:i" }} UTC</td></tr>
-                    <tr><td>Last Checked With ClinVar</td><td>{{ submission.last_polled_at|date:"Y-m-d H:i"|default:"Not yet" }}{% if submission.last_polled_at %} UTC{% endif %}</td></tr>
+                    <tr><td>Affiliation</td><td>{{ batch.affiliation_name }}</td></tr>
+                    <tr><td>Sent By</td><td>{{ batch.api_key.name|default:"" }}</td></tr>
+                    <tr><td>ClinVar ID</td><td>{{ batch.clinvar_submission_id }}</td></tr>
+                    <tr><td>Received by CSS</td><td>{{ batch.added_at|date:"Y-m-d H:i" }} UTC</td></tr>
+                    <tr><td>Last Checked With ClinVar</td><td>{{ batch.last_polled_at|date:"Y-m-d H:i"|default:"Not yet" }}{% if batch.last_polled_at %} UTC{% endif %}</td></tr>
                 </tbody>
             </table>
         </div>
-        {% if submission.status == "send_to_clinvar_failed" %}
+        {% if batch.status == "send_to_clinvar_failed" %}
             <div class="notification is-danger is-light block">
-                <p class="has-text-weight-bold">ClinVar never got this submission.</p>
+                <p class="has-text-weight-bold">ClinVar never got this batch.</p>
                 <p class="block">You can send it again. If it still doesn't go through, ask a
-                    developer for help, and give them its ID, {{ submission.slug }}.</p>
+                    developer for help, and give them its ID, {{ batch.slug }}.</p>
                 <form method="post"
-                      action="{% url 'css:resend' slug=submission.slug %}"
-                      onsubmit="return confirm('Send {{ submission.slug }} to ClinVar again?');">
+                      action="{% url 'css:resend' slug=batch.slug %}"
+                      onsubmit="return confirm('Send {{ batch.slug }} to ClinVar again?');">
                     {% csrf_token %}
                     <button type="submit" class="button is-link">Resend</button>
                 </form>
             </div>
-        {% elif submission.status == "not_sent_to_clinvar" %}
-            <p class="block">This submission hasn't been sent to ClinVar yet.</p>
-        {% elif submission.status == "submitted_to_clinvar" or submission.status == "processing_at_clinvar" %}
-            <p class="block">ClinVar has this submission and hasn't finished processing it. This can
+        {% elif batch.status == "not_sent_to_clinvar" %}
+            <p class="block">This batch hasn't been sent to ClinVar yet.</p>
+        {% elif batch.status == "submitted_to_clinvar" or batch.status == "processing_at_clinvar" %}
+            <p class="block">ClinVar has this batch and hasn't finished processing it. This can
                 take a few days. The CSS checks with ClinVar regularly, so look back here later.</p>
-        {% elif submission.status == "error_at_clinvar" %}
+        {% elif batch.status == "error_at_clinvar" %}
             <div class="notification is-danger is-light block">
-                <p class="has-text-weight-bold">{{ submission.status_help }}</p>
+                <p class="has-text-weight-bold">{{ batch.status_help }}</p>
                 <p>The records marked Error below weren't accepted.</p>
             </div>
-        {% elif submission.status == "processed_by_clinvar" %}
-            <p class="block">{{ submission.status_help }} ClinVar makes accepted records public in
+        {% elif batch.status == "processed_by_clinvar" %}
+            <p class="block">{{ batch.status_help }} ClinVar makes accepted records public in
                 its next weekly release.</p>
         {% endif %}
         {% if rows %}

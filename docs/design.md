@@ -205,11 +205,11 @@ format and the API key without creating a submission. They run only when
 `RUN_CONTRACT_TESTS=1` and a key is set. Unit tests use a fake client and send no
 requests.
 
-#### Submission Lifecycle
+#### Batch Lifecycle
 
-A `Submission` is one request to ClinVar. Its slug is `S` and the start of its UUID,
-such as `S3f2a9c1e`. It records the client that sent it, the payload as the client sent
-it, the ClinVar submission ID, its status, ClinVar's latest response and that response's
+A `Batch` is one submission to ClinVar. Its slug is `B` and the start of its UUID, such
+as `B3f2a9c1e`. It records the client that sent it, the payload as the client sent it,
+the ClinVar submission ID, its status, ClinVar's latest response and that response's
 `updated` timestamp and `errorCode`, the summary report, and any error message.
 
 Each of a submission's records is a `Record`: one germline variant classification, a
@@ -224,7 +224,7 @@ affiliation, and client, and a status relative to the CSS's batches and ClinVar:
 ClinVar's word), or `withdrawn`.
 
 1. A client POSTs a submission to the CSS API.
-2. The CSS saves a `Submission` with status `not_sent_to_clinvar`, then forwards it to
+2. The CSS saves a `Batch` with status `not_sent_to_clinvar`, then forwards it to
    ClinVar. Saving first means the CSS keeps a record of every request, even ones
    ClinVar never got.
 3. If ClinVar accepts it, the CSS saves the ClinVar submission ID, sets the status to
@@ -309,23 +309,23 @@ exits cleanly on SIGTERM after finishing the submission it's working on.
 
 #### Staff Pages
 
-The CSS's pages list every submission, newest first, with its affiliation and the genes
-of its records. Pills filter it to one status, or show all of them, and clicking a
-status tag in the table filters to that status too. A search matches a submission's ID,
-ClinVar ID, or affiliation, or a record's gene or HGVS. As in the HCI, the list is a
-django-tables2 table that sorts by its columns, and the search updates the results as
-you type. Every status tag uses ClinVar's word for the status, with what it means in a
-tooltip (`common/tooltip.html`); an Error's tooltip says whether some or all records
-failed. A submission's page says in plain words what its status means and lists its
-records: each one's variant, condition, classification, inheritance, date last
+The CSS's pages list every batch (a submission to ClinVar), newest first, with its
+affiliation and the genes of its records. Pills filter it to one status, or show all of
+them, and clicking a status tag in the table filters to that status too. A search
+matches a batch's ID, ClinVar ID, or affiliation, or a record's gene or HGVS. As in the
+HCI, the list is a django-tables2 table that sorts by its columns, and the search
+updates the results as you type. Every status tag uses ClinVar's word for the status,
+with what it means in a tooltip (`common/tooltip.html`); an Error's tooltip says whether
+some or all records failed. A batch's page says in plain words what its status means and
+lists its records: each one's variant, condition, classification, inheritance, date last
 evaluated, whether it's new or updates an SCV, and, once ClinVar has reported, its
 result in ClinVar's words (Success or Error) and its SCV. An Affiliations page lists
-each affiliation that has submissions, with how many are not sent or failed to send,
+each affiliation that has batches, with how many are not sent or failed to send,
 submitted or processing, processed, and in error, and links to the list filtered to that
 affiliation. Like the ETS's pages, they never show raw JSON or ClinVar's error text;
-developers see those, and each submission's change history, in the Django admin. Staff
-need `has_css_permissions`, and every staff member with it sees every submission. The
-page of a `send_to_clinvar_failed` submission has a Resend button.
+developers see those, and each batch's change history, in the Django admin. Staff need
+`has_css_permissions`, and every staff member with it sees every batch. The page of a
+`send_to_clinvar_failed` batch has a Resend button.
 
 The CSS reads the ClinVar API key and base from the environment. It never logs the
 ClinVar API key or a client's API key.

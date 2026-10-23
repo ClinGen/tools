@@ -1,7 +1,7 @@
-"""Saves submissions, forwards them to ClinVar, and records what happened.
+"""Saves batches, forwards them to ClinVar, and records what happened.
 
-The API and the staff Resend button both forward submissions through here, so a
-submission ends up in the same state whichever one sent it.
+The API and the staff Resend button both forward batches through here, so a
+batch ends up in the same state whichever one sent it.
 """
 
 import logging
@@ -17,22 +17,22 @@ from clinvar_submission_service.clients import ClinVarClient, ClinVarError
 from clinvar_submission_service.content import (
     Affiliation,
     Content,
+    batch_fields,
     record_fields,
-    submission_fields,
 )
-from clinvar_submission_service.models import ApiKey, Record, Submission
+from clinvar_submission_service.models import ApiKey, Batch, Record
 
 logger = logging.getLogger(__name__)
 
-# ClinVar takes at least minutes to start processing a submission, so the poller's first
+# ClinVar takes at least minutes to start processing a batch, so the poller's first
 # check waits this long.
 FIRST_POLL_DELAY = timedelta(minutes=5)
 
 
-def save_submission(
+def save_batch(
     *, api_key: ApiKey | None, affiliation: Affiliation, payload: dict[str, Any]
-) -> Submission:
-    """Saves a submission not yet sent to ClinVar, and a Record for each of its records.
+) -> Batch:
+    """Saves a batch not yet sent to ClinVar, and a Record for each of its records.
 
     Args:
         api_key: The key of the client that sent it.
@@ -40,21 +40,21 @@ def save_submission(
         payload: The ClinVar content as the client sent it.
 
     Returns:
-        The submission, not yet sent to ClinVar.
+        The batch, not yet sent to ClinVar.
     """
     content = Content.model_validate(payload)
     with transaction.atomic():
-        submission = Submission.objects.create(
+        batch = Batch.objects.create(
             api_key=api_key,
             affiliation_id=affiliation.id,
             affiliation_name=affiliation.name,
             payload=payload,
-            **submission_fields(content),
+            **batch_fields(content),
         )
         # Each record keeps its own JSON, so it can be sent again in another batch.
         records = [
             Record(
-                submission=submission,
+                batch=batch,
                 api_key=api_key,
                 affiliation_id=affiliation.id,
                 affiliation_name=affiliation.name,
@@ -69,34 +69,34 @@ def save_submission(
         # bulk_create skips save(), so the slugs and history are added for it.
         Record.set_unique_slugs(records)
         bulk_create_with_history(records, Record)
-    return submission
+    return batch
 
 
-def forward_submission(submission: Submission) -> Submission:
-    """Sends a submission to ClinVar once and saves the result.
+def forward_batch(batch: Batch) -> Batch:
+    """Sends a batch to ClinVar once and saves the result.
 
-    If ClinVar accepts it, the submission is submitted_to_clinvar, with its ClinVar ID
+    If ClinVar accepts it, the batch is submitted_to_clinvar, with its ClinVar ID
     and a time for the poller's first check. Otherwise it's send_to_clinvar_failed,
     with the error. It's
     never retried here; staff resend it from its page.
 
     Args:
-        submission: A saved submission that hasn't reached ClinVar.
+        batch: A saved batch that hasn't reached ClinVar.
 
     Returns:
-        The submission, saved.
+        The batch, saved.
     """
     try:
-        clinvar_id = ClinVarClient.from_settings().submit(submission.payload)
+        clinvar_id = ClinVarClient.from_settings().submit(batch.payload)
     except (ClinVarError, ImproperlyConfigured) as error:
-        logger.warning("Couldn't send %s to ClinVar: %s", submission.slug, error)
-        submission.status = Submission.Status.SEND_TO_CLINVAR_FAILED
-        submission.error_message = str(error)
+        logger.warning("Couldn't send %s to ClinVar: %s", batch.slug, error)
+        batch.status = Batch.Status.SEND_TO_CLINVAR_FAILED
+        batch.error_message = str(error)
     else:
-        logger.info("Sent %s to ClinVar as %s.", submission.slug, clinvar_id)
-        submission.status = Submission.Status.SUBMITTED_TO_CLINVAR
-        submission.clinvar_submission_id = clinvar_id or ""
-        submission.error_message = ""
-        submission.next_poll_at = timezone.now() + FIRST_POLL_DELAY
-    submission.save()
-    return submission
+        logger.info("Sent %s to ClinVar as %s.", batch.slug, clinvar_id)
+        batch.status = Batch.Status.SUBMITTED_TO_CLINVAR
+        batch.clinvar_submission_id = clinvar_id or ""
+        batch.error_message = ""
+        batch.next_poll_at = timezone.now() + FIRST_POLL_DELAY
+    batch.save()
+    return batch

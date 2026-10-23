@@ -14,7 +14,7 @@ from clinvar_submission_service.fakes import (
     make_content,
     make_record,
 )
-from clinvar_submission_service.models import ApiKey, Record, Submission
+from clinvar_submission_service.models import ApiKey, Batch, Record
 from clinvar_submission_service.views import PAGE_SIZE
 
 if TYPE_CHECKING:
@@ -24,7 +24,7 @@ REPORT = {
     "totalCount": 2,
     "totalErrors": 1,
     "totalSuccess": 1,
-    "submissions": [
+    "batches": [
         {
             "identifiers": {"localID": "var-1", "clinvarAccession": "SCV000000001"},
             "processingStatus": "Success",
@@ -41,8 +41,8 @@ def _make_user(username: str, *, css: bool = False) -> User:
     return user
 
 
-def _listed(response: "Response") -> list[Submission]:
-    """Returns the submissions on the list page's current page, in order."""
+def _listed(response: "Response") -> list[Batch]:
+    """Returns the batches on the list page's current page, in order."""
     return [row.record for row in response.context["table"].paginated_rows]
 
 
@@ -52,26 +52,26 @@ class CssViewTestCase(TestCase):
         self.client.force_login(self.user)
         self.api_key, _ = ApiKey.objects.create_key(name="GCI")
 
-    def _make(self, *records: dict, **fields: object) -> Submission:
-        """Returns a submission from the Hearing Loss VCEP with the given records."""
+    def _make(self, *records: dict, **fields: object) -> Batch:
+        """Returns a batch from the Hearing Loss VCEP with the given records."""
         payload = make_content(*records) if records else {}
         defaults = {"affiliation_id": 10007, "affiliation_name": "Hearing Loss VCEP"}
-        submission = Submission.objects.create(
+        batch = Batch.objects.create(
             api_key=self.api_key, payload=payload, **(defaults | fields)
         )
         if records:
             for row in record_fields(Content.model_validate(payload)):
-                Record.objects.create(submission=submission, **row)
-        return submission
+                Record.objects.create(batch=batch, **row)
+        return batch
 
 
 class PermissionTest(CssViewTestCase):
     def test_every_page_needs_css_permissions(self):
-        submission = self._make(status=Submission.Status.SEND_TO_CLINVAR_FAILED)
+        batch = self._make(status=Batch.Status.SEND_TO_CLINVAR_FAILED)
         pages = [
             ("get", reverse("css:index")),
-            ("get", submission.get_absolute_url()),
-            ("post", reverse("css:resend", kwargs={"slug": submission.slug})),
+            ("get", batch.get_absolute_url()),
+            ("post", reverse("css:resend", kwargs={"slug": batch.slug})),
         ]
         self.client.force_login(_make_user("other@example.com"))
         for method, url in pages:
@@ -129,12 +129,12 @@ class ListViewTest(CssViewTestCase):
 
     def test_filters_to_each_status(self):
         by_status = {
-            status: self._make(status=status) for status in Submission.Status.values
+            status: self._make(status=status) for status in Batch.Status.values
         }
-        for status, submission in by_status.items():
+        for status, batch in by_status.items():
             with self.subTest(status=status):
                 response = self.client.get(reverse("css:index"), {"status": status})
-                self.assertEqual(_listed(response), [submission])
+                self.assertEqual(_listed(response), [batch])
         for status in ("", "received", "unknown"):
             with self.subTest(status=status):
                 response = self.client.get(reverse("css:index"), {"status": status})
@@ -145,7 +145,7 @@ class ListViewTest(CssViewTestCase):
         self.assertContains(
             response, '<a href="?" aria-current="page">All</a>', html=True
         )
-        for value, label in Submission.Status.choices:
+        for value, label in Batch.Status.choices:
             with self.subTest(status=value):
                 self.assertContains(
                     response, f'<a href="?status={value}">{label}</a>', html=True
@@ -183,7 +183,7 @@ class ListViewTest(CssViewTestCase):
 
     def test_search_keeps_the_filter(self):
         self._make(
-            status=Submission.Status.SUBMITTED_TO_CLINVAR, clinvar_submission_id="SUB1"
+            status=Batch.Status.SUBMITTED_TO_CLINVAR, clinvar_submission_id="SUB1"
         )
         response = self.client.get(
             reverse("css:index"), {"q": "SUB1", "status": "not_sent_to_clinvar"}
@@ -204,7 +204,7 @@ class ListViewTest(CssViewTestCase):
 
     def test_page_links_keep_the_search_and_filters(self):
         for _ in range(PAGE_SIZE + 1):
-            self._make(status=Submission.Status.NOT_SENT_TO_CLINVAR)
+            self._make(status=Batch.Status.NOT_SENT_TO_CLINVAR)
         params = {
             "q": "Hearing",
             "status": "not_sent_to_clinvar",
@@ -223,20 +223,20 @@ class ListViewTest(CssViewTestCase):
             response, "clinvar_submission_service/partials/results.html"
         )
         self.assertTemplateNotUsed(response, "clinvar_submission_service/list.html")
-        self.assertContains(response, "1 submission")
+        self.assertContains(response, "1 batch")
 
     def test_the_search_box_sends_the_filters_as_you_type(self):
         response = self.client.get(reverse("css:index"), {"affiliation": "10007"})
         self.assertContains(response, 'hx-include="closest form"')
         self.assertContains(response, 'name="affiliation" value="10007"')
 
-    def test_says_when_the_css_received_each_submission(self):
+    def test_says_when_the_css_received_each_batch(self):
         self._make()
         self.assertContains(self.client.get(reverse("css:index")), "Received by CSS")
 
     def test_says_so_when_there_are_none(self):
         response = self.client.get(reverse("css:index"))
-        self.assertContains(response, "No submissions yet.")
+        self.assertContains(response, "No batches yet.")
 
     def test_has_the_header_with_the_list_tab_active(self):
         response = self.client.get(reverse("css:index"))
@@ -250,18 +250,18 @@ class ListViewTest(CssViewTestCase):
 class StatusTagTest(CssViewTestCase):
     def test_each_status_has_clinvars_wording_and_a_tooltip(self):
         labels = {
-            Submission.Status.NOT_SENT_TO_CLINVAR: "Not Sent",
-            Submission.Status.SEND_TO_CLINVAR_FAILED: "Send Failed",
-            Submission.Status.SUBMITTED_TO_CLINVAR: "Submitted",
-            Submission.Status.PROCESSING_AT_CLINVAR: "Processing",
-            Submission.Status.PROCESSED_BY_CLINVAR: "Processed",
-            Submission.Status.ERROR_AT_CLINVAR: "Error",
+            Batch.Status.NOT_SENT_TO_CLINVAR: "Not Sent",
+            Batch.Status.SEND_TO_CLINVAR_FAILED: "Send Failed",
+            Batch.Status.SUBMITTED_TO_CLINVAR: "Submitted",
+            Batch.Status.PROCESSING_AT_CLINVAR: "Processing",
+            Batch.Status.PROCESSED_BY_CLINVAR: "Processed",
+            Batch.Status.ERROR_AT_CLINVAR: "Error",
         }
         for status, label in labels.items():
             with self.subTest(status=status):
-                submission = self._make(status=status)
-                html = self.client.get(submission.get_absolute_url()).content.decode()
-                help_text = escape(Submission.STATUS_HELP[status])
+                batch = self._make(status=status)
+                html = self.client.get(batch.get_absolute_url()).content.decode()
+                help_text = escape(Batch.STATUS_HELP[status])
                 # The tooltip is on the tag itself, not on an icon beside it.
                 self.assertRegex(
                     html,
@@ -272,31 +272,31 @@ class StatusTagTest(CssViewTestCase):
 
     def test_an_errors_tooltip_says_whether_some_or_all_records_failed(self):
         for code, text in (
-            (1, "Some records in the submission succeeded, and others failed."),
-            (2, "All records in the submission failed."),
-            (None, "One or more records in the submission failed."),
+            (1, "Some records in the batch succeeded, and others failed."),
+            (2, "All records in the batch failed."),
+            (None, "One or more records in the batch failed."),
         ):
             with self.subTest(code=code):
-                submission = self._make(
-                    status=Submission.Status.ERROR_AT_CLINVAR, clinvar_error_code=code
+                batch = self._make(
+                    status=Batch.Status.ERROR_AT_CLINVAR, clinvar_error_code=code
                 )
-                self.assertEqual(submission.status_help, text)
-                response = self.client.get(submission.get_absolute_url())
+                self.assertEqual(batch.status_help, text)
+                response = self.client.get(batch.get_absolute_url())
                 self.assertContains(response, f'data-tippy-content="{escape(text)}"')
 
     def test_the_list_shows_each_status_tooltip(self):
-        self._make(status=Submission.Status.SUBMITTED_TO_CLINVAR)
-        help_text = Submission.STATUS_HELP[Submission.Status.SUBMITTED_TO_CLINVAR]
+        self._make(status=Batch.Status.SUBMITTED_TO_CLINVAR)
+        help_text = Batch.STATUS_HELP[Batch.Status.SUBMITTED_TO_CLINVAR]
         response = self.client.get(reverse("css:index"))
         self.assertContains(response, f'data-tippy-content="{escape(help_text)}"')
 
     def test_each_tag_in_the_list_links_to_its_status(self):
-        for status in Submission.Status.values:
+        for status in Batch.Status.values:
             self._make(status=status)
         html = self.client.get(reverse("css:index")).content.decode()
-        for status in Submission.Status.values:
+        for status in Batch.Status.values:
             with self.subTest(status=status):
-                help_text = escape(Submission.STATUS_HELP[status])
+                help_text = escape(Batch.STATUS_HELP[status])
                 self.assertRegex(
                     html,
                     rf'<a href="\?status={status}" class="tag[^"]*" '
@@ -304,7 +304,7 @@ class StatusTagTest(CssViewTestCase):
                 )
 
     def test_a_tags_link_keeps_the_affiliation(self):
-        self._make(status=Submission.Status.PROCESSED_BY_CLINVAR)
+        self._make(status=Batch.Status.PROCESSED_BY_CLINVAR)
         response = self.client.get(reverse("css:index"), {"affiliation": "10007"})
         self.assertContains(
             response,
@@ -312,16 +312,16 @@ class StatusTagTest(CssViewTestCase):
         )
 
     def test_the_detail_pages_tag_isnt_a_link(self):
-        submission = self._make(status=Submission.Status.PROCESSED_BY_CLINVAR)
-        response = self.client.get(submission.get_absolute_url())
+        batch = self._make(status=Batch.Status.PROCESSED_BY_CLINVAR)
+        response = self.client.get(batch.get_absolute_url())
         self.assertContains(response, '<span class="tag is-success is-light"')
         self.assertNotRegex(response.content.decode(), r'<a [^>]*class="tag')
 
     def test_no_page_uses_the_old_wording(self):
-        for status in Submission.Status.values:
+        for status in Batch.Status.values:
             self._make(make_record("var-1"), status=status)
         pages = [reverse("css:index"), reverse("css:affiliations")]
-        pages += [s.get_absolute_url() for s in Submission.objects.all()]
+        pages += [s.get_absolute_url() for s in Batch.objects.all()]
         old = ["Not Sent Yet", "ClinVar Is Checking", "Has Errors", "Accepted<"]
         old += ["Not Accepted", "Waiting for ClinVar", ">Sent<", ">Sent to ClinVar<"]
         for url in pages:
@@ -332,51 +332,51 @@ class StatusTagTest(CssViewTestCase):
 
     def test_each_status_has_its_color(self):
         colors = {
-            Submission.Status.NOT_SENT_TO_CLINVAR: 'class="tag is-light"',
-            Submission.Status.SUBMITTED_TO_CLINVAR: 'class="tag is-light"',
-            Submission.Status.PROCESSING_AT_CLINVAR: 'class="tag is-light"',
-            Submission.Status.SEND_TO_CLINVAR_FAILED: 'class="tag is-danger is-light"',
-            Submission.Status.ERROR_AT_CLINVAR: 'class="tag is-danger is-light"',
-            Submission.Status.PROCESSED_BY_CLINVAR: 'class="tag is-success is-light"',
+            Batch.Status.NOT_SENT_TO_CLINVAR: 'class="tag is-light"',
+            Batch.Status.SUBMITTED_TO_CLINVAR: 'class="tag is-light"',
+            Batch.Status.PROCESSING_AT_CLINVAR: 'class="tag is-light"',
+            Batch.Status.SEND_TO_CLINVAR_FAILED: 'class="tag is-danger is-light"',
+            Batch.Status.ERROR_AT_CLINVAR: 'class="tag is-danger is-light"',
+            Batch.Status.PROCESSED_BY_CLINVAR: 'class="tag is-success is-light"',
         }
         for status, css_class in colors.items():
             with self.subTest(status=status):
-                submission = self._make(status=status)
-                response = self.client.get(submission.get_absolute_url())
+                batch = self._make(status=status)
+                response = self.client.get(batch.get_absolute_url())
                 self.assertContains(response, css_class)
 
 
 class DetailViewTest(CssViewTestCase):
-    def test_shows_the_submission(self):
-        submission = self._make(
+    def test_shows_the_batch(self):
+        batch = self._make(
             make_record("var-1"),
             make_record("var-2"),
-            status=Submission.Status.ERROR_AT_CLINVAR,
+            status=Batch.Status.ERROR_AT_CLINVAR,
             clinvar_submission_id="SUB000009",
             summary_report=REPORT,
         )
-        response = self.client.get(submission.get_absolute_url())
+        response = self.client.get(batch.get_absolute_url())
         self.assertTemplateUsed(response, "clinvar_submission_service/detail.html")
         self.assertContains(response, "SUB000009")
         self.assertContains(response, "GCI")
         self.assertContains(response, "Hearing Loss VCEP")
-        self.assertContains(response, f"Submission {submission.slug}")
+        self.assertContains(response, f"Batch {batch.slug}")
 
-    def test_the_submission_tab_comes_between_submissions_and_affiliations(self):
-        submission = self._make()
-        html = self.client.get(submission.get_absolute_url()).content.decode()
-        tabs = ["Submissions", f"Submission {submission.slug}", "Affiliations"]
+    def test_the_batch_tab_comes_between_submissions_and_affiliations(self):
+        batch = self._make()
+        html = self.client.get(batch.get_absolute_url()).content.decode()
+        tabs = ["Batches", f"Batch {batch.slug}", "Affiliations"]
         positions = [html.index(f"<span>{tab}</span>") for tab in tabs]
         self.assertEqual(positions, sorted(positions))
 
     def test_shows_each_records_classification_and_clinvar_result(self):
-        submission = self._make(
+        batch = self._make(
             make_record("var-1"),
             make_record("var-2"),
-            status=Submission.Status.ERROR_AT_CLINVAR,
+            status=Batch.Status.ERROR_AT_CLINVAR,
             summary_report=REPORT,
         )
-        response = self.client.get(submission.get_absolute_url())
+        response = self.client.get(batch.get_absolute_url())
         rows = response.context["rows"]
         self.assertEqual([row.record.local_id for row in rows], ["var-1", "var-2"])
         self.assertEqual(rows[0].scv, "SCV000000001")
@@ -403,19 +403,19 @@ class DetailViewTest(CssViewTestCase):
                 self.assertContains(response, text)
 
     def test_records_have_no_result_before_clinvar_reports(self):
-        submission = self._make(
-            make_record("var-1"), status=Submission.Status.SUBMITTED_TO_CLINVAR
+        batch = self._make(
+            make_record("var-1"), status=Batch.Status.SUBMITTED_TO_CLINVAR
         )
-        response = self.client.get(submission.get_absolute_url())
+        response = self.client.get(batch.get_absolute_url())
         (row,) = response.context["rows"]
         self.assertIsNone(row.accepted)
         self.assertContains(response, "No Result Yet")
 
     def test_records_clinvar_never_got_say_so(self):
-        submission = self._make(
-            make_record("var-1"), status=Submission.Status.SEND_TO_CLINVAR_FAILED
+        batch = self._make(
+            make_record("var-1"), status=Batch.Status.SEND_TO_CLINVAR_FAILED
         )
-        response = self.client.get(submission.get_absolute_url())
+        response = self.client.get(batch.get_absolute_url())
         self.assertContains(
             response,
             '">Not Sent<span class="is-sr-only">',
@@ -423,32 +423,32 @@ class DetailViewTest(CssViewTestCase):
         self.assertNotContains(response, "No Result Yet")
 
     def test_an_update_names_the_record_it_updates(self):
-        submission = self._make(
+        batch = self._make(
             make_record("var-1", recordStatus="update", clinvarAccession="SCV000575021")
         )
-        response = self.client.get(submission.get_absolute_url())
+        response = self.client.get(batch.get_absolute_url())
         self.assertContains(response, "Update to SCV000575021")
 
     def test_never_shows_the_raw_error(self):
-        submission = self._make(
-            status=Submission.Status.SEND_TO_CLINVAR_FAILED,
+        batch = self._make(
+            status=Batch.Status.SEND_TO_CLINVAR_FAILED,
             error_message="ClinVar returned 401: No valid API key provided",
         )
-        response = self.client.get(submission.get_absolute_url())
+        response = self.client.get(batch.get_absolute_url())
         self.assertNotContains(response, "401")
-        self.assertContains(response, "ClinVar never got this submission.")
+        self.assertContains(response, "ClinVar never got this batch.")
 
     def test_unknown_slug_is_404(self):
         response = self.client.get(reverse("css:detail", kwargs={"slug": "Snope"}))
         self.assertEqual(response.status_code, 404)
 
     def test_resend_button_is_only_for_send_failed(self):
-        for status in Submission.Status:
+        for status in Batch.Status:
             with self.subTest(status=status):
-                submission = self._make(status=status)
-                response = self.client.get(submission.get_absolute_url())
-                resend_url = reverse("css:resend", kwargs={"slug": submission.slug})
-                if status == Submission.Status.SEND_TO_CLINVAR_FAILED:
+                batch = self._make(status=status)
+                response = self.client.get(batch.get_absolute_url())
+                resend_url = reverse("css:resend", kwargs={"slug": batch.slug})
+                if status == Batch.Status.SEND_TO_CLINVAR_FAILED:
                     self.assertContains(response, resend_url)
                 else:
                     self.assertNotContains(response, resend_url)
@@ -465,55 +465,51 @@ class ResendViewTest(CssViewTestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def resend(self, submission: Submission):
+    def resend(self, batch: Batch):
         return self.client.post(
-            reverse("css:resend", kwargs={"slug": submission.slug}), follow=True
+            reverse("css:resend", kwargs={"slug": batch.slug}), follow=True
         )
 
     def test_a_successful_resend_sends_it_to_clinvar(self):
-        submission = self._make(status=Submission.Status.SEND_TO_CLINVAR_FAILED)
-        response = self.resend(submission)
-        self.assertRedirects(response, submission.get_absolute_url())
-        submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.SUBMITTED_TO_CLINVAR)
-        self.assertEqual(submission.clinvar_submission_id, "SUB000001")
-        self.assertEqual(submission.history.first().history_user, self.user)  # type: ignore
+        batch = self._make(status=Batch.Status.SEND_TO_CLINVAR_FAILED)
+        response = self.resend(batch)
+        self.assertRedirects(response, batch.get_absolute_url())
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, Batch.Status.SUBMITTED_TO_CLINVAR)
+        self.assertEqual(batch.clinvar_submission_id, "SUB000001")
+        self.assertEqual(batch.history.first().history_user, self.user)  # type: ignore
 
     def test_a_failed_resend_stays_send_failed_with_the_new_error(self):
         self.fake.submit_error = ClinVarError("ClinVar returned 503", retryable=True)
-        submission = self._make(
-            status=Submission.Status.SEND_TO_CLINVAR_FAILED, error_message="old error"
+        batch = self._make(
+            status=Batch.Status.SEND_TO_CLINVAR_FAILED, error_message="old error"
         )
-        response = self.resend(submission)
-        submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.SEND_TO_CLINVAR_FAILED)
-        self.assertEqual(submission.error_message, "ClinVar returned 503")
-        self.assertContains(response, "ClinVar still didn&#x27;t get the submission.")
+        response = self.resend(batch)
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, Batch.Status.SEND_TO_CLINVAR_FAILED)
+        self.assertEqual(batch.error_message, "ClinVar returned 503")
+        self.assertContains(response, "ClinVar still didn&#x27;t get the batch.")
         self.assertNotContains(response, "503")
 
     def test_only_send_failed_submissions_can_be_resent(self):
-        submission = self._make(
-            status=Submission.Status.SUBMITTED_TO_CLINVAR,
+        batch = self._make(
+            status=Batch.Status.SUBMITTED_TO_CLINVAR,
             clinvar_submission_id="SUB000005",
         )
-        response = self.resend(submission)
-        self.assertContains(
-            response, "Only a submission ClinVar never got can be resent."
-        )
-        submission.refresh_from_db()
-        self.assertEqual(submission.clinvar_submission_id, "SUB000005")
+        response = self.resend(batch)
+        self.assertContains(response, "Only a batch ClinVar never got can be resent.")
+        batch.refresh_from_db()
+        self.assertEqual(batch.clinvar_submission_id, "SUB000005")
         self.assertEqual(self.fake.submitted, [])
 
     def test_resend_needs_a_post(self):
-        submission = self._make(status=Submission.Status.SEND_TO_CLINVAR_FAILED)
-        response = self.client.get(
-            reverse("css:resend", kwargs={"slug": submission.slug})
-        )
+        batch = self._make(status=Batch.Status.SEND_TO_CLINVAR_FAILED)
+        response = self.client.get(reverse("css:resend", kwargs={"slug": batch.slug}))
         self.assertEqual(response.status_code, 405)
 
 
 class AffiliationTestCase(TestCase):
-    fixtures = ["test_submissions.json"]
+    fixtures = ["test_batches.json"]
 
     def setUp(self):
         self.client.force_login(_make_user("staff@example.com", css=True))
@@ -525,7 +521,7 @@ class AffiliationFilterTest(AffiliationTestCase):
         names = {s.affiliation_name for s in _listed(response)}
         self.assertEqual(names, {"Cardiomyopathy VCEP"})
         self.assertEqual(len(_listed(response)), 3)
-        self.assertContains(response, "Showing submissions from Cardiomyopathy VCEP.")
+        self.assertContains(response, "Showing batches from Cardiomyopathy VCEP.")
 
     def test_combines_with_the_status_filter(self):
         response = self.client.get(
@@ -534,7 +530,7 @@ class AffiliationFilterTest(AffiliationTestCase):
         )
         self.assertEqual(
             [s.status for s in _listed(response)],
-            [Submission.Status.NOT_SENT_TO_CLINVAR],
+            [Batch.Status.NOT_SENT_TO_CLINVAR],
         )
         self.assertContains(
             response, 'href="?affiliation=10901&amp;status=processed_by_clinvar"'
@@ -553,7 +549,7 @@ class AffiliationsViewTest(AffiliationTestCase):
         response = self.client.get(reverse("css:affiliations"))
         self.assertEqual(response.status_code, 403)
 
-    def test_counts_each_affiliations_submissions(self):
+    def test_counts_each_affiliations_batches(self):
         response = self.client.get(reverse("css:affiliations"))
         self.assertTemplateUsed(
             response, "clinvar_submission_service/affiliations.html"
@@ -579,7 +575,7 @@ class AffiliationsViewTest(AffiliationTestCase):
             },
         )
 
-    def test_lists_affiliations_by_name_with_links_to_their_submissions(self):
+    def test_lists_affiliations_by_name_with_links_to_their_batches(self):
         response = self.client.get(reverse("css:affiliations"))
         names = [row["name"] for row in response.context["affiliations"]]
         self.assertEqual(names, sorted(names))

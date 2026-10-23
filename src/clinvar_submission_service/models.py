@@ -12,7 +12,7 @@ from simple_history.models import HistoricalRecords
 from common.models import SlugModel, UUIDModel
 
 # ClinVar's terms, from its submission schema. Each choice's value is exactly what
-# ClinVar expects in the submission's content.
+# ClinVar expects in the batch's content.
 
 
 class AssertionCriteriaDb(models.TextChoices):
@@ -120,32 +120,32 @@ class CollectionMethod(models.TextChoices):
     NOT_PROVIDED = "not provided", "Not Provided"
 
 
-class SubmissionManager(models.Manager["Submission"]):
-    def due_to_poll(self) -> models.QuerySet["Submission"]:
-        """Returns the pollable submissions whose next poll time has passed.
+class BatchManager(models.Manager["Batch"]):
+    def due_to_poll(self) -> models.QuerySet["Batch"]:
+        """Returns the pollable batches whose next poll time has passed.
 
         The ones that have waited longest come first.
         """
         return self.filter(
-            status__in=Submission.POLLABLE_STATUSES,
+            status__in=Batch.POLLABLE_STATUSES,
             next_poll_at__lte=timezone.now(),
         ).order_by("next_poll_at")
 
 
-class Submission(SlugModel):
+class Batch(SlugModel):
     """One request to ClinVar, from receipt to a final ClinVar status.
 
     It's saved before it's forwarded to ClinVar, so there's a record of every request,
-    even one ClinVar never got. Its slug is S and the start of its UUID, such as
-    S3f2a9c1e.
+    even one ClinVar never got. Its slug is B and the start of its UUID, such as
+    B3f2a9c1e.
     """
 
-    slug_prefix = "S"
+    slug_prefix = "B"
 
     class Status(models.TextChoices):
-        """Where the submission is, relative to ClinVar.
+        """Where the batch is, relative to ClinVar.
 
-        The first two are the CSS's own: ClinVar doesn't have the submission. The rest
+        The first two are the CSS's own: ClinVar doesn't have the batch. The rest
         are ClinVar's statuses from its Submission API (submitted, processing,
         processed, and error), which the poller reads.
         """
@@ -158,32 +158,32 @@ class Submission(SlugModel):
         ERROR_AT_CLINVAR = "error_at_clinvar", "Error"
 
     # What each status means, for its tooltip. ClinVar's four follow the descriptions in
-    # its Submission API docs, with "submission" for ClinVar's "batch".
+    # its Submission API docs, which call a submission a batch.
     STATUS_HELP: ClassVar[dict[str, str]] = {
         Status.NOT_SENT_TO_CLINVAR: (
-            "The CSS has this submission but hasn't sent it to ClinVar yet."
+            "The CSS has this batch but hasn't sent it to ClinVar yet."
         ),
         Status.SEND_TO_CLINVAR_FAILED: (
-            "The CSS tried to send this submission to ClinVar, but ClinVar didn't get "
+            "The CSS tried to send this batch to ClinVar, but ClinVar didn't get "
             "it. You can resend it from its page."
         ),
         Status.SUBMITTED_TO_CLINVAR: (
-            "ClinVar has received the submission, and it's waiting to be validated."
+            "ClinVar has received the batch, and it's waiting to be validated."
         ),
         Status.PROCESSING_AT_CLINVAR: (
-            "ClinVar is validating the submission, which should be done soon."
+            "ClinVar is validating the batch, which should be done soon."
         ),
-        Status.PROCESSED_BY_CLINVAR: "All records in the submission succeeded.",
-        Status.ERROR_AT_CLINVAR: "One or more records in the submission failed.",
+        Status.PROCESSED_BY_CLINVAR: "All records in the batch succeeded.",
+        Status.ERROR_AT_CLINVAR: "One or more records in the batch failed.",
     }
 
     # What an error status means, by ClinVar's error code.
     ERROR_CODE_HELP: ClassVar[dict[int, str]] = {
-        1: "Some records in the submission succeeded, and others failed.",
-        2: "All records in the submission failed.",
+        1: "Some records in the batch succeeded, and others failed.",
+        2: "All records in the batch failed.",
     }
 
-    # The statuses the poller checks on. A submission not sent to ClinVar, or whose send
+    # The statuses the poller checks on. A batch not sent to ClinVar, or whose send
     # failed, has no ClinVar ID to poll; the rest are final.
     POLLABLE_STATUSES: ClassVar[list[str]] = [
         Status.SUBMITTED_TO_CLINVAR,
@@ -195,9 +195,9 @@ class Submission(SlugModel):
         blank=True,
         null=True,
         on_delete=models.PROTECT,
-        related_name="submissions",
+        related_name="batches",
         verbose_name="Client",
-        help_text="The API key of the client that sent the submission.",
+        help_text="The API key of the client that sent the batch.",
     )
     affiliation_id = models.PositiveIntegerField(
         blank=True,
@@ -236,7 +236,7 @@ class Submission(SlugModel):
         blank=True,
         null=True,
         verbose_name="On Behalf Of",
-        help_text="The ClinVar ID of the organization the submission is made for.",
+        help_text="The ClinVar ID of the organization the batch is made for.",
     )
     release_status = models.CharField(
         blank=True,
@@ -253,7 +253,7 @@ class Submission(SlugModel):
         verbose_name="ClinVar Submission ID",
         help_text=(
             "The ID ClinVar returned, e.g., SUB999999. Blank until ClinVar accepts "
-            "the submission."
+            "the batch."
         ),
     )
     status = models.CharField(
@@ -261,13 +261,13 @@ class Submission(SlugModel):
         default=Status.NOT_SENT_TO_CLINVAR,
         max_length=32,
         verbose_name="Status",
-        help_text="Where the submission is between receipt and a final ClinVar status.",
+        help_text="Where the batch is between receipt and a final ClinVar status.",
     )
     clinvar_updated_at = models.DateTimeField(
         blank=True,
         null=True,
         verbose_name="ClinVar Updated At",
-        help_text="When ClinVar last updated the submission's status.",
+        help_text="When ClinVar last updated the batch's status.",
     )
     clinvar_error_code = models.PositiveSmallIntegerField(
         blank=True,
@@ -282,7 +282,7 @@ class Submission(SlugModel):
         blank=True,
         null=True,
         verbose_name="Latest Response",
-        help_text="ClinVar's most recent response for the submission.",
+        help_text="ClinVar's most recent response for the batch.",
     )
     summary_report = models.JSONField(
         blank=True,
@@ -299,48 +299,48 @@ class Submission(SlugModel):
     added_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name="Added At",
-        help_text="When the submission was received.",
+        help_text="When the batch was received.",
     )
     updated_at = models.DateTimeField(
         auto_now=True,
         verbose_name="Updated At",
-        help_text="When the submission was last updated.",
+        help_text="When the batch was last updated.",
     )
     last_polled_at = models.DateTimeField(
         blank=True,
         null=True,
         verbose_name="Last Polled At",
-        help_text="When the poller last checked ClinVar for this submission.",
+        help_text="When the poller last checked ClinVar for this batch.",
     )
     next_poll_at = models.DateTimeField(
         blank=True,
         null=True,
         verbose_name="Next Poll At",
-        help_text="When the poller should next check ClinVar for this submission.",
+        help_text="When the poller should next check ClinVar for this batch.",
     )
     history = HistoricalRecords()
 
-    objects: ClassVar[SubmissionManager] = SubmissionManager()
+    objects: ClassVar[BatchManager] = BatchManager()
 
     class Meta:  # ty: ignore[invalid-attribute-override] (Each Django model declares its own Meta.)
         """Provides metadata."""
 
-        db_table = "submission"
+        db_table = "batch"
         ordering = ["-added_at"]
-        verbose_name = "Submission"
-        verbose_name_plural = "Submissions"
+        verbose_name = "Batch"
+        verbose_name_plural = "Batches"
 
     def __str__(self) -> str:
-        """Returns the submission's human-readable ID."""
+        """Returns the batch's human-readable ID."""
         return self.slug
 
     def get_absolute_url(self) -> str:
-        """Returns the submission's page."""
+        """Returns the batch's page."""
         return reverse("css:detail", kwargs={"slug": self.slug})
 
     @property
     def status_help(self) -> str:
-        """What the submission's status means, in plain words, for its tooltip."""
+        """What the batch's status means, in plain words, for its tooltip."""
         if self.status == self.Status.ERROR_AT_CLINVAR:
             by_code = self.ERROR_CODE_HELP.get(self.clinvar_error_code or 0)
             if by_code:
@@ -381,14 +381,14 @@ class Record(SlugModel):
         Status.WITHDRAWN: "This record was withdrawn, so it won't be sent to ClinVar.",
     }
 
-    submission = models.ForeignKey(
-        Submission,
+    batch = models.ForeignKey(
+        Batch,
         blank=True,
         null=True,
         on_delete=models.CASCADE,
         related_name="records",
-        verbose_name="Submission",
-        help_text="The submission the record is in, if any.",
+        verbose_name="Batch",
+        help_text="The batch the record is in, if any.",
     )
     api_key = models.ForeignKey(
         "ApiKey",
@@ -542,7 +542,7 @@ class Record(SlugModel):
         """Provides metadata."""
 
         db_table = "record"
-        ordering = ["submission", "local_id"]
+        ordering = ["batch", "local_id"]
         verbose_name = "Record"
         verbose_name_plural = "Records"
 

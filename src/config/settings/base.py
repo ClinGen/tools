@@ -214,6 +214,6 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 64 * 1024 * 1024
 # it checks on a scale of minutes. The wait between checks of one submission doubles
 # from the minimum to the maximum.
 CSS_POLL_SLEEP_SECONDS = 60
-CSS_POLL_BATCH_SIZE = 25
+CSS_POLLS_PER_PASS = 25
 CSS_POLL_MIN_DELAY = timedelta(minutes=5)
 CSS_POLL_MAX_DELAY = timedelta(hours=6)

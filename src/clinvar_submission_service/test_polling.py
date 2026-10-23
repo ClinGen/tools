@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from clinvar_submission_service.clients import ClinVarError, ClinVarStatus
 from clinvar_submission_service.fakes import FakeClinVarClient
-from clinvar_submission_service.models import Submission
+from clinvar_submission_service.models import Batch
 from clinvar_submission_service.polling import Poller, next_delay
 
 MIN_DELAY = timedelta(minutes=5)
@@ -17,7 +17,7 @@ MAX_DELAY = timedelta(hours=6)
 POLL_SETTINGS = {
     "CSS_POLL_MIN_DELAY": MIN_DELAY,
     "CSS_POLL_MAX_DELAY": MAX_DELAY,
-    "CSS_POLL_BATCH_SIZE": 10,
+    "CSS_POLLS_PER_PASS": 10,
 }
 
 
@@ -27,14 +27,14 @@ class PollerTestCase(TestCase):
         self.fake = FakeClinVarClient()
         self.poller = Poller(self.fake)
 
-    def _make(self, clinvar_id: str = "SUB000001", **fields: object) -> Submission:
-        """Returns a submitted submission that's due to poll."""
+    def _make(self, clinvar_id: str = "SUB000001", **fields: object) -> Batch:
+        """Returns a submitted batch that's due to poll."""
         defaults = {
-            "status": Submission.Status.SUBMITTED_TO_CLINVAR,
+            "status": Batch.Status.SUBMITTED_TO_CLINVAR,
             "clinvar_submission_id": clinvar_id,
             "next_poll_at": timezone.now() - timedelta(minutes=1),
         }
-        return Submission.objects.create(payload={}, **(defaults | fields))
+        return Batch.objects.create(payload={}, **(defaults | fields))
 
 
 class NextDelayTest(PollerTestCase):
@@ -59,103 +59,101 @@ class NextDelayTest(PollerTestCase):
 class PollTest(PollerTestCase):
     def test_maps_each_clinvar_status_to_ours(self):
         expected = {
-            "submitted": Submission.Status.SUBMITTED_TO_CLINVAR,
-            "processing": Submission.Status.PROCESSING_AT_CLINVAR,
-            "processed": Submission.Status.PROCESSED_BY_CLINVAR,
-            "error": Submission.Status.ERROR_AT_CLINVAR,
+            "submitted": Batch.Status.SUBMITTED_TO_CLINVAR,
+            "processing": Batch.Status.PROCESSING_AT_CLINVAR,
+            "processed": Batch.Status.PROCESSED_BY_CLINVAR,
+            "error": Batch.Status.ERROR_AT_CLINVAR,
         }
         for clinvar_status, ours in expected.items():
             with self.subTest(clinvar_status=clinvar_status):
-                submission = self._make(clinvar_id=f"SUB-{clinvar_status}")
+                batch = self._make(clinvar_id=f"SUB-{clinvar_status}")
                 self.fake.set_status(
-                    submission.clinvar_submission_id, clinvar_status, report={}
+                    batch.clinvar_submission_id, clinvar_status, report={}
                 )
                 self.poller.run_pass()
-                submission.refresh_from_db()
-                self.assertEqual(submission.status, ours)
+                batch.refresh_from_db()
+                self.assertEqual(batch.status, ours)
 
-    def test_a_processing_submission_is_polled_again_later(self):
-        submission = self._make()
+    def test_a_processing_batch_is_polled_again_later(self):
+        batch = self._make()
         self.fake.set_status("SUB000001", "processing")
         self.poller.run_pass()
-        submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.PROCESSING_AT_CLINVAR)
-        self.assertIsNotNone(submission.last_polled_at)
-        self.assertIsNotNone(submission.clinvar_updated_at)
-        self.assertEqual(
-            submission.latest_response["actions"][0]["status"], "processing"
-        )
-        assert submission.next_poll_at and submission.last_polled_at
-        self.assertEqual(submission.next_poll_at - submission.last_polled_at, MIN_DELAY)
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, Batch.Status.PROCESSING_AT_CLINVAR)
+        self.assertIsNotNone(batch.last_polled_at)
+        self.assertIsNotNone(batch.clinvar_updated_at)
+        self.assertEqual(batch.latest_response["actions"][0]["status"], "processing")
+        assert batch.next_poll_at and batch.last_polled_at
+        self.assertEqual(batch.next_poll_at - batch.last_polled_at, MIN_DELAY)
 
     def test_the_delay_grows_while_clinvar_is_still_processing(self):
         last_polled_at = timezone.now() - timedelta(minutes=30)
-        submission = self._make(
-            status=Submission.Status.PROCESSING_AT_CLINVAR,
+        batch = self._make(
+            status=Batch.Status.PROCESSING_AT_CLINVAR,
             last_polled_at=last_polled_at,
         )
         self.fake.set_status("SUB000001", "processing")
         self.poller.run_pass()
-        submission.refresh_from_db()
-        assert submission.next_poll_at and submission.last_polled_at
-        delay = submission.next_poll_at - submission.last_polled_at
+        batch.refresh_from_db()
+        assert batch.next_poll_at and batch.last_polled_at
+        delay = batch.next_poll_at - batch.last_polled_at
         self.assertGreaterEqual(delay, timedelta(minutes=60))
 
-    def test_a_processed_submission_stores_its_report_and_stops_polling(self):
-        submission = self._make()
+    def test_a_processed_batch_stores_its_report_and_stops_polling(self):
+        batch = self._make()
         report = {"totalCount": 1, "totalSuccess": 1}
         self.fake.set_status("SUB000001", "processed", report=report)
         self.poller.run_pass()
-        submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.PROCESSED_BY_CLINVAR)
-        self.assertEqual(submission.summary_report, report)
-        self.assertIsNone(submission.next_poll_at)
-        self.assertFalse(Submission.objects.due_to_poll().exists())
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, Batch.Status.PROCESSED_BY_CLINVAR)
+        self.assertEqual(batch.summary_report, report)
+        self.assertIsNone(batch.next_poll_at)
+        self.assertFalse(Batch.objects.due_to_poll().exists())
 
     def test_an_error_records_clinvars_error_code(self):
-        submission = self._make()
+        batch = self._make()
         self.fake.set_status(
             "SUB000001", "error", error_code=2, report={"totalErrors": 1}
         )
         self.poller.run_pass()
-        submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.ERROR_AT_CLINVAR)
-        self.assertEqual(submission.clinvar_error_code, 2)
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, Batch.Status.ERROR_AT_CLINVAR)
+        self.assertEqual(batch.clinvar_error_code, 2)
 
     def test_a_failed_report_download_is_retried_without_changing_the_status(self):
-        submission = self._make()
+        batch = self._make()
         self.fake.set_status("SUB000001", "processed", report={"totalCount": 1})
         self.fake.report_error = ClinVarError("ClinVar returned 503", retryable=True)
         self.poller.run_pass()
-        submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.SUBMITTED_TO_CLINVAR)
-        self.assertIsNone(submission.summary_report)
-        self.assertIsNotNone(submission.next_poll_at)
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, Batch.Status.SUBMITTED_TO_CLINVAR)
+        self.assertIsNone(batch.summary_report)
+        self.assertIsNotNone(batch.next_poll_at)
 
     def test_a_clinvar_error_backs_off_without_changing_the_status(self):
-        submission = self._make()
+        batch = self._make()
         self.fake.status_error = ClinVarError("ClinVar returned 503", retryable=True)
         with mock.patch("clinvar_submission_service.polling.sentry_sdk") as sentry:
             self.poller.run_pass()
         sentry.capture_exception.assert_called_once()
-        submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.SUBMITTED_TO_CLINVAR)
-        assert submission.next_poll_at
-        self.assertGreater(submission.next_poll_at, timezone.now())
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, Batch.Status.SUBMITTED_TO_CLINVAR)
+        assert batch.next_poll_at
+        self.assertGreater(batch.next_poll_at, timezone.now())
 
     def test_a_429_waits_at_least_retry_after(self):
-        submission = self._make()
+        batch = self._make()
         self.fake.status_error = ClinVarError(
             "ClinVar returned 429", retryable=True, retry_after=7200
         )
         self.poller.run_pass()
-        submission.refresh_from_db()
-        assert submission.next_poll_at
+        batch.refresh_from_db()
+        assert batch.next_poll_at
         self.assertGreaterEqual(
-            submission.next_poll_at, timezone.now() + timedelta(seconds=7190)
+            batch.next_poll_at, timezone.now() + timedelta(seconds=7190)
         )
 
-    def test_one_failing_submission_does_not_block_the_others(self):
+    def test_one_failing_batch_does_not_block_the_others(self):
         failing = self._make("SUB000001")
         working = self._make("SUB000002")
         self.fake.set_status("SUB000002", "processing")
@@ -163,22 +161,22 @@ class PollTest(PollerTestCase):
         self.poller.run_pass()
         failing.refresh_from_db()
         working.refresh_from_db()
-        self.assertEqual(failing.status, Submission.Status.SUBMITTED_TO_CLINVAR)
-        self.assertEqual(working.status, Submission.Status.PROCESSING_AT_CLINVAR)
+        self.assertEqual(failing.status, Batch.Status.SUBMITTED_TO_CLINVAR)
+        self.assertEqual(working.status, Batch.Status.PROCESSING_AT_CLINVAR)
         assert failing.next_poll_at
         self.assertGreater(failing.next_poll_at, timezone.now())
 
     def test_send_failed_and_received_submissions_are_never_polled(self):
         for status in (
-            Submission.Status.SEND_TO_CLINVAR_FAILED,
-            Submission.Status.NOT_SENT_TO_CLINVAR,
+            Batch.Status.SEND_TO_CLINVAR_FAILED,
+            Batch.Status.NOT_SENT_TO_CLINVAR,
         ):
             self._make(clinvar_id="", status=status)
         with mock.patch.object(self.fake, "get_status") as get_status:
             self.assertEqual(self.poller.run_pass(), 0)
         get_status.assert_not_called()
 
-    @override_settings(CSS_POLL_BATCH_SIZE=1)
+    @override_settings(CSS_POLLS_PER_PASS=1)
     def test_takes_one_batch_per_pass(self):
         self._make("SUB000001")
         self._make("SUB000002")
@@ -186,7 +184,7 @@ class PollTest(PollerTestCase):
         self.fake.set_status("SUB000002", "processing")
         self.assertEqual(self.poller.run_pass(), 1)
 
-    def test_stopping_finishes_the_current_submission_first(self):
+    def test_stopping_finishes_the_current_batch_first(self):
         first = self._make("SUB000001")
         second = self._make("SUB000002")
         self.fake.set_status("SUB000001", "processing")
@@ -219,16 +217,16 @@ class CommandTest(TestCase):
         self.addCleanup(patcher.stop)
 
     def test_once_runs_one_pass(self):
-        submission = Submission.objects.create(
+        batch = Batch.objects.create(
             payload={},
-            status=Submission.Status.SUBMITTED_TO_CLINVAR,
+            status=Batch.Status.SUBMITTED_TO_CLINVAR,
             clinvar_submission_id="SUB000001",
             next_poll_at=timezone.now(),
         )
         self.fake.set_status("SUB000001", "processing")
         call_command("poll_clinvar", "--once")
-        submission.refresh_from_db()
-        self.assertEqual(submission.status, Submission.Status.PROCESSING_AT_CLINVAR)
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, Batch.Status.PROCESSING_AT_CLINVAR)
 
     def test_sigterm_stops_the_loop(self):
         handlers = {}

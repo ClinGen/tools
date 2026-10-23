@@ -2,14 +2,14 @@
 <div hx-boost="true" hx-target="#search-results" class="mb-4">
     {% with count=table.paginator.count %}
         {% if count %}
-            <p class="mb-3">{{ count }} submission{{ count|pluralize }}</p>
+            <p class="mb-3">{{ count }} batch{{ count|pluralize:"es" }}</p>
             {% render_table table %}
         {% elif query %}
-            <p>No submissions match “{{ query }}”.</p>
+            <p>No batches match “{{ query }}”.</p>
         {% elif status or affiliation %}
-            <p>No submissions here.</p>
+            <p>No batches here.</p>
         {% else %}
-            <p>No submissions yet.</p>
+            <p>No batches yet.</p>
         {% endif %}
     {% endwith %}
 </div>

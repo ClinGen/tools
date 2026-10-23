@@ -5,14 +5,14 @@
         <li{% if active_tab == "list" %} class="is-active"{% endif %}>
             <a href="{% url 'css:index' %}"{% if active_tab == "list" %} aria-current="page"{% endif %}>
                 {% include "common/icon.html" with icon_name="list-ul" %}
-                <span>Submissions</span>
+                <span>Batches</span>
             </a>
         </li>
         {% if active_tab == "detail" %}
             <li class="is-active">
-                <a href="{{ submission.get_absolute_url }}" aria-current="page">
+                <a href="{{ batch.get_absolute_url }}" aria-current="page">
                     {% include "common/icon.html" with icon_name="journal-text" %}
-                    <span>Submission {{ submission.slug }}</span>
+                    <span>Batch {{ batch.slug }}</span>
                 </a>
             </li>
         {% endif %}

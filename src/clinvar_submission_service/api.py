@@ -1,7 +1,7 @@
 """Serves the CSS's API, version 1, at /css/api/v1/.
 
 Clients authenticate with an API key in the X-API-Key header and see only their own
-submissions. The OpenAPI docs are at /css/api/v1/docs.
+batches. The OpenAPI docs are at /css/api/v1/docs.
 """
 
 import json
@@ -16,8 +16,8 @@ from ninja.pagination import paginate
 
 from clinvar_submission_service.api_auth import ApiKeyAuth
 from clinvar_submission_service.content import Affiliation, SubmissionRequest
-from clinvar_submission_service.models import Submission
-from clinvar_submission_service.services import forward_submission, save_submission
+from clinvar_submission_service.models import Batch
+from clinvar_submission_service.services import forward_batch, save_batch
 
 api = NinjaAPI(
     title="ClinVar Submission Service API",
@@ -33,7 +33,7 @@ api = NinjaAPI(
 
 
 class SubmissionSummary(Schema):
-    """A submission's status, without ClinVar's responses."""
+    """A batch's status, without ClinVar's responses."""
 
     slug: str
     affiliation: Affiliation | None
@@ -45,21 +45,19 @@ class SubmissionSummary(Schema):
     updated_at: datetime
 
     @staticmethod
-    def resolve_affiliation(submission: Submission) -> Affiliation | None:
-        """Returns the submission's affiliation, if it has one.
+    def resolve_affiliation(batch: Batch) -> Affiliation | None:
+        """Returns the batch's affiliation, if it has one.
 
         Returns:
-            The affiliation, or None for a submission saved before affiliations.
+            The affiliation, or None for a batch saved before affiliations.
         """
-        if submission.affiliation_id is None:
+        if batch.affiliation_id is None:
             return None
-        return Affiliation(
-            id=submission.affiliation_id, name=submission.affiliation_name
-        )
+        return Affiliation(id=batch.affiliation_id, name=batch.affiliation_name)
 
 
 class SubmissionDetail(SubmissionSummary):
-    """A submission's status and ClinVar's responses."""
+    """A batch's status and ClinVar's responses."""
 
     clinvar_updated_at: datetime | None
     latest_response: dict[str, Any] | None
@@ -67,10 +65,8 @@ class SubmissionDetail(SubmissionSummary):
 
 
 @api.post("/submissions", response={201: SubmissionDetail})
-def create_submission(
-    request: HttpRequest, body: SubmissionRequest
-) -> Status[Submission]:
-    """Saves a submission and forwards it to ClinVar.
+def create_batch(request: HttpRequest, body: SubmissionRequest) -> Status[Batch]:
+    """Saves a batch and forwards it to ClinVar.
 
     The body is the client's affiliation and the ClinVar content, which holds germline
     records. The CSS wraps the content in ClinVar's AddData action and forwards it as
@@ -79,34 +75,34 @@ def create_submission(
     error message, if it didn't.
 
     Returns:
-        201 and the submission.
+        201 and the batch.
     """
     # Save the content as sent, not as Ninja parsed it, since that's what's forwarded.
     payload = json.loads(request.body)["content"]
-    submission = save_submission(
+    batch = save_batch(
         api_key=request.auth,  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
         affiliation=body.affiliation,
         payload=payload,
     )
-    return Status(201, forward_submission(submission))
+    return Status(201, forward_batch(batch))
 
 
 @api.get("/submissions", response=list[SubmissionSummary])
 @paginate
-def list_submissions(request: HttpRequest) -> QuerySet[Submission]:
-    """Lists the calling client's submissions, newest first.
+def list_batches(request: HttpRequest) -> QuerySet[Batch]:
+    """Lists the calling client's batches, newest first.
 
     Returns:
-        The client's submissions, a page at a time.
+        The client's batches, a page at a time.
     """
-    return Submission.objects.filter(api_key=request.auth)  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
+    return Batch.objects.filter(api_key=request.auth)  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
 
 
 @api.get("/submissions/{slug}", response=SubmissionDetail)
-def read_submission(request: HttpRequest, slug: str) -> Submission:
-    """Reads one of the calling client's submissions.
+def read_batch(request: HttpRequest, slug: str) -> Batch:
+    """Reads one of the calling client's batches.
 
     Returns:
-        The submission, or 404 if the client has none with that slug.
+        The batch, or 404 if the client has none with that slug.
     """
-    return get_object_or_404(Submission, slug=slug, api_key=request.auth)  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
+    return get_object_or_404(Batch, slug=slug, api_key=request.auth)  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)

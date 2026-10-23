@@ -10,10 +10,10 @@
                     <thead>
                         <tr>
                             <th>Affiliation</th>
-                            <th>{% include "common/tooltip.html" with label="Not Sent or Send Failed" text="ClinVar doesn't have these submissions: the CSS hasn't sent them yet, or sending them failed." %}</th>
-                            <th>{% include "common/tooltip.html" with label="Submitted or Processing" text="ClinVar has these submissions and hasn't finished processing them." %}</th>
-                            <th>{% include "common/tooltip.html" with label="Processed" text="All records in these submissions succeeded." %}</th>
-                            <th>{% include "common/tooltip.html" with label="Error" text="One or more records in each of these submissions failed." %}</th>
+                            <th>{% include "common/tooltip.html" with label="Not Sent or Send Failed" text="ClinVar doesn't have these batches: the CSS hasn't sent them yet, or sending them failed." %}</th>
+                            <th>{% include "common/tooltip.html" with label="Submitted or Processing" text="ClinVar has these batches and hasn't finished processing them." %}</th>
+                            <th>{% include "common/tooltip.html" with label="Processed" text="All records in these batches succeeded." %}</th>
+                            <th>{% include "common/tooltip.html" with label="Error" text="One or more records in each of these batches failed." %}</th>
                             <th>Total</th>
                         </tr>
                     </thead>
@@ -40,7 +40,7 @@
                 </table>
             </div>
         {% else %}
-            <p>No submissions yet.</p>
+            <p>No batches yet.</p>
         {% endif %}
     </div>
 {% endblock %}
