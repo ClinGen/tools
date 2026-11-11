@@ -452,6 +452,10 @@ class Person(UUIDModel):
         """Returns the person's preferred name, or their name if they have none."""
         return self.preferred_name or self.name
 
+    def get_absolute_url(self) -> str:
+        """Returns the URL of the person's page."""
+        return reverse("as:person", kwargs={"pk": self.pk})
+
     def clean(self) -> None:
         """Checks that no one else has the person's email as an other email.
 
@@ -495,13 +499,18 @@ class PersonEmail(UUIDModel):
         return self.email
 
     def clean(self) -> None:
-        """Checks that no one else has this email.
+        """Checks that no one else has this email, and that it isn't the main one.
 
         Raises:
-            ValidationError: If someone else has the email.
+            ValidationError: If someone else has the email, or it's the person's main
+                email.
         """
         person = self.person if self.person_id is not None else None
-        if self.email and email_is_taken(self.email, person=person):
+        if not self.email:
+            return
+        if person is not None and person.email.lower() == self.email.lower():
+            raise ValidationError({"email": "This is already the person's main email."})
+        if email_is_taken(self.email, person=person):
             raise ValidationError({"email": DUPLICATE_EMAIL_MESSAGE})
 
 

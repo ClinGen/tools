@@ -1,5 +1,6 @@
 """Houses the AS's pages."""
 
+from django import forms
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpRequest, HttpResponse
@@ -8,10 +9,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 from affiliations_service.forms import (
     AffiliationCreateForm,
     AffiliationEditForm,
+    OtherEmailFormSet,
+    PersonForm,
     SubmitterIdFormSet,
 )
 from affiliations_service.history import describe_history
-from affiliations_service.models import CDWG, Affiliation, Membership
+from affiliations_service.models import CDWG, Affiliation, Membership, Person
 from auth_.permissions import tool_permission_required
 from core.tools import get_tool
 
@@ -93,6 +96,33 @@ def affiliation_detail(request: HttpRequest, pk: str) -> HttpResponse:
     )
 
 
+def _save_form_and_formset(
+    form: forms.ModelForm, formset: forms.BaseInlineFormSet
+) -> str | None:
+    """Saves an object and its inline formset if both are valid.
+
+    The formset's rows need the saved object, so it's checked after the object is
+    saved, and the save is rolled back if it isn't valid.
+
+    Returns:
+        The saved object's URL, or None if the form or the formset has errors.
+    """
+    if not form.is_valid():
+        return None
+    adding = form.instance._state.adding  # ruff: ignore[private-member-access]
+    with transaction.atomic():
+        saved = form.save()
+        formset.instance = saved
+        if formset.is_valid():
+            formset.save()
+            return saved.get_absolute_url()
+        transaction.set_rollback(True)
+    if adding:
+        # The rolled-back object was never saved, so the form can try again.
+        form.instance._state.adding = True  # ruff: ignore[private-member-access]
+    return None
+
+
 def _affiliation_form(
     request: HttpRequest,
     form_class: type[AffiliationCreateForm | AffiliationEditForm],
@@ -111,18 +141,8 @@ def _affiliation_form(
     data = request.POST if request.method == "POST" else None
     form = form_class(data, instance=affiliation)
     formset = SubmitterIdFormSet(data, instance=affiliation)
-    if data is not None and form.is_valid():
-        # The formset needs the saved affiliation, so check it once the form is valid.
-        with transaction.atomic():
-            saved = form.save()
-            formset.instance = saved
-            if formset.is_valid():
-                formset.save()
-                return redirect(saved)
-            transaction.set_rollback(True)
-        if affiliation is None:
-            form.instance.pk = None
-            form.instance._state.adding = True  # ruff: ignore[private-member-access]
+    if data is not None and (url := _save_form_and_formset(form, formset)):
+        return redirect(url)
     return render(
         request,
         "affiliations_service/affiliation_form.html",
@@ -172,3 +192,89 @@ def affiliation_delete(request: HttpRequest, pk: str) -> HttpResponse:
         "affiliations_service/affiliation_delete.html",
         {"tool": get_tool("as"), "affiliation": affiliation},
     )
+
+
+@tool_permission_required("has_as_permissions")
+def person_list(request: HttpRequest) -> HttpResponse:
+    """Lists people, with a search box for names and emails.
+
+    Returns:
+        The people list.
+    """
+    people = Person.objects.all()
+    query = request.GET.get("q", "").strip()
+    if query:
+        people = people.filter(
+            Q(name__icontains=query)
+            | Q(preferred_name__icontains=query)
+            | Q(email__icontains=query)
+            | Q(other_emails__email__icontains=query)
+        ).distinct()
+    return render(
+        request,
+        "affiliations_service/person_list.html",
+        {"tool": get_tool("as"), "people": people, "query": query},
+    )
+
+
+@tool_permission_required("has_as_permissions")
+def person_detail(request: HttpRequest, pk: str) -> HttpResponse:
+    """Shows a person, their affiliations, and their history.
+
+    Returns:
+        The person's page.
+    """
+    person = get_object_or_404(Person.objects.prefetch_related("other_emails"), pk=pk)
+    memberships = person.memberships.select_related("affiliation")  # ty: ignore[unresolved-attribute] (Django adds the reverse relation.)
+    current = memberships.current()
+    return render(
+        request,
+        "affiliations_service/person_detail.html",
+        {
+            "tool": get_tool("as"),
+            "person": person,
+            "current_memberships": current,
+            "past_memberships": memberships.exclude(pk__in=current).order_by(
+                "-end_date"
+            ),
+            "history": describe_history(person, "the person"),
+        },
+    )
+
+
+def _person_form(request: HttpRequest, person: Person | None) -> HttpResponse:
+    """Shows the person form, and saves the person when the form is valid.
+
+    Returns:
+        The form page, or a redirect to the person's page once they're saved.
+    """
+    data = request.POST if request.method == "POST" else None
+    form = PersonForm(data, instance=person)
+    formset = OtherEmailFormSet(data, instance=person)
+    if data is not None and (url := _save_form_and_formset(form, formset)):
+        return redirect(url)
+    return render(
+        request,
+        "affiliations_service/person_form.html",
+        {"tool": get_tool("as"), "form": form, "formset": formset, "person": person},
+    )
+
+
+@tool_permission_required("has_as_permissions")
+def person_create(request: HttpRequest) -> HttpResponse:
+    """Adds a person.
+
+    Returns:
+        The form, or a redirect to the new person's page.
+    """
+    return _person_form(request, None)
+
+
+@tool_permission_required("has_as_permissions")
+def person_edit(request: HttpRequest, pk: str) -> HttpResponse:
+    """Changes a person.
+
+    Returns:
+        The form, or a redirect to the person's page.
+    """
+    return _person_form(request, get_object_or_404(Person, pk=pk))

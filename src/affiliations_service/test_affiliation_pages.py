@@ -1,5 +1,7 @@
 """Houses tests for the affiliation list and detail pages."""
 
+import re
+
 from django.test import TestCase
 from django.urls import reverse
 
@@ -123,9 +125,8 @@ class AffiliationDetailPageTest(TestCase):
         page = self._page()
         for obj in [self.affiliation, self.affiliation.cdwg, self.ada]:
             with self.subTest(obj=obj):
-                self.assertNotIn(
-                    str(obj.pk), page.replace(self.affiliation.get_absolute_url(), "")
-                )
+                # Links may hold IDs; the text staff read may not.
+                self.assertNotIn(str(obj.pk), re.sub(r'href="[^"]*"', "", page))
 
     def test_deleted_affiliation_says_so(self):
         self.affiliation.delete()

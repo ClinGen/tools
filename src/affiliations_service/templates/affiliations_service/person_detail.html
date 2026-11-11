@@ -1,0 +1,82 @@
+{% extends "layouts/base.html" %}
+{% block title %}{{ person.name }}{% endblock %}
+{% block description %}See {{ person.name }}'s details, affiliations, and history.{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        {% include "affiliations_service/partials/header.html" with active_tab="person" %}
+        <h2 class="title is-4">{{ person.name }}</h2>
+        <div class="buttons">
+            <a class="button is-link" href="{% url 'as:person-edit' pk=person.pk %}">Edit</a>
+        </div>
+        <div class="block table-container">
+            <table class="table">
+                <tbody>
+                    <tr><td>Preferred Name</td><td>{{ person.preferred_name|default:"None" }}</td></tr>
+                    <tr><td>Email</td><td>{{ person.email }}</td></tr>
+                    <tr>
+                        <td>Other Emails</td>
+                        <td>
+                            {% for other in person.other_emails.all %}
+                                <p>{{ other.email }}</p>
+                            {% empty %}
+                                None
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    <tr><td>Institution</td><td>{{ person.institution|default:"None" }}</td></tr>
+                    <tr><td>ORCID iD</td><td>{{ person.orcid|default:"None" }}</td></tr>
+                    <tr><td>Credentials</td><td>{{ person.credentials|default:"None" }}</td></tr>
+                    <tr><td>Linked to the GPM</td><td>{{ person.gpm_uuid|yesno:"Yes,No" }}</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3 class="title is-5">Current Affiliations</h3>
+        {% if current_memberships %}
+            <div class="block table-container">
+                <table class="table">
+                    <thead>
+                        <tr><th>Affiliation</th><th>Role</th><th>Started</th><th>Ends</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for membership in current_memberships %}
+                            <tr>
+                                <td><a href="{{ membership.affiliation.get_absolute_url }}">{{ membership.affiliation.full_name }}</a></td>
+                                <td>{{ membership.get_role_display }}</td>
+                                <td>{{ membership.start_date|date:"Y-m-d"|default:"Unknown" }}</td>
+                                <td>{{ membership.end_date|date:"Y-m-d"|default:"" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="block">This person isn't in any affiliations.</p>
+        {% endif %}
+
+        <h3 class="title is-5">Past Affiliations</h3>
+        {% if past_memberships %}
+            <div class="block table-container">
+                <table class="table">
+                    <thead>
+                        <tr><th>Affiliation</th><th>Role</th><th>Started</th><th>Ended</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for membership in past_memberships %}
+                            <tr>
+                                <td><a href="{{ membership.affiliation.get_absolute_url }}">{{ membership.affiliation.full_name }}</a></td>
+                                <td>{{ membership.get_role_display }}</td>
+                                <td>{{ membership.start_date|date:"Y-m-d"|default:"Unknown" }}</td>
+                                <td>{{ membership.end_date|date:"Y-m-d" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="block">This person hasn't left any affiliations.</p>
+        {% endif %}
+
+        {% include "affiliations_service/partials/history.html" %}
+    </div>
+{% endblock %}

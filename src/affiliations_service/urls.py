@@ -23,5 +23,9 @@ urlpatterns = [
         views.affiliation_detail,
         name="affiliation",
     ),
+    path("people/", views.person_list, name="people"),
+    path("people/new/", views.person_create, name="person-create"),
+    path("people/<uuid:pk>/edit/", views.person_edit, name="person-edit"),
+    path("people/<uuid:pk>/", views.person_detail, name="person"),
     path("api/v1/", api.urls),
 ]

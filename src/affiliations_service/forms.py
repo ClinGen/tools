@@ -2,7 +2,12 @@
 
 from django import forms
 
-from affiliations_service.models import Affiliation, ClinVarSubmitterId
+from affiliations_service.models import (
+    Affiliation,
+    ClinVarSubmitterId,
+    Person,
+    PersonEmail,
+)
 
 
 class BulmaFormMixin:
@@ -54,4 +59,34 @@ SubmitterIdFormSet = forms.inlineformset_factory(
 )
 SubmitterIdFormSet.form = type(
     "SubmitterIdForm", (BulmaFormMixin, SubmitterIdFormSet.form), {}
+)
+
+
+class PersonForm(BulmaFormMixin, forms.ModelForm):
+    """The fields staff fill in for a person."""
+
+    class Meta:
+        """Provides metadata."""
+
+        model = Person
+        fields = [
+            "name",
+            "preferred_name",
+            "email",
+            "institution",
+            "orcid",
+            "credentials",
+            "gpm_uuid",
+        ]
+
+
+OtherEmailFormSet = forms.inlineformset_factory(
+    Person,
+    PersonEmail,
+    fields=["email"],
+    extra=1,
+    can_delete=True,
+)
+OtherEmailFormSet.form = type(
+    "OtherEmailForm", (BulmaFormMixin, OtherEmailFormSet.form), {}
 )

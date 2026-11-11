@@ -1,0 +1,46 @@
+{% extends "layouts/base.html" %}
+{% block title %}{% if person %}Edit {{ person.name }}{% else %}New Person{% endif %}{% endblock %}
+{% block description %}{% if person %}Change {{ person.name }}'s details.{% else %}Add a person to the AS.{% endif %}{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        {% include "affiliations_service/partials/header.html" with active_tab="person" %}
+        <h2 class="title is-4">{% if person %}Edit {{ person.name }}{% else %}New Person{% endif %}</h2>
+        <form method="post" class="block">{% csrf_token %}
+            {% for error in form.non_field_errors %}
+                <div class="notification is-danger is-light">{{ error }}</div>
+            {% endfor %}
+            {% for field in form %}
+                {% include "affiliations_service/partials/field.html" %}
+            {% endfor %}
+
+            <fieldset class="block">
+                <legend class="label">Other Emails</legend>
+                {{ formset.management_form }}
+                {% for error in formset.non_form_errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+                {% for subform in formset %}
+                    <div class="field is-grouped">
+                        {% for hidden in subform.hidden_fields %}{{ hidden }}{% endfor %}
+                        <div class="control">
+                            <label class="is-sr-only" for="{{ subform.email.id_for_label }}">Other Email</label>
+                            {{ subform.email }}
+                            {% for error in subform.email.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+                            {% for error in subform.non_field_errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+                        </div>
+                        {% if subform.instance.pk %}
+                            <div class="control">
+                                <label class="checkbox">{{ subform.DELETE }} Remove</label>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+                <p class="help">To add more than one, save, then edit the person again.</p>
+            </fieldset>
+
+            <div class="buttons">
+                <button type="submit" class="button is-link">Save</button>
+                <a class="button is-link is-light"
+                   href="{% if person %}{{ person.get_absolute_url }}{% else %}{% url 'as:people' %}{% endif %}">Cancel</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

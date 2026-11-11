@@ -51,7 +51,7 @@
                             <td>
                                 {% for membership in members %}
                                     <p>
-                                        {{ membership.person }}
+                                        <a href="{{ membership.person.get_absolute_url }}">{{ membership.person }}</a>
                                         <span class="has-text-grey">{{ membership.person.email }}</span>
                                         {% if membership.end_date %}
                                             <span class="has-text-grey">(until {{ membership.end_date|date:"Y-m-d" }})</span>
@@ -77,7 +77,7 @@
                     <tbody>
                         {% for membership in past_memberships %}
                             <tr>
-                                <td>{{ membership.person }}</td>
+                                <td><a href="{{ membership.person.get_absolute_url }}">{{ membership.person }}</a></td>
                                 <td>{{ membership.get_role_display }}</td>
                                 <td>{{ membership.start_date|date:"Y-m-d"|default:"Unknown" }}</td>
                                 <td>{{ membership.end_date|date:"Y-m-d" }}</td>

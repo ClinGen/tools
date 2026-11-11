@@ -14,11 +14,25 @@
                 <span>New Affiliation</span>
             </a>
         </li>
+        <li{% if active_tab == "people" %} class="is-active"{% endif %}>
+            <a href="{% url 'as:people' %}"{% if active_tab == "people" %} aria-current="page"{% endif %}>
+                {% include "common/icon.html" with icon_name="person-vcard" %}
+                <span>People</span>
+            </a>
+        </li>
         {% if active_tab == "affiliation" %}
             <li class="is-active">
                 <a href="{{ affiliation.get_absolute_url }}" aria-current="page">
                     {% include "common/icon.html" with icon_name="journal-text" %}
                     <span>{{ affiliation.short_name|default:affiliation.full_name|truncatechars:40 }}</span>
+                </a>
+            </li>
+        {% endif %}
+        {% if active_tab == "person" %}
+            <li class="is-active">
+                <a href="{% if person %}{{ person.get_absolute_url }}{% else %}{% url 'as:person-create' %}{% endif %}" aria-current="page">
+                    {% include "common/icon.html" with icon_name="person" %}
+                    <span>{% if person %}{{ person|truncatechars:40 }}{% else %}New Person{% endif %}</span>
                 </a>
             </li>
         {% endif %}

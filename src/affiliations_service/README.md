@@ -73,8 +73,9 @@ Configures the `affiliations_service` app.
 
 Defines the forms on the AS's pages: `AffiliationCreateForm`, `AffiliationEditForm`
 (which leaves out the IDs, type, and GPM UUID, so posting them changes nothing), and
-`SubmitterIdFormSet` for an affiliation's ClinVar submitter IDs. `BulmaFormMixin` gives
-text inputs Bulma's classes.
+`SubmitterIdFormSet` for an affiliation's ClinVar submitter IDs, `PersonForm`, and
+`OtherEmailFormSet` for a person's other emails. `BulmaFormMixin` gives text inputs
+Bulma's classes.
 
 ### `history.py`
 
@@ -95,8 +96,9 @@ uniqueness errors have plain-language messages, so forms can show them to staff.
 
 It also defines `Person` and `PersonEmail` (a person's other emails). No two people
 share an email, ignoring case, whether it's a primary or another email: constraints
-catch duplicates within each table, and `clean()` catches them across the two. ORCID iDs
-are checked for format and are unique when set.
+catch duplicates within each table, and `clean()` catches them across the two, and a
+person's other email that repeats their main one. ORCID iDs are checked for format and
+are unique when set.
 
 Finally, it defines `Membership`: a person's role (coordinator, approver, or curator) in
 an affiliation, with optional start and end dates. A person can't hold the same role in
@@ -181,10 +183,28 @@ Tests ID assignment, soft deletion, uniqueness constraints, and history.
 
 Tests people's email uniqueness, ORCID iD checks, GPM UUIDs, history, and admin search.
 
+### `test_people_pages.py`
+
+Tests the people list's search, a person's page, and adding and editing people and their
+other emails, including duplicate emails and bad ORCID iDs.
+
 ### `test_rules.py`
 
 Tests the business rules in `Affiliation.clean()`, the ID checks, the plain-language
 uniqueness errors, and which fields the admin locks for non-superusers.
+
+### `templates/affiliations_service/person_detail.html`
+
+A person's page: their details, other emails, current and past affiliations (linking to
+each), and history.
+
+### `templates/affiliations_service/person_form.html`
+
+The form for adding or editing a person, with their other emails.
+
+### `templates/affiliations_service/person_list.html`
+
+Lists people, with a search box for names and emails that updates the list with HTMX.
 
 ### `templates/affiliations_service/partials/field.html`
 
@@ -212,5 +232,7 @@ Routes the AS's pages under `/as/` (an affiliation's page is
 ### `views.py`
 
 Defines the AS's pages: the affiliation list, an affiliation's page, and the pages that
-create, edit, and delete an affiliation. Deleting marks it deleted. Each view requires
-`has_as_permissions`.
+create, edit, and delete an affiliation. Deleting marks it deleted. It also has the
+people list, a person's page, and the pages that add and edit a person.
+`_save_form_and_formset` saves an object and its inline formset together, or neither.
+Each view requires `has_as_permissions`.

@@ -1,0 +1,54 @@
+{% extends "layouts/base.html" %}
+{% block title %}People{% endblock %}
+{% block description %}Find the people in ClinGen's affiliations.{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        {% include "affiliations_service/partials/header.html" with active_tab="people" %}
+        <div class="buttons">
+            <a class="button is-link" href="{% url 'as:person-create' %}">Add Person</a>
+        </div>
+        <form method="get"
+              class="block"
+              hx-get="{% url 'as:people' %}"
+              hx-trigger="input changed delay:300ms from:#person-search, submit"
+              hx-target="#person-results"
+              hx-select="#person-results"
+              hx-swap="outerHTML"
+              hx-push-url="true">
+            <div class="field">
+                <label class="label" for="person-search">Search</label>
+                <div class="control">
+                    <input class="input"
+                           id="person-search"
+                           name="q"
+                           type="search"
+                           placeholder="Name or email"
+                           value="{{ query }}">
+                </div>
+            </div>
+            <noscript><button type="submit" class="button is-link">Search</button></noscript>
+        </form>
+        <div id="person-results" class="block">
+            {% if people %}
+                <div class="table-container">
+                    <table class="table is-hoverable is-fullwidth">
+                        <thead>
+                            <tr><th>Name</th><th>Email</th><th>Institution</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for person in people %}
+                                <tr>
+                                    <td><a href="{{ person.get_absolute_url }}">{{ person.name }}</a></td>
+                                    <td>{{ person.email }}</td>
+                                    <td>{{ person.institution }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>No people match.</p>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
