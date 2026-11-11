@@ -7,9 +7,11 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from clinvar_submission_service.clients import ClinVarError, ClinVarStatus
-from clinvar_submission_service.fakes import FakeClinVarClient
-from clinvar_submission_service.models import Batch
+from clinvar_submission_service.content import Affiliation
+from clinvar_submission_service.fakes import FakeClinVarClient, make_record
+from clinvar_submission_service.models import Batch, BatchRecord, Record
 from clinvar_submission_service.polling import Poller, next_delay
+from clinvar_submission_service.services import make_batch, save_record
 
 MIN_DELAY = timedelta(minutes=5)
 MAX_DELAY = timedelta(hours=6)
@@ -248,3 +250,91 @@ class CommandTest(TestCase):
         ):
             call_command("poll_clinvar")
         sleep.assert_called_once()
+
+
+ERRORS = [{"output": {"errors": [{"userMessage": "This record is a duplicate."}]}}]
+
+
+class RecordResultsTest(PollerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.records = [_waiting("var-1"), _waiting("var-2")]
+        self.batch = make_batch(self.records)
+        Batch.objects.filter(pk=self.batch.pk).update(
+            status=Batch.Status.SUBMITTED_TO_CLINVAR,
+            clinvar_submission_id="SUB000001",
+            next_poll_at=timezone.now() - timedelta(minutes=1),
+        )
+
+    def _report(self, *results: dict) -> dict:
+        return {"totalCount": len(results), "submissions": list(results)}
+
+    def _attempt(self, local_id: str) -> BatchRecord:
+        return BatchRecord.objects.select_related("record").get(
+            batch=self.batch, record__local_id=local_id
+        )
+
+    def test_a_processed_batch_accepts_every_record_with_its_scv(self):
+        report = self._report(
+            _success("var-1", "SCV000000001"), _success("var-2", "SCV000000002")
+        )
+        self.fake.set_status("SUB000001", "processed", report=report)
+        self.poller.run_pass()
+        for local_id, scv in [("var-1", "SCV000000001"), ("var-2", "SCV000000002")]:
+            with self.subTest(local_id):
+                attempt = self._attempt(local_id)
+                self.assertEqual(attempt.result, BatchRecord.Result.SUCCESS)
+                self.assertEqual(attempt.scv, scv)
+                self.assertEqual(
+                    attempt.record.status, Record.Status.SUCCEEDED_AT_CLINVAR
+                )
+                self.assertEqual(attempt.record.clinvar_accession, scv)
+
+    def test_a_partly_failed_batch_returns_the_failures_to_waiting(self):
+        report = self._report(
+            _success("var-1", "SCV000000001"),
+            {
+                "identifiers": {"localID": "var-2"},
+                "processingStatus": "Error",
+                "errors": ERRORS,
+            },
+        )
+        self.fake.set_status("SUB000001", "error", error_code=1, report=report)
+        self.poller.run_pass()
+        accepted, failed = self._attempt("var-1"), self._attempt("var-2")
+        self.assertEqual(accepted.record.status, Record.Status.SUCCEEDED_AT_CLINVAR)
+        self.assertEqual(failed.result, BatchRecord.Result.ERROR)
+        self.assertEqual(failed.errors, ERRORS)
+        self.assertEqual(failed.scv, "")
+        self.assertEqual(failed.record.status, Record.Status.WAITING_FOR_BATCH)
+        # The failed record can join a later batch.
+        self.assertEqual(make_batch([failed.record]).records.get(), failed.record)
+
+    def test_an_unmatched_local_id_is_logged_and_skipped(self):
+        report = self._report(
+            _success("var-1", "SCV000000001"), _success("nobody", "SCV000000009")
+        )
+        self.fake.set_status("SUB000001", "processed", report=report)
+        with self.assertLogs("clinvar_submission_service.services", "WARNING") as logs:
+            self.poller.run_pass()
+        self.assertIn("nobody", logs.output[0])
+        self.assertEqual(self._attempt("var-1").result, BatchRecord.Result.SUCCESS)
+        unreported = self._attempt("var-2")
+        self.assertEqual(unreported.result, "")
+        self.assertEqual(unreported.record.status, Record.Status.IN_BATCH)
+
+
+def _success(local_id: str, scv: str) -> dict:
+    return {
+        "identifiers": {"localID": local_id, "clinvarAccession": scv},
+        "processingStatus": "Success",
+    }
+
+
+def _waiting(local_id: str) -> Record:
+    record, _ = save_record(
+        api_key=None,
+        affiliation=Affiliation(id=10007, name="Hearing Loss VCEP"),
+        payload=make_record(local_id),
+    )
+    return record

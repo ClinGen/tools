@@ -211,6 +211,59 @@ def build_payload(batch: Batch) -> dict[str, Any]:
     return payload
 
 
+def report_results(report: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    """Returns each record's result in ClinVar's summary report, by its local ID.
+
+    Returns:
+        The results, by local ID; {} if there's no report yet.
+    """
+    results = {}
+    for result in (report or {}).get("submissions") or []:
+        local_id = (result.get("identifiers") or {}).get("localID")
+        if local_id:
+            results[local_id] = result
+    return results
+
+
+def save_results(batch: Batch) -> None:
+    """Saves each record's result from a batch's summary report.
+
+    A record ClinVar accepted gets its SCV. A record that failed goes back to waiting,
+    so it can join a later batch, and its attempt keeps ClinVar's errors. A result
+    whose local ID matches none of the batch's records is logged and skipped.
+    """
+    results = report_results(batch.summary_report)
+    with transaction.atomic():
+        attempts = batch.batch_records.select_related("record")  # type: ignore
+        for attempt in attempts:
+            result = results.pop(attempt.record.local_id, None)
+            if result is not None:
+                _save_result(attempt, result)
+    for local_id in results:
+        logger.warning(
+            "%s's summary report has a result for %s, which isn't in the batch.",
+            batch.slug,
+            local_id,
+        )
+
+
+def _save_result(attempt: BatchRecord, result: dict[str, Any]) -> None:
+    """Saves one record's result on its attempt and on the record."""
+    record = attempt.record
+    if result.get("processingStatus") == BatchRecord.Result.SUCCESS:
+        scv = (result.get("identifiers") or {}).get("clinvarAccession") or ""
+        attempt.result = BatchRecord.Result.SUCCESS
+        attempt.scv = scv
+        record.status = Record.Status.SUCCEEDED_AT_CLINVAR
+        record.clinvar_accession = scv
+    else:
+        attempt.result = BatchRecord.Result.ERROR
+        attempt.errors = result.get("errors")
+        record.status = Record.Status.WAITING_FOR_BATCH
+    attempt.save()
+    record.save()
+
+
 def forward_batch(batch: Batch) -> Batch:
     """Sends a batch to ClinVar once and saves the result.
 

@@ -241,7 +241,7 @@ record, and its history notes who did.
 4. The poller checks ClinVar for each `submitted_to_clinvar` or `processing_at_clinvar`
    batch whose `next_poll_at` has passed, saves the response, and either records a
    final status or pushes `next_poll_at` further out. When a batch reaches a final
-   status, the poller downloads its summary report.
+   status, the poller downloads its summary report and saves each record's result.
 5. Clients and staff read the status through the API or the UI at any time.
 
 Every status names ClinVar, so it's clear which tool it's relative to: `submitted` alone
@@ -312,6 +312,9 @@ The poller is the `poll_clinvar` management command (see Processes). Each pass, 
 - waits at least as long as ClinVar's `Retry-After` header says when ClinVar returns 429
 - reports errors it catches to Sentry, so a failing submission doesn't go unnoticed, and
   moves on to the next submission
+- saves each record's result from a finished batch's summary report, matched by local
+  ID: a record ClinVar accepted gets its SCV, and one that failed goes back to waiting,
+  so it can join a later batch, with ClinVar's errors kept on that attempt
 
 ClinVar's processing can take days, so the poller checks on a scale of minutes, not
 seconds. It keeps its state in the database, so restarting it loses nothing, and it

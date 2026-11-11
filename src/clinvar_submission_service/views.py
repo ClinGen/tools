@@ -13,6 +13,7 @@ from clinvar_submission_service.models import AffiliationSettings, Batch, Record
 from clinvar_submission_service.services import (
     NotWithdrawableError,
     forward_batch,
+    report_results,
     withdraw_record,
 )
 from clinvar_submission_service.tables import BatchTable
@@ -77,11 +78,7 @@ class RecordRow:
 
 def _record_rows(batch: Batch) -> list[RecordRow]:
     """Returns the batch's records, each with ClinVar's result, if any."""
-    report = batch.summary_report or {}
-    results = {
-        (result.get("identifiers") or {}).get("localID"): result
-        for result in report.get("batches") or []
-    }
+    results = report_results(batch.summary_report)
     rows = []
     attempts = batch.batch_records.select_related("record")  # type: ignore
     for record in (attempt.record for attempt in attempts):

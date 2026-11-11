@@ -135,7 +135,8 @@ key that sent it.
 
 Polls ClinVar for batch statuses. `Poller.run_pass()` takes a batch of the batches that
 are due, oldest first, reads each one's status, and saves ClinVar's response. A batch
-that reaches processed or error gets its summary report and stops being polled.
+that reaches processed or error gets its summary report, which
+`services.save_results()` copies onto its records, and stops being polled.
 Otherwise, `next_delay()` doubles the wait from `CSS_POLL_MIN_DELAY` up to
 `CSS_POLL_MAX_DELAY`, and waits at least as long as a 429's `Retry-After`. A failed
 poll, including a failed report download, is logged and sent to Sentry, leaves the
@@ -152,11 +153,14 @@ affiliation's `AffiliationSettings` onto it, and marks the records as in a batch
 raises `BatchNotMadeError`, with a message for staff, for no records, more than 10,000,
 mixed affiliations, or records that aren't waiting. `build_payload()` builds a batch's
 ClinVar content from its records' JSON, in order, and the batch's submission-level
-fields. Forwards a batch to ClinVar once with `forward_batch()`, which sends that built
-content and which the staff Resend button uses. If ClinVar accepts it, the batch is
-submitted, with its ClinVar ID and a first poll time; if ClinVar rejects it, can't be
-reached, or the CSS has no ClinVar key, it's send_to_clinvar_failed, with the error, and
-its records stay in it. It never retries.
+fields. `report_results()` reads each record's result from a summary report by local ID,
+and `save_results()` saves them: a record ClinVar accepted gets its SCV, and one that
+failed goes back to waiting, with ClinVar's errors kept on its attempt. Forwards a batch
+to ClinVar once with `forward_batch()`, which sends that built content and which the
+staff Resend button uses. If ClinVar accepts it, the batch is submitted, with its
+ClinVar ID and a first poll time; if ClinVar rejects it, can't be reached, or the CSS
+has no ClinVar key, it's send_to_clinvar_failed, with the error, and its records stay in
+it. It never retries.
 
 ### `templates/clinvar_submission_service/affiliation_settings.html`
 
@@ -262,8 +266,10 @@ Tests the poller against `FakeClinVarClient`: the backoff and its cap, that it m
 of ClinVar's statuses onto ours, each status change, storing the summary report,
 retrying a failed report download, backing off on errors and 429s, that one failing
 batch doesn't block the rest, that batches not sent to ClinVar, or whose send failed,
-are never polled, polls per pass, and stopping mid-pass. Also tests the command's
-`--once` and that SIGTERM stops its loop.
+are never polled, polls per pass, and stopping mid-pass. Also tests that a processed
+batch accepts each record with its SCV, that a partly failed one returns its failures to
+waiting with ClinVar's errors kept, and that a result for an unknown local ID is logged
+and skipped. Also tests the command's `--once` and that SIGTERM stops its loop.
 
 ### `test_services.py`
 

@@ -30,7 +30,7 @@ REPORT = {
     "totalCount": 2,
     "totalErrors": 1,
     "totalSuccess": 1,
-    "batches": [
+    "submissions": [
         {
             "identifiers": {"localID": "var-1", "clinvarAccession": "SCV000000001"},
             "processingStatus": "Success",

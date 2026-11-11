@@ -19,6 +19,7 @@ from clinvar_submission_service.clients import (
     ClinVarStatus,
 )
 from clinvar_submission_service.models import Batch
+from clinvar_submission_service.services import save_results
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +145,7 @@ class Poller:
             return False
         if new_status in FINAL_STATUSES and status.summary_report_url:
             batch.summary_report = client.get_summary_report(status.summary_report_url)
+            save_results(batch)
         batch.status = new_status
         logger.info("%s is %s.", batch.slug, new_status)
         return new_status in FINAL_STATUSES
