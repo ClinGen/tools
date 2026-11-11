@@ -6,9 +6,9 @@ and make and send batches through here.
 
 import logging
 from collections.abc import Iterable
-from datetime import timedelta
 from typing import Any
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
@@ -35,10 +35,6 @@ from clinvar_submission_service.models import (
 )
 
 logger = logging.getLogger(__name__)
-
-# ClinVar takes at least minutes to start processing a batch, so the poller's first
-# check waits this long.
-FIRST_POLL_DELAY = timedelta(minutes=5)
 
 
 def save_record(
@@ -298,6 +294,6 @@ def forward_batch(batch: Batch) -> Batch:
         batch.status = Batch.Status.SUBMITTED_TO_CLINVAR
         batch.clinvar_submission_id = clinvar_id or ""
         batch.error_message = ""
-        batch.next_poll_at = timezone.now() + FIRST_POLL_DELAY
+        batch.next_poll_at = timezone.now() + settings.CSS_FIRST_POLL_DELAY
     batch.save()
     return batch

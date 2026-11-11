@@ -368,7 +368,8 @@ settings, swaps in a simulated ClinVar. The simulator reads each batch from the
 database, since the web server and the poller are separate processes. Each poll moves a
 batch one step toward processed or error, and each record's result comes from a hash of
 the ClinVar ID and local ID, so most records succeed and the rest fail with plausible
-messages.
+messages. While simulating, the dev settings shorten the poll delays to seconds, and
+every CSS page shows a banner saying ClinVar is simulated.
 
 ### The Email Transfer Service
 

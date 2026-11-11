@@ -215,8 +215,10 @@ CSS_SIMULATE_CLINVAR = False
 DATA_UPLOAD_MAX_MEMORY_SIZE = 64 * 1024 * 1024
 
 # How the CSS's poller paces itself. ClinVar can take days to process a submission, so
-# it checks on a scale of minutes. The wait between checks of one submission doubles
-# from the minimum to the maximum.
+# it checks on a scale of minutes. Its first check of a newly sent batch waits the first
+# delay, since ClinVar takes minutes to start, and the wait between later checks
+# doubles from the minimum to the maximum.
+CSS_FIRST_POLL_DELAY = timedelta(minutes=5)
 CSS_POLL_SLEEP_SECONDS = 60
 CSS_POLLS_PER_PASS = 25
 CSS_POLL_MIN_DELAY = timedelta(minutes=5)

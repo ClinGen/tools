@@ -1,8 +1,17 @@
+import importlib
+import os
+import sys
+from datetime import timedelta
+from types import ModuleType
 from unittest import mock
 
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
+from django.urls import reverse
+from django.utils import timezone
 
+from auth_.models import UserProfile
 from clinvar_submission_service import simulation
 from clinvar_submission_service.clients import ClinVarClient, ClinVarError
 from clinvar_submission_service.content import Affiliation
@@ -150,3 +159,76 @@ class StatusTest(TestCase):
                     else Record.Status.WAITING_FOR_BATCH
                 )
                 self.assertEqual(attempt.record.status, expected)
+
+
+BANNER = "ClinVar is simulated."
+
+
+class FirstPollTest(TestCase):
+    @override_settings(CSS_FIRST_POLL_DELAY=timedelta(seconds=10))
+    def test_the_first_poll_waits_the_configured_delay(self):
+        with (
+            mock.patch.object(simulation, "SEND_FAILURE_RATE", 0),
+            override_settings(CSS_SIMULATE_CLINVAR=True),
+        ):
+            before = timezone.now()
+            batch = forward_batch(_batch("var-1"))
+        assert batch.next_poll_at is not None
+        delay = batch.next_poll_at - before
+        self.assertGreaterEqual(delay, timedelta(seconds=10))
+        self.assertLess(delay, timedelta(seconds=15))
+
+
+class BannerTest(TestCase):
+    def setUp(self):
+        user = User.objects.create_user(username="staff@example.com")
+        UserProfile.objects.create(user=user, has_css_permissions=True)
+        self.client.force_login(user)
+        self.batch = _batch("var-1")
+        self.record = self.batch.records.get()
+
+    def urls(self) -> list[str]:
+        return [
+            reverse("css:records"),
+            reverse("css:index"),
+            reverse("css:affiliations"),
+            self.record.get_absolute_url(),
+            self.batch.get_absolute_url(),
+            reverse("css:new_batch", kwargs={"affiliation_id": 10007}),
+            reverse("css:affiliation_settings", kwargs={"affiliation_id": 10007}),
+        ]
+
+    def test_every_page_says_clinvar_is_simulated_when_it_is(self):
+        with override_settings(CSS_SIMULATE_CLINVAR=True):
+            for url in self.urls():
+                with self.subTest(url):
+                    self.assertContains(self.client.get(url), BANNER)
+
+    def test_no_page_says_so_when_it_isnt(self):
+        for url in self.urls():
+            with self.subTest(url):
+                self.assertNotContains(self.client.get(url), BANNER)
+
+
+class DevSettingsTest(TestCase):
+    def _dev_settings(self, flag: str) -> ModuleType:
+        with mock.patch.dict(os.environ, {"CSS_SIMULATE_CLINVAR": flag}):
+            sys.modules.pop("config.settings.dev", None)
+            try:
+                return importlib.import_module("config.settings.dev")
+            finally:
+                sys.modules.pop("config.settings.dev", None)
+
+    def test_simulating_shortens_the_poll_delays(self):
+        dev = self._dev_settings("1")
+        self.assertTrue(dev.CSS_SIMULATE_CLINVAR)
+        self.assertEqual(dev.CSS_FIRST_POLL_DELAY, timedelta(seconds=10))
+        self.assertEqual(dev.CSS_POLL_MIN_DELAY, timedelta(seconds=10))
+        self.assertEqual(dev.CSS_POLL_MAX_DELAY, timedelta(minutes=1))
+        self.assertEqual(dev.CSS_POLL_SLEEP_SECONDS, 5)
+
+    def test_without_simulating_the_delays_stay_long(self):
+        dev = self._dev_settings("")
+        self.assertFalse(dev.CSS_SIMULATE_CLINVAR)
+        self.assertEqual(dev.CSS_FIRST_POLL_DELAY, timedelta(minutes=5))
+        self.assertEqual(dev.CSS_POLL_MIN_DELAY, timedelta(minutes=5))

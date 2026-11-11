@@ -168,9 +168,18 @@ content from its records' JSON, in order, and the batch's submission-level field
 goes back to waiting, with ClinVar's errors kept on its attempt. Forwards a batch to
 ClinVar once with `forward_batch()`, which sends that built content and which the staff
 Resend button uses. If ClinVar accepts it, the batch is submitted, with its ClinVar ID
-and a first poll time; if ClinVar rejects it, can't be reached, or the CSS has no
-ClinVar key, it's send_to_clinvar_failed, with the error, and its records stay in it. It
-never retries.
+and a first poll `CSS_FIRST_POLL_DELAY` out; if ClinVar rejects it, can't be reached, or
+the CSS has no ClinVar key, it's send_to_clinvar_failed, with the error, and its records
+stay in it. It never retries.
+
+### `templatetags/__init__.py`
+
+Marks `templatetags` as a package, so Django finds the CSS's template tags.
+
+### `templatetags/css_tags.py`
+
+Defines the `simulating_clinvar` tag, which says whether `CSS_SIMULATE_CLINVAR` is on,
+so `partials/header.html` can show its banner without each view passing the setting.
 
 ### `templates/clinvar_submission_service/affiliation_settings.html`
 
@@ -255,7 +264,8 @@ Records / R3f2a9c1e Details or Records / New Batch.
 
 ### `templates/clinvar_submission_service/partials/header.html`
 
-The top of every CSS page: the CSS's name and description from `core.tools`, then a
+The top of every CSS page: a banner saying ClinVar is simulated while
+`CSS_SIMULATE_CLINVAR` is on, the CSS's name and description from `core.tools`, then a
 navbar linking to the Records, Batches, and Affiliations sections, with the current
 section in bold.
 
@@ -363,8 +373,10 @@ Tests the simulated ClinVar: that `from_settings()` returns it only when the fla
 and that the flag is off by default; that sending returns new IDs, sometimes fails, and
 returns nothing for a dry run; that each poll moves a batch one step, with the right
 error code for some or all records failing; that the report has a result per record in
-ClinVar's shape and is the same on every call; and that the poller and
-`save_results()` work against it end to end.
+ClinVar's shape and is the same on every call; and that the poller and `save_results()`
+work against it end to end. Also tests that a sent batch's first poll waits
+`CSS_FIRST_POLL_DELAY`, that every CSS page shows the simulation banner only while the
+flag is on, and that the dev settings shorten the poll delays only while simulating.
 
 ### `test_views.py`
 
