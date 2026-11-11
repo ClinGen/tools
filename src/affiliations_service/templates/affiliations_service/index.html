@@ -1,0 +1,9 @@
+{% extends "layouts/base.html" %}
+{% block title %}Affiliations{% endblock %}
+{% block description %}Manage ClinGen affiliations and the people in them.{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        {% include "affiliations_service/partials/header.html" with active_tab="affiliations" %}
+        <p>There are no affiliations yet.</p>
+    </div>
+{% endblock %}

@@ -63,7 +63,8 @@ bucket is set, and that the subdomain defaults to `dev`.
 ### `urls.py`
 
 Defines the project-level URL configuration. Routes the landing page, the Django admin,
-the sign-in views under `/auth/`, the CSS under `/css/`, and the ETS under `/ets/`.
+the sign-in views under `/auth/`, the AS under `/as/`, the CSS under `/css/`, and the
+ETS under `/ets/`.
 
 ### `wsgi.py`
 

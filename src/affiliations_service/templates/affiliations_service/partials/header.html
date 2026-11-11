@@ -1,0 +1,12 @@
+<h1 class="title">{{ tool.name }}</h1>
+<h2 class="subtitle">{{ tool.description }}</h2>
+<div class="tabs is-boxed">
+    <ul>
+        <li{% if active_tab == "affiliations" %} class="is-active"{% endif %}>
+            <a href="{% url 'as:index' %}"{% if active_tab == "affiliations" %} aria-current="page"{% endif %}>
+                {% include "common/icon.html" with icon_name="people" %}
+                <span>Affiliations</span>
+            </a>
+        </li>
+    </ul>
+</div>
