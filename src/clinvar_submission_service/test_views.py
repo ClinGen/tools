@@ -590,6 +590,11 @@ class AffiliationSettingsViewTest(CssViewTestCase):
         self.assertContains(response, 'value="506185"')
         self.assertContains(response, '<option value="public" selected>')
 
+    def test_the_organization_id_is_a_text_field_without_a_spinner(self):
+        response = self.client.get(_settings_url(10007))
+        self.assertNotContains(response, 'type="number"')
+        self.assertContains(response, 'inputmode="numeric"')
+
     def test_names_an_affiliation_known_only_from_its_records(self):
         content = Content.model_validate(make_content())
         Record.objects.create(
