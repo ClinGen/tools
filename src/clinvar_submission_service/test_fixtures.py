@@ -1,13 +1,19 @@
+import uuid
+
 from django.contrib.auth.models import User
+from django.core.management import call_command
 from django.db.models import Count
 from django.test import TestCase
 from django.urls import reverse
 
 from auth_.models import UserProfile
 from clinvar_submission_service.content import Content, record_fields
-from clinvar_submission_service.models import Batch, BatchRecord, Record
+from clinvar_submission_service.models import ApiKey, Batch, BatchRecord, Record
 from clinvar_submission_service.services import build_payload, report_results
 from common.models import make_slug
+
+# An attempt in the fixture, B84b495c1's only record.
+FIXTURE_ATTEMPT = "f6a92933-a57f-4a12-9b37-7f69c903bf1e"
 
 FORWARDED_STATUSES = {
     Batch.Status.SUBMITTED_TO_CLINVAR,
@@ -115,3 +121,26 @@ class FixtureTest(TestCase):
         for url in pages:
             with self.subTest(url):
                 self.assertEqual(self.client.get(url).status_code, 200)
+
+
+class LoadSampleDataTest(TestCase):
+    def test_loading_twice_resets_the_sample_data(self):
+        call_command("load_css_sample_data", verbosity=0)
+        counts = (Batch.objects.count(), Record.objects.count())
+        call_command("load_css_sample_data", verbosity=0)
+        self.assertEqual((Batch.objects.count(), Record.objects.count()), counts)
+
+    def test_replaces_attempts_and_data_made_in_the_ui(self):
+        call_command("load_css_sample_data", verbosity=0)
+        # As migration 0008 left them: the same attempts under other IDs.
+        for attempt in BatchRecord.objects.all():
+            BatchRecord.objects.filter(pk=attempt.pk).update(id=uuid.uuid4())
+        made_in_ui = Batch.objects.create(affiliation_id=10901)
+        call_command("load_css_sample_data", verbosity=0)
+        self.assertFalse(Batch.objects.filter(pk=made_in_ui.pk).exists())
+        self.assertTrue(BatchRecord.objects.filter(pk=FIXTURE_ATTEMPT).exists())
+
+    def test_keeps_api_keys(self):
+        api_key, _ = ApiKey.objects.create_key(name="GCI")
+        call_command("load_css_sample_data", verbosity=0)
+        self.assertTrue(ApiKey.objects.filter(pk=api_key.pk).exists())

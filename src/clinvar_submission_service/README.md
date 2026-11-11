@@ -96,6 +96,13 @@ Empty file that marks `management` as a Python package.
 
 Empty file that marks `commands` as a Python package.
 
+### `management/commands/load_css_sample_data.py`
+
+Defines the `load_css_sample_data` command, which `just django-loaddata-test` runs. In
+one transaction, it deletes the CSS's batches, records, attempts, and affiliation
+settings, then loads `fixtures/test_batches.json`, so loading again resets the sample
+data instead of conflicting with rows already there. It keeps API keys.
+
 ### `management/commands/poll_clinvar.py`
 
 The `poll_clinvar` command, which systemd runs next to Gunicorn. It runs a `Poller`
@@ -294,7 +301,9 @@ Tests the fixture: it has a batch and a record in every status, from several
 affiliations, only sent batches have a ClinVar ID, only finished ones have a summary
 report, each batch's records match what parsing its content gives, each attempt's result
 matches its batch's report, a record is retried across two batches, and every CSS page
-renders, including each batch's, record's, new batch, and settings page.
+renders, including each batch's, record's, new batch, and settings page. Also tests that
+`load_css_sample_data` can run twice, replaces attempts numbered differently from the
+fixture and data made in the UI, and keeps API keys.
 
 ### `test_polling.py`
 
