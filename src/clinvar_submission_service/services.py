@@ -9,6 +9,7 @@ from collections.abc import Iterable
 from datetime import timedelta
 from typing import Any
 
+from django.contrib.auth.models import User
 from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
 from django.utils import timezone
@@ -136,7 +137,7 @@ def check_batchable(records: list[Record]) -> None:
         raise BatchNotMadeError(error_message)
 
 
-def make_batch(records: Iterable[Record]) -> Batch:
+def make_batch(records: Iterable[Record], *, made_by: User | None = None) -> Batch:
     """Makes a batch, not yet sent to ClinVar, of one affiliation's waiting records.
 
     The records go in the batch in the order given and are marked as in a batch, so
@@ -146,6 +147,7 @@ def make_batch(records: Iterable[Record]) -> Batch:
 
     Args:
         records: The records, all waiting and from one affiliation.
+        made_by: The staff member making it.
 
     Returns:
         The batch.
@@ -160,6 +162,7 @@ def make_batch(records: Iterable[Record]) -> Batch:
             affiliation_id=newest.affiliation_id
         ).first()
         batch = Batch.objects.create(
+            made_by=made_by,
             affiliation_id=newest.affiliation_id,
             affiliation_name=newest.affiliation_name,
             **_settings_fields(settings),

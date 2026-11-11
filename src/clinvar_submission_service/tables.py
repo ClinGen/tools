@@ -14,7 +14,7 @@ class BatchTable(tables.Table):
     slug = tables.Column(verbose_name="ID", linkify=True)
     affiliation_name = tables.Column(verbose_name="Affiliation")
     variants = tables.Column(empty_values=(), orderable=False)
-    api_key__name = tables.Column(verbose_name="Sent By")
+    made_by__email = tables.Column(verbose_name="Made By")
     status = tables.Column(orderable=False)
     clinvar_submission_id = tables.Column(verbose_name="ClinVar ID")
     # When the CSS got the batch. ClinVar gets it when it's forwarded.

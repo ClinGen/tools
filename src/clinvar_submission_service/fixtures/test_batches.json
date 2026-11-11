@@ -16,7 +16,6 @@
     "pk": "84b495c1-77b8-4970-83d1-0f194239051f",
     "fields": {
       "slug": "B84b495c1",
-      "api_key": null,
       "affiliation_id": 10901,
       "affiliation_name": "Cardiomyopathy VCEP",
       "assertion_criteria_db": "PubMed",
@@ -109,7 +108,6 @@
     "pk": "ccbfbec6-e17b-430d-97ef-acfea837eb30",
     "fields": {
       "slug": "Bccbfbec6",
-      "api_key": null,
       "affiliation_id": 10902,
       "affiliation_name": "TP53 VCEP",
       "assertion_criteria_db": "PubMed",
@@ -202,7 +200,6 @@
     "pk": "f1953f98-e1d3-4bce-abf7-4a888649b629",
     "fields": {
       "slug": "Bf1953f98",
-      "api_key": null,
       "affiliation_id": 10903,
       "affiliation_name": "Malignant Hyperthermia Susceptibility VCEP",
       "assertion_criteria_db": "PubMed",
@@ -295,7 +292,6 @@
     "pk": "c5c25c6a-8c43-421c-ab3e-12bbde98a7d9",
     "fields": {
       "slug": "Bc5c25c6a",
-      "api_key": null,
       "affiliation_id": 10901,
       "affiliation_name": "Cardiomyopathy VCEP",
       "assertion_criteria_db": "PubMed",
@@ -398,7 +394,6 @@
     "pk": "e2096af8-5a4b-4656-95b6-bff07d21a17e",
     "fields": {
       "slug": "Be2096af8",
-      "api_key": null,
       "affiliation_id": 10904,
       "affiliation_name": "Phenylketonuria VCEP",
       "assertion_criteria_db": "PubMed",
@@ -602,7 +597,6 @@
     "pk": "556ba054-9e9a-421b-95f1-a19a685bc1ec",
     "fields": {
       "slug": "B556ba054",
-      "api_key": null,
       "affiliation_id": 10905,
       "affiliation_name": "CDH1 VCEP",
       "assertion_criteria_db": "PubMed",
@@ -892,7 +886,6 @@
     "pk": "4aed18b8-2301-45e7-8d6d-14bb2313c053",
     "fields": {
       "slug": "B4aed18b8",
-      "api_key": null,
       "affiliation_id": 10901,
       "affiliation_name": "Cardiomyopathy VCEP",
       "assertion_criteria_db": "PubMed",
@@ -1020,7 +1013,6 @@
     "pk": "3c696885-c2bc-423e-a535-7ccbf6cb4eca",
     "fields": {
       "slug": "B3c696885",
-      "api_key": null,
       "affiliation_id": 10902,
       "affiliation_name": "TP53 VCEP",
       "assertion_criteria_db": "PubMed",

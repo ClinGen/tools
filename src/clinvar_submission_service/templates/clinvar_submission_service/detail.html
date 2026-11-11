@@ -9,7 +9,7 @@
                 <tbody>
                     <tr><td>Status</td><td>{% include "clinvar_submission_service/partials/status.html" %}</td></tr>
                     <tr><td>Affiliation</td><td>{{ batch.affiliation_name }}</td></tr>
-                    <tr><td>Sent By</td><td>{{ batch.api_key.name|default:"" }}</td></tr>
+                    <tr><td>Made By</td><td>{{ batch.made_by.email|default:"" }}</td></tr>
                     <tr><td>ClinVar ID</td><td>{{ batch.clinvar_submission_id }}</td></tr>
                     <tr><td>Received by CSS</td><td>{{ batch.added_at|date:"Y-m-d H:i" }} UTC</td></tr>
                     <tr><td>Last Checked With ClinVar</td><td>{{ batch.last_polled_at|date:"Y-m-d H:i"|default:"Not yet" }}{% if batch.last_polled_at %} UTC{% endif %}</td></tr>

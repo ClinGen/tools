@@ -56,7 +56,7 @@ class BatchAdmin(SimpleHistoryAdmin):
     list_display = [
         "slug",
         "affiliation_name",
-        "api_key",
+        "made_by",
         "status",
         "clinvar_submission_id",
         "added_at",

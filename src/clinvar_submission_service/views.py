@@ -3,6 +3,7 @@ from datetime import datetime
 from urllib.parse import urlencode
 
 from django.contrib import messages
+from django.contrib.auth.models import User
 from django.db.models import Count, OuterRef, Q, QuerySet, Subquery
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
@@ -114,7 +115,7 @@ def index(request: HttpRequest) -> HttpResponse:
     status = request.GET.get("status", "")
     if status not in Batch.Status.values:
         status = ""
-    batches = Batch.objects.select_related("api_key").prefetch_related("records")
+    batches = Batch.objects.select_related("made_by").prefetch_related("records")
     affiliation = request.GET.get("affiliation", "").strip()
     affiliation_name = ""
     if affiliation:
@@ -251,7 +252,7 @@ def batch_detail(request: HttpRequest, slug: str) -> HttpResponse:
     Returns:
         The detail page.
     """
-    batch = get_object_or_404(Batch.objects.select_related("api_key"), slug=slug)
+    batch = get_object_or_404(Batch.objects.select_related("made_by"), slug=slug)
     return render(
         request,
         "clinvar_submission_service/detail.html",
@@ -439,7 +440,8 @@ def new_batch(request: HttpRequest, affiliation_id: int) -> HttpResponse:
                 chosen = _chosen_records(request.POST.getlist("records"))
             check_batchable(chosen)
             if action == "send":
-                batch = forward_batch(make_batch(chosen))
+                made_by = request.user if isinstance(request.user, User) else None
+                batch = forward_batch(make_batch(chosen, made_by=made_by))
                 if batch.status == Batch.Status.SEND_TO_CLINVAR_FAILED:
                     messages.error(request, RESEND_FAILED_MESSAGE)
                 return redirect(batch)

@@ -5,7 +5,7 @@ from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from clinvar_submission_service.api_auth import API_KEY_HEADER, ApiKeyAuth
-from clinvar_submission_service.models import ApiKey, Batch
+from clinvar_submission_service.models import ApiKey
 
 
 class ApiKeyTest(TestCase):
@@ -40,11 +40,6 @@ class ApiKeyTest(TestCase):
     def test_string_representation_names_the_client_and_prefix(self):
         api_key, _ = ApiKey.objects.create_key(name="GCI")
         self.assertEqual(str(api_key), f"GCI ({api_key.prefix}…)")
-
-    def test_a_batch_belongs_to_a_key(self):
-        api_key, _ = ApiKey.objects.create_key(name="GCI")
-        batch = Batch.objects.create(api_key=api_key)
-        self.assertEqual(list(api_key.batches.all()), [batch])  # type: ignore
 
 
 class ApiKeyAuthTest(TestCase):

@@ -105,14 +105,14 @@ one pass and exits. Run it locally with `just django-poll-clinvar`.
 
 ### `models.py`
 
-Defines `Batch`, one request to ClinVar: the affiliation the client sent it for (its AS
-ID and name), its records, through `BatchRecord`, the ClinVar submission ID, its status
-(named relative to ClinVar, such as `submitted_to_clinvar`, and labeled in ClinVar's
-words, with `status_help` saying what it means), ClinVar's latest response, `updated`
-timestamp, error code, and summary report, any error message, and when it was last and
-will next be polled, plus the content's assertion criteria, the organization it's on
-behalf of, and its release status. It extends `common.models.SlugModel`, so its ID is a
-UUID and its slug is `B` and the first 8 hex characters of the UUID, such as
+Defines `Batch`, one request to ClinVar: its affiliation (its AS ID and name), the staff
+member who made it, its records, through `BatchRecord`, the ClinVar submission ID, its
+status (named relative to ClinVar, such as `submitted_to_clinvar`, and labeled in
+ClinVar's words, with `status_help` saying what it means), ClinVar's latest response,
+`updated` timestamp, error code, and summary report, any error message, and when it was
+last and will next be polled, plus the content's assertion criteria, the organization
+it's on behalf of, and its release status. It extends `common.models.SlugModel`, so its
+ID is a UUID and its slug is `B` and the first 8 hex characters of the UUID, such as
 `B3f2a9c1e`. It keeps its change history, and `get_absolute_url()` returns its page.
 `Batch.objects.due_to_poll()` returns the submitted and processing batches whose next
 poll time has passed, oldest first. Also defines `Record`, one germline variant
@@ -130,7 +130,7 @@ several batches over time. Also defines `AffiliationSettings`, the submission-le
 values staff set once per affiliation, with history: its assertion criteria, the
 organization its batches are on behalf of, and its release status. Also defines
 `ApiKey`, the key one client system sends to use the API. Only its SHA-256 hash and a
-short prefix are stored, and each batch records the key that sent it.
+short prefix are stored, and each record notes the key that sent it.
 
 ### `polling.py`
 
@@ -250,7 +250,7 @@ words from the summary report, Success or Error.
 
 `BatchTable`, the django-tables2 table on the list page: each batch's ID, linked to its
 page, its affiliation, linked to the list of that affiliation's batches, its records'
-genes, the client that sent it, its status tag, linked to the list filtered to that
+genes, the staff member who made it, its status tag, linked to the list filtered to that
 status (keeping the affiliation filter), its ClinVar ID, and when the CSS received it.
 It sorts by every column but the genes and status. `RecordTable`, on the Records page,
 shows each record's ID, linked to its page, local ID, affiliation, linked to the list of

@@ -1,5 +1,6 @@
 from unittest import mock
 
+from django.contrib.auth.models import User
 from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase
 
@@ -39,7 +40,9 @@ class ServicesTestCase(TestCase):
 class MakeBatchTest(ServicesTestCase):
     def test_makes_a_batch_from_one_affiliations_waiting_records(self):
         first, second = _waiting("var-2"), _waiting("var-1")
-        batch = make_batch([first, second])
+        staff = User.objects.create_user(username="staff@example.com")
+        batch = make_batch([first, second], made_by=staff)
+        self.assertEqual(batch.made_by, staff)
         self.assertEqual(batch.status, Batch.Status.NOT_SENT_TO_CLINVAR)
         self.assertEqual(batch.affiliation_id, 10007)
         self.assertEqual(batch.affiliation_name, "Hearing Loss VCEP")

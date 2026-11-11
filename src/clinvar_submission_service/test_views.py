@@ -62,8 +62,12 @@ class CssViewTestCase(TestCase):
     def _make(self, *records: dict, **fields: object) -> Batch:
         """Returns a batch from the Hearing Loss VCEP with the given records."""
         payload = make_content(*records) if records else {}
-        defaults = {"affiliation_id": 10007, "affiliation_name": "Hearing Loss VCEP"}
-        batch = Batch.objects.create(api_key=self.api_key, **(defaults | fields))
+        defaults = {
+            "made_by": self.user,
+            "affiliation_id": 10007,
+            "affiliation_name": "Hearing Loss VCEP",
+        }
+        batch = Batch.objects.create(**(defaults | fields))
         if records:
             content = Content.model_validate(payload)
             for position, row in enumerate(record_fields(content)):
@@ -96,6 +100,14 @@ class PermissionTest(CssViewTestCase):
                 self.assertEqual(getattr(self.client, method)(url).status_code, 403)
 
 
+class MadeByTest(CssViewTestCase):
+    def test_a_batch_with_no_recorded_maker_shows_nothing(self):
+        batch = self._make(made_by=None)
+        self.assertEqual(self.client.get(reverse("css:index")).status_code, 200)
+        response = self.client.get(batch.get_absolute_url())
+        self.assertContains(response, "<td>Made By</td><td></td>")
+
+
 class ListViewTest(CssViewTestCase):
     def test_lists_submissions_newest_first(self):
         older = self._make(clinvar_submission_id="SUB000001")
@@ -104,7 +116,8 @@ class ListViewTest(CssViewTestCase):
         self.assertTemplateUsed(response, "clinvar_submission_service/list.html")
         self.assertEqual(_listed(response), [newer, older])
         self.assertContains(response, newer.get_absolute_url())
-        self.assertContains(response, "GCI")
+        self.assertContains(response, "Made By")
+        self.assertContains(response, "staff@example.com")
         self.assertContains(response, "SUB000002")
 
     def test_searches_by_slug_or_clinvar_id(self):
@@ -375,7 +388,7 @@ class DetailViewTest(CssViewTestCase):
         response = self.client.get(batch.get_absolute_url())
         self.assertTemplateUsed(response, "clinvar_submission_service/detail.html")
         self.assertContains(response, "SUB000009")
-        self.assertContains(response, "GCI")
+        self.assertContains(response, "<td>Made By</td><td>staff@example.com</td>")
         self.assertContains(response, "Hearing Loss VCEP")
         self.assertContains(response, f"Batch {batch.slug}")
 
@@ -813,7 +826,7 @@ class NewBatchViewTest(CssViewTestCase):
         self.assertEqual(len(self.fake.submitted), 1)
         self.assertContains(response, "var-1")
         self.assertContains(response, "var-2")
-        self.assertEqual(batch.history.first().history_user, self.user)  # type: ignore
+        self.assertEqual(batch.made_by, self.user)
 
     def test_refuses_an_empty_or_mixed_selection_with_a_plain_message(self):
         theirs = self._record("var-3", affiliation_id=10008)

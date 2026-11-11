@@ -4,6 +4,7 @@ import hashlib
 import secrets
 from typing import ClassVar
 
+from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.urls import reverse
@@ -191,14 +192,14 @@ class Batch(SlugModel):
         Status.PROCESSING_AT_CLINVAR,
     ]
 
-    api_key = models.ForeignKey(
-        "ApiKey",
+    made_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
         blank=True,
         null=True,
-        on_delete=models.PROTECT,
-        related_name="batches",
-        verbose_name="Client",
-        help_text="The API key of the client that sent the batch.",
+        on_delete=models.SET_NULL,
+        related_name="css_batches",
+        verbose_name="Made By",
+        help_text="The staff member who made the batch.",
     )
     affiliation_id = models.PositiveIntegerField(
         blank=True,

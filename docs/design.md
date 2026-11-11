@@ -211,9 +211,9 @@ requests.
 #### Batch Lifecycle
 
 A `Batch` is one submission to ClinVar. Its slug is `B` and the start of its UUID, such
-as `B3f2a9c1e`. It records its affiliation, its records, the ClinVar submission ID, its
-status, ClinVar's latest response and that response's `updated` timestamp and
-`errorCode`, the summary report, and any error message.
+as `B3f2a9c1e`. It records its affiliation, the staff member who made it, its records,
+the ClinVar submission ID, its status, ClinVar's latest response and that response's
+`updated` timestamp and `errorCode`, the summary report, and any error message.
 
 Each of a batch's records is a `Record`: one germline variant classification, with its
 ClinVar JSON as the client sent it, one item of ClinVar's `germlineSubmission`. A record
