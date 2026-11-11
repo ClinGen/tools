@@ -9,9 +9,22 @@ pages. "The Affiliations Service" in `docs/design.md` describes its design.
 
 Empty file that marks `affiliations_service` as a Python package.
 
+### `admin.py`
+
+Registers CDWGs and affiliations in the Django admin, with their history. ClinVar
+submitter IDs are edited inline on their affiliation.
+
 ### `apps.py`
 
 Configures the `affiliations_service` app.
+
+### `models.py`
+
+Defines `CDWG`, `Affiliation`, and `ClinVarSubmitterId`. An affiliation's IDs are
+assigned when it's created: the affiliation ID counts up from 10000, and the expert
+panel ID is the affiliation ID plus 30000 for a GCEP or 40000 for a VCEP or SC-VCEP.
+Deleting an affiliation, alone or in a queryset, marks it deleted instead, and
+`Affiliation.objects.active()` leaves deleted ones out.
 
 ### `templates/affiliations_service/index.html`
 
@@ -21,6 +34,10 @@ The AS's home page.
 
 The AS's title, description, and tabs, shared by its pages. Pages pass `active_tab` to
 highlight their tab.
+
+### `test_models.py`
+
+Tests ID assignment, soft deletion, uniqueness constraints, and history.
 
 ### `tests.py`
 
