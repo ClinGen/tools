@@ -322,6 +322,11 @@ exits cleanly on SIGTERM after finishing the submission it's working on.
 
 #### Staff Pages
 
+A Records tab lists every record in the CSS, newest first, with its affiliation, gene
+and HGVS, classification, and status. Like the batch list, it has status pills, an
+affiliation filter, a live search (gene, HGVS, local ID, or affiliation), and status
+tags that link to their filter.
+
 The CSS's pages list every batch (a submission to ClinVar), newest first, with its
 affiliation and the genes of its records. Pills filter it to one status, or show all of
 them, and clicking a status tag in the table filters to that status too. A search

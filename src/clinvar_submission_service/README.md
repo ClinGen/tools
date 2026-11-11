@@ -183,6 +183,22 @@ whether it's new or an update, with its result and SCV once ClinVar has reported
 send_to_clinvar_failed batch's page has a Resend button. It never shows raw JSON or
 ClinVar's error text; developers see those in the Django admin.
 
+### `templates/clinvar_submission_service/records.html`
+
+The Records tab, laid out like the batch list: status pills, a notice when it shows one
+affiliation, and a search box that updates the results as you type and matches genes,
+HGVS, local IDs, and affiliations.
+
+### `templates/clinvar_submission_service/partials/record_results.html`
+
+The Records page's results: the record count and the table, or a message when there are
+none. It's the whole response to an HTMX request.
+
+### `templates/clinvar_submission_service/partials/record_status.html`
+
+A record's status tag, colored by status, with what it means in a tooltip. With `href`,
+the tag links to the list filtered to that status.
+
 ### `templates/clinvar_submission_service/list.html`
 
 The CSS's home page: the status pills, a notice when the list shows one affiliation,
@@ -221,7 +237,10 @@ words from the summary report, Success or Error.
 page, its affiliation, linked to the list of that affiliation's batches, its records'
 genes, the client that sent it, its status tag, linked to the list filtered to that
 status (keeping the affiliation filter), its ClinVar ID, and when the CSS received it.
-It sorts by every column but the genes and status.
+It sorts by every column but the genes and status. `RecordTable`, on the Records page,
+shows each record's ID, local ID, affiliation, linked to the list of its records, gene
+and HGVS, classification, status tag, linked to the list filtered to that status
+(keeping the affiliation filter), and when the CSS received it.
 
 ### `test_api.py`
 
@@ -298,7 +317,10 @@ and that staff can withdraw a waiting record, with who did in its history, but n
 batched or accepted one, and only with a POST; that the affiliation settings page shows,
 saves, and updates an affiliation's settings, records who saved them, names an
 affiliation known only from its records, rejects bad values with plain messages, 404s
-for an unknown affiliation, and is linked from the affiliations page. Against the
+for an unknown affiliation, and is linked from the affiliations page; and the Records
+page's order, status pills and filter, affiliation filter, search by gene, HGVS, local
+ID, or affiliation, status tags linking to their filter, results-only HTMX response,
+tab, and that it shows no raw JSON. Against the
 fixtures, tests the affiliations page's counts, order, links, headers, and tab.
 
 ### `tests.py`
@@ -318,14 +340,15 @@ relative to ClinVar renames old rows and their history, and back. Also tests tha
 
 Routes the CSS's pages under the `css` namespace: the batch list at the root, the
 affiliations page at `affiliations/`, each batch at `batches/<slug>/`, its resend at
-`batches/<slug>/resend/`, a record's withdraw at `records/<slug>/withdraw/`, and the API
-at `api/v1/` under `css:api-1`.
+`batches/<slug>/resend/`, the records list at `records/`, a record's withdraw at
+`records/<slug>/withdraw/`, and the API at `api/v1/` under `css:api-1`.
 
 ### `views.py`
 
 Serves the CSS's pages to users with CSS permissions: the batch list, with its status
 and affiliation filters, search, sorting, and pagination, and just its results for an
-HTMX request; the affiliations page, which counts each affiliation's batches by status
+HTMX request; the Records page, with the same kinds of filters and search; the
+affiliations page, which counts each affiliation's batches by status
 and names it from its newest batch; each affiliation's settings page, which shows and
 saves its `AffiliationSettings`; and each batch's page, which pairs each `Record`
 with its result in ClinVar's summary report. The resend view, which takes only POSTs,

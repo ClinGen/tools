@@ -47,8 +47,8 @@ def _make_user(username: str, *, css: bool = False) -> User:
     return user
 
 
-def _listed(response: "Response") -> list[Batch]:
-    """Returns the batches on the list page's current page, in order."""
+def _listed(response: "Response") -> list:
+    """Returns the batches or records on a list page's current page, in order."""
     return [row.record for row in response.context["table"].paginated_rows]
 
 
@@ -84,6 +84,7 @@ class PermissionTest(CssViewTestCase):
             ("post", reverse("css:withdraw", kwargs={"slug": record.slug})),
             ("get", _settings_url(10007)),
             ("post", _settings_url(10007)),
+            ("get", reverse("css:records")),
         ]
         self.client.force_login(_make_user("other@example.com"))
         for method, url in pages:
@@ -659,6 +660,87 @@ class AffiliationSettingsViewTest(CssViewTestCase):
     def test_the_affiliations_page_links_to_the_settings(self):
         response = self.client.get(reverse("css:affiliations"))
         self.assertContains(response, _settings_url(10007))
+
+
+class RecordListViewTest(CssViewTestCase):
+    def _record(self, local_id: str, **fields: object) -> Record:
+        content = Content.model_validate(make_content(make_record(local_id)))
+        defaults = {
+            "affiliation_id": 10007,
+            "affiliation_name": "Hearing Loss VCEP",
+            "payload": make_record(local_id),
+        }
+        return Record.objects.create(**(record_fields(content)[0] | defaults | fields))
+
+    def test_lists_records_newest_first(self):
+        older, newer = self._record("var-1"), self._record("var-2")
+        response = self.client.get(reverse("css:records"))
+        self.assertTemplateUsed(response, "clinvar_submission_service/records.html")
+        self.assertEqual(_listed(response), [newer, older])
+        self.assertContains(response, "2 records")
+        self.assertContains(response, "BRCA1")
+        self.assertContains(response, "Likely Pathogenic")
+
+    def test_never_shows_raw_json(self):
+        self._record("var-1")
+        response = self.client.get(reverse("css:records"))
+        self.assertNotContains(response, "germlineClassificationDescription")
+
+    def test_filters_by_status_with_pills(self):
+        waiting = self._record("var-1")
+        self._record("var-2", status=Record.Status.WITHDRAWN)
+        response = self.client.get(
+            reverse("css:records"), {"status": "waiting_for_batch"}
+        )
+        self.assertEqual(_listed(response), [waiting])
+        for label in ["All", "Waiting", "In a Batch", "Success", "Withdrawn"]:
+            with self.subTest(label):
+                self.assertContains(response, f">{label}</a>")
+        self.assertContains(response, 'href="?status=withdrawn"')
+
+    def test_an_unknown_status_shows_every_record(self):
+        self._record("var-1")
+        response = self.client.get(reverse("css:records"), {"status": "lost"})
+        self.assertEqual(len(_listed(response)), 1)
+
+    def test_filters_by_affiliation(self):
+        ours = self._record("var-1")
+        self._record("var-2", affiliation_id=10008, affiliation_name="TP53 VCEP")
+        response = self.client.get(reverse("css:records"), {"affiliation": "10007"})
+        self.assertEqual(_listed(response), [ours])
+        self.assertContains(response, "Showing records from Hearing Loss VCEP.")
+        response = self.client.get(reverse("css:records"), {"affiliation": "VCEP"})
+        self.assertEqual(_listed(response), [])
+
+    def test_searches_by_gene_hgvs_local_id_or_affiliation(self):
+        match = self._record("vci-123", gene_symbol="MYH7", hgvs="NM_000257.4:c.1A>G")
+        self._record("var-2", affiliation_name="TP53 VCEP")
+        for query in ["myh7", "c.1A>G", "vci-123", "Hearing"]:
+            with self.subTest(query):
+                response = self.client.get(reverse("css:records"), {"q": query})
+                self.assertEqual(_listed(response), [match])
+
+    def test_each_status_tag_links_to_its_filter(self):
+        self._record("var-1", status=Record.Status.IN_BATCH)
+        response = self.client.get(reverse("css:records"), {"affiliation": "10007"})
+        self.assertContains(response, 'href="?affiliation=10007&amp;status=in_batch"')
+        self.assertContains(response, "This record is in a batch")
+
+    def test_an_htmx_request_gets_only_the_results(self):
+        self._record("var-1")
+        response = self.client.get(
+            reverse("css:records"), headers={"HX-Request": "true"}
+        )
+        self.assertTemplateUsed(
+            response, "clinvar_submission_service/partials/record_results.html"
+        )
+        self.assertTemplateNotUsed(response, "clinvar_submission_service/records.html")
+
+    def test_the_header_has_a_records_tab(self):
+        response = self.client.get(reverse("css:records"))
+        self.assertContains(
+            response, f'<a href="{reverse("css:records")}" aria-current="page">'
+        )
 
 
 class AffiliationTestCase(TestCase):

@@ -16,7 +16,7 @@ from clinvar_submission_service.services import (
     report_results,
     withdraw_record,
 )
-from clinvar_submission_service.tables import BatchTable
+from clinvar_submission_service.tables import BatchTable, RecordTable
 from core.tools import get_tool
 
 # How many batches the list shows on a page.
@@ -51,14 +51,14 @@ def _query_string(**params: str) -> str:
     return "?" + urlencode({name: value for name, value in params.items() if value})
 
 
-def _filter_by_affiliation(
-    batches: QuerySet[Batch], affiliation: str
-) -> QuerySet[Batch]:
-    """Returns the batches from the affiliation, or none if it isn't an ID."""
+def _filter_by_affiliation[T: (Batch, Record)](
+    rows: QuerySet[T], affiliation: str
+) -> QuerySet[T]:
+    """Returns the rows from the affiliation, or none if it isn't an ID."""
     try:
-        return batches.filter(affiliation_id=int(affiliation))
+        return rows.filter(affiliation_id=int(affiliation))
     except ValueError:
-        return batches.none()
+        return rows.none()
 
 
 @dataclass(frozen=True)
@@ -148,6 +148,63 @@ def index(request: HttpRequest) -> HttpResponse:
             "filter_links": [
                 (label, value, _query_string(affiliation=affiliation, status=value))
                 for value, label in [("", "All"), *Batch.Status.choices]
+            ],
+        },
+    )
+
+
+@tool_permission_required("has_css_permissions")
+def records(request: HttpRequest) -> HttpResponse:
+    """Lists every record, newest first.
+
+    The status= filter shows only records in one status, and the affiliation= filter
+    one affiliation's, by its ID. An unknown status shows every record. The q= search
+    matches a record's gene, HGVS, local ID, or affiliation. The table's sort= and
+    page= parameters sort and page the results.
+
+    Returns:
+        The records page, or just its results for an HTMX request.
+    """
+    query = request.GET.get("q", "").strip()
+    status = request.GET.get("status", "")
+    if status not in Record.Status.values:
+        status = ""
+    rows = Record.objects.order_by("-added_at")
+    affiliation = request.GET.get("affiliation", "").strip()
+    affiliation_name = ""
+    if affiliation:
+        rows = _filter_by_affiliation(rows, affiliation)
+        newest = rows.first()
+        affiliation_name = newest.affiliation_name if newest else ""
+    if status:
+        rows = rows.filter(status=status)
+    if query:
+        rows = rows.filter(
+            Q(gene_symbol__icontains=query)
+            | Q(hgvs__icontains=query)
+            | Q(local_id__icontains=query)
+            | Q(affiliation_name__icontains=query)
+        )
+    table = RecordTable(rows, affiliation=affiliation)
+    RequestConfig(request, paginate={"per_page": PAGE_SIZE}).configure(table)
+    template = (
+        "clinvar_submission_service/partials/record_results.html"
+        if request.headers.get("HX-Request")
+        else "clinvar_submission_service/records.html"
+    )
+    return render(
+        request,
+        template,
+        {
+            "tool": get_tool("css"),
+            "table": table,
+            "query": query,
+            "status": status,
+            "affiliation": affiliation,
+            "affiliation_name": affiliation_name,
+            "filter_links": [
+                (label, value, _query_string(affiliation=affiliation, status=value))
+                for value, label in [("", "All"), *Record.Status.choices]
             ],
         },
     )

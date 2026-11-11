@@ -16,6 +16,12 @@
                 </a>
             </li>
         {% endif %}
+        <li{% if active_tab == "records" %} class="is-active"{% endif %}>
+            <a href="{% url 'css:records' %}"{% if active_tab == "records" %} aria-current="page"{% endif %}>
+                {% include "common/icon.html" with icon_name="card-list" %}
+                <span>Records</span>
+            </a>
+        </li>
         <li{% if active_tab == "affiliations" %} class="is-active"{% endif %}>
             <a href="{% url 'css:affiliations' %}"{% if active_tab == "affiliations" %} aria-current="page"{% endif %}>
                 {% include "common/icon.html" with icon_name="people" %}

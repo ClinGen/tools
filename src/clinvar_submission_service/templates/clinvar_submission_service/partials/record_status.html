@@ -1,0 +1,8 @@
+{# A record's status tag, with what it means in a tooltip. With href, the tag is a link. #}
+{% if record.status == "succeeded_at_clinvar" %}
+    {% include "common/tooltip.html" with label=record.get_status_display text=record.status_help classes="tag is-success is-light" %}
+{% elif record.status == "waiting_for_batch" %}
+    {% include "common/tooltip.html" with label=record.get_status_display text=record.status_help classes="tag is-info is-light" %}
+{% else %}
+    {% include "common/tooltip.html" with label=record.get_status_display text=record.status_help classes="tag is-light" %}
+{% endif %}

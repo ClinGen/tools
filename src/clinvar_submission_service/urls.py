@@ -7,6 +7,7 @@ app_name = "css"
 
 urlpatterns = [
     path("", views.index, name="index"),
+    path("records/", views.records, name="records"),
     path("affiliations/", views.affiliations, name="affiliations"),
     path(
         "affiliations/<int:affiliation_id>/settings/",
