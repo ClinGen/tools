@@ -4,8 +4,10 @@
 these models follow.
 """
 
+import uuid
 from typing import ClassVar
 
+from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models.functions import Lower
 from simple_history.models import HistoricalRecords
@@ -16,6 +18,10 @@ FIRST_AFFILIATION_ID = 10000
 AFFILIATION_ID_LIMIT = 20000
 GCEP_OFFSET = 30000
 VCEP_OFFSET = 40000
+GCEP_RANGE = range(40000, 50000)
+VCEP_RANGE = range(50000, 60000)
+SOMATIC_CANCER_CDWG = "Somatic Cancer"
+NO_CDWG = "None"
 
 
 class CDWG(UUIDModel):
@@ -30,6 +36,7 @@ class CDWG(UUIDModel):
         blank=True,
         null=True,
         unique=True,
+        error_messages={"unique": "Another CDWG already has this GPM UUID."},
         verbose_name="GPM UUID",
         help_text="The UUID the GPM uses for this CDWG, if it has one.",
     )
@@ -44,7 +51,11 @@ class CDWG(UUIDModel):
         verbose_name_plural = "CDWGs"
         ordering = ["name"]
         constraints = [
-            models.UniqueConstraint(Lower("name"), name="as_cdwg_unique_name"),
+            models.UniqueConstraint(
+                Lower("name"),
+                name="as_cdwg_unique_name",
+                violation_error_message="There's already a CDWG with this name.",
+            ),
         ]
 
     def __str__(self) -> str:
@@ -120,6 +131,9 @@ class Affiliation(UUIDModel):
         blank=True,
         null=True,
         unique=True,
+        error_messages={
+            "unique": "Another affiliation already has this expert panel ID."
+        },
         verbose_name="Expert Panel ID",
         help_text=(
             "In the 40000 range for a GCEP or the 50000 range for a VCEP or SC-VCEP. "
@@ -150,6 +164,7 @@ class Affiliation(UUIDModel):
         blank=True,
         null=True,
         unique=True,
+        error_messages={"unique": "Another affiliation already has this GPM UUID."},
         verbose_name="GPM UUID",
         help_text="The UUID the GPM uses for this affiliation, if it has one.",
     )
@@ -163,6 +178,7 @@ class Affiliation(UUIDModel):
     history = HistoricalRecords()
 
     objects: ClassVar[AffiliationManager] = AffiliationManager()
+    cdwg_id: uuid.UUID | None  # Django adds this for the cdwg foreign key.
 
     class Meta:  # ty: ignore[invalid-attribute-override] (Each Django model declares its own Meta.)
         """Provides metadata."""
@@ -172,12 +188,81 @@ class Affiliation(UUIDModel):
             models.UniqueConstraint(
                 fields=["affiliation_id", "type"],
                 name="as_affiliation_unique_id_per_type",
+                violation_error_message=(
+                    "Another affiliation of this type already has this affiliation ID."
+                ),
             ),
         ]
 
     def __str__(self) -> str:
         """Returns the affiliation's full name."""
         return self.full_name
+
+    def clean(self) -> None:
+        """Checks the rules in "The Affiliations Service" in `docs/design.md`.
+
+        Raises:
+            ValidationError: If the affiliation breaks a rule, keyed by field.
+        """
+        errors: dict[str, str] = {}
+        is_independent = self.type == self.Type.INDEPENDENT_CURATION
+        if is_independent and self.gpm_uuid:
+            errors["gpm_uuid"] = "An independent curation group can't have a GPM UUID."
+        if self.cdwg_id is not None:
+            cdwg_name = self.cdwg.name
+            if self.type == self.Type.SC_VCEP and cdwg_name != SOMATIC_CANCER_CDWG:
+                errors["cdwg"] = (
+                    f"An SC-VCEP must be in the {SOMATIC_CANCER_CDWG} CDWG."
+                )
+            if is_independent and cdwg_name != NO_CDWG:
+                errors["cdwg"] = (
+                    "An independent curation group must be in the CDWG named "
+                    f"{NO_CDWG}."
+                )
+        errors.update(self._id_errors())
+        if errors:
+            raise ValidationError(errors)
+
+    def _id_errors(self) -> dict[str, str]:
+        """Checks that the affiliation's IDs are in range and go together.
+
+        New affiliations get their IDs on save, so this only matters when someone
+        sets them by hand, such as a superuser fixing a mistake in the Django admin.
+
+        Returns:
+            Error messages keyed by field.
+        """
+        errors: dict[str, str] = {}
+        affiliation_id, expert_panel_id = self.affiliation_id, self.expert_panel_id
+        if affiliation_id is not None and not (
+            FIRST_AFFILIATION_ID <= affiliation_id < AFFILIATION_ID_LIMIT
+        ):
+            errors["affiliation_id"] = "The affiliation ID must be from 10000 to 19999."
+        if expert_panel_id is None:
+            return errors
+        expected_range = {
+            self.Type.GCEP: GCEP_RANGE,
+            self.Type.VCEP: VCEP_RANGE,
+            self.Type.SC_VCEP: VCEP_RANGE,
+        }.get(self.type)
+        if expected_range is None:
+            errors["expert_panel_id"] = (
+                "An independent curation group can't have an expert panel ID."
+            )
+        elif expert_panel_id not in expected_range:
+            errors["expert_panel_id"] = (
+                f"A {self.Type(self.type).label}'s expert panel ID must be from "
+                f"{expected_range.start} to {expected_range.stop - 1}."
+            )
+        elif (
+            affiliation_id is not None
+            and affiliation_id % 1000 != expert_panel_id % 1000
+        ):
+            errors["expert_panel_id"] = (
+                "The last three digits of the expert panel ID must match the "
+                "affiliation ID's."
+            )
+        return errors
 
     def save(self, *args, **kwargs) -> None:
         """Assigns the affiliation's IDs on creation, then saves it."""

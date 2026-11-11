@@ -12,7 +12,8 @@ Empty file that marks `affiliations_service` as a Python package.
 ### `admin.py`
 
 Registers CDWGs and affiliations in the Django admin, with their history. ClinVar
-submitter IDs are edited inline on their affiliation.
+submitter IDs are edited inline on their affiliation. Only superusers can change an
+existing affiliation's IDs, type, and GPM UUID.
 
 ### `apps.py`
 
@@ -24,7 +25,10 @@ Defines `CDWG`, `Affiliation`, and `ClinVarSubmitterId`. An affiliation's IDs ar
 assigned when it's created: the affiliation ID counts up from 10000, and the expert
 panel ID is the affiliation ID plus 30000 for a GCEP or 40000 for a VCEP or SC-VCEP.
 Deleting an affiliation, alone or in a queryset, marks it deleted instead, and
-`Affiliation.objects.active()` leaves deleted ones out.
+`Affiliation.objects.active()` leaves deleted ones out. `Affiliation.clean()` checks the
+business rules (an SC-VCEP's CDWG, an independent curation group's CDWG and GPM UUID)
+and that hand-set IDs are in range and end in the same three digits. Constraint and
+uniqueness errors have plain-language messages, so forms can show them to staff.
 
 ### `templates/affiliations_service/index.html`
 
@@ -38,6 +42,11 @@ highlight their tab.
 ### `test_models.py`
 
 Tests ID assignment, soft deletion, uniqueness constraints, and history.
+
+### `test_rules.py`
+
+Tests the business rules in `Affiliation.clean()`, the ID checks, the plain-language
+uniqueness errors, and which fields the admin locks for non-superusers.
 
 ### `tests.py`
 
