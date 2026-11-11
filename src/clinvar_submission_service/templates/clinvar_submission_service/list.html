@@ -4,47 +4,7 @@
 {% block main %}
     <div class="block mt-6 mb-6">
         {% include "clinvar_submission_service/partials/header.html" with active_tab="list" %}
-        {% if affiliation %}
-            <div class="notification is-light block">
-                {% if affiliation_name %}
-                    Showing batches from {{ affiliation_name }}.
-                {% else %}
-                    No affiliation has that ID.
-                {% endif %}
-                <a href="{% url 'css:index' %}">Show every affiliation</a>
-            </div>
-        {% endif %}
-        <div class="tabs is-toggle is-small">
-            <ul>
-                {% for label, value, link in filter_links %}
-                    <li{% if status == value %} class="is-active"{% endif %}>
-                        <a href="{{ link }}"{% if status == value %} aria-current="page"{% endif %}>{{ label }}</a>
-                    </li>
-                {% endfor %}
-            </ul>
-        </div>
-        <form method="get">
-            {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
-            {% if affiliation %}<input type="hidden" name="affiliation" value="{{ affiliation }}">{% endif %}
-            <div class="field mb-4">
-                <div class="control has-icons-left">
-                    <input class="input"
-                           type="text"
-                           name="q"
-                           value="{{ query }}"
-                           aria-label="Search by ID, ClinVar ID, affiliation, gene, or HGVS"
-                           placeholder="Search by ID, ClinVar ID, affiliation, gene, or HGVS..."
-                           hx-get="{{ request.path }}"
-                           hx-include="closest form"
-                           hx-target="#search-results"
-                           hx-trigger="keyup changed delay:500ms"
-                           hx-push-url="true">
-                    <span class="icon is-left">
-                        <i class="bi bi-search"></i>
-                    </span>
-                </div>
-            </div>
-        </form>
+        {% include "clinvar_submission_service/partials/list_filters.html" with search_label="Search by ID, ClinVar ID, affiliation, gene, or HGVS" %}
         <div id="search-results">{% include "clinvar_submission_service/partials/results.html" %}</div>
     </div>
 {% endblock %}

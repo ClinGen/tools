@@ -117,11 +117,8 @@ def index(request: HttpRequest) -> HttpResponse:
         status = ""
     batches = Batch.objects.select_related("made_by").prefetch_related("records")
     affiliation = request.GET.get("affiliation", "").strip()
-    affiliation_name = ""
     if affiliation:
         batches = _filter_by_affiliation(batches, affiliation)
-        newest = batches.first()
-        affiliation_name = newest.affiliation_name if newest else ""
     if status:
         batches = batches.filter(status=status)
     if query:
@@ -148,14 +145,57 @@ def index(request: HttpRequest) -> HttpResponse:
             "table": table,
             "query": query,
             "status": status,
-            "affiliation": affiliation,
-            "affiliation_name": affiliation_name,
+            **_affiliation_filter(affiliation),
             "filter_links": [
                 (label, value, _query_string(affiliation=affiliation, status=value))
                 for value, label in [("", "All"), *Batch.Status.choices]
             ],
         },
     )
+
+
+def _affiliation_names() -> dict[int, str]:
+    """Returns each known affiliation's name, by ID.
+
+    A name is the one on the affiliation's newest record, or on its newest batch if it
+    has no records, in case it changed.
+    """
+    names: dict[int, str] = {}
+    for model in (Record, Batch):
+        rows = (
+            model.objects.filter(affiliation_id__isnull=False)
+            .order_by("affiliation_id", "-added_at")
+            .values_list("affiliation_id", "affiliation_name")
+        )
+        for affiliation_id, name in rows:
+            names.setdefault(affiliation_id, name)
+    return names
+
+
+def _affiliation_filter(affiliation: str) -> dict[str, object]:
+    """Returns the context for a list's affiliation select and New Batch button.
+
+    Args:
+        affiliation: The list's affiliation= filter, if any.
+    """
+    names = _affiliation_names()
+    try:
+        affiliation_id = int(affiliation) if affiliation else None
+    except ValueError:
+        affiliation_id = -1
+    has_waiting = (
+        affiliation_id in names
+        and Record.objects.filter(
+            affiliation_id=affiliation_id, status=Record.Status.WAITING_FOR_BATCH
+        ).exists()
+    )
+    return {
+        "affiliation": affiliation,
+        "affiliations": sorted(names.items(), key=lambda item: item[1]),
+        "unknown_affiliation": affiliation_id is not None
+        and affiliation_id not in names,
+        "new_batch_affiliation": affiliation_id if has_waiting else None,
+    }
 
 
 @tool_permission_required("has_css_permissions")
@@ -176,11 +216,8 @@ def records(request: HttpRequest) -> HttpResponse:
         status = ""
     rows = Record.objects.order_by("-added_at")
     affiliation = request.GET.get("affiliation", "").strip()
-    affiliation_name = ""
     if affiliation:
         rows = _filter_by_affiliation(rows, affiliation)
-        newest = rows.first()
-        affiliation_name = newest.affiliation_name if newest else ""
     if status:
         rows = rows.filter(status=status)
     if query:
@@ -205,8 +242,7 @@ def records(request: HttpRequest) -> HttpResponse:
             "table": table,
             "query": query,
             "status": status,
-            "affiliation": affiliation,
-            "affiliation_name": affiliation_name,
+            **_affiliation_filter(affiliation),
             "filter_links": [
                 (label, value, _query_string(affiliation=affiliation, status=value))
                 for value, label in [("", "All"), *Record.Status.choices]

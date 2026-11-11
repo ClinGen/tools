@@ -256,9 +256,12 @@ class ListViewTest(CssViewTestCase):
         self.assertContains(response, "1 batch")
 
     def test_the_search_box_sends_the_filters_as_you_type(self):
+        self._make()
         response = self.client.get(reverse("css:index"), {"affiliation": "10007"})
         self.assertContains(response, 'hx-include="closest form"')
-        self.assertContains(response, 'name="affiliation" value="10007"')
+        self.assertContains(
+            response, '<option value="10007" selected>Hearing Loss VCEP</option>'
+        )
 
     def test_says_when_the_css_received_each_batch(self):
         self._make()
@@ -730,7 +733,10 @@ class RecordListViewTest(CssViewTestCase):
         self._record("var-2", affiliation_id=10008, affiliation_name="TP53 VCEP")
         response = self.client.get(reverse("css:records"), {"affiliation": "10007"})
         self.assertEqual(_listed(response), [ours])
-        self.assertContains(response, "Showing records from Hearing Loss VCEP.")
+        self.assertContains(
+            response, '<option value="10007" selected>Hearing Loss VCEP</option>'
+        )
+        self.assertContains(response, '<option value="10008">TP53 VCEP</option>')
         response = self.client.get(reverse("css:records"), {"affiliation": "VCEP"})
         self.assertEqual(_listed(response), [])
 
@@ -970,6 +976,56 @@ class RecordDetailViewTest(CssViewTestCase):
         self.assertEqual(response.status_code, 404)
 
 
+class AffiliationSelectTest(CssViewTestCase):
+    def _waiting(self, affiliation_id: int, name: str, **fields: object) -> Record:
+        content = Content.model_validate(make_content())
+        return Record.objects.create(
+            affiliation_id=affiliation_id,
+            affiliation_name=name,
+            **(record_fields(content)[0] | fields),
+        )
+
+    def test_each_list_offers_every_known_affiliation_by_name(self):
+        self._waiting(10008, "TP53 VCEP")
+        self._make()  # Hearing Loss VCEP, 10007, known from its batch.
+        for url in [reverse("css:records"), reverse("css:index")]:
+            with self.subTest(url):
+                html = self.client.get(url).content.decode()
+                self.assertIn(
+                    '<option value="" selected>All affiliations</option>', html
+                )
+                self.assertLess(
+                    html.index(">Hearing Loss VCEP</option>"),
+                    html.index(">TP53 VCEP</option>"),
+                )
+
+    def test_the_select_keeps_the_status_and_search(self):
+        self._waiting(10007, "Hearing Loss VCEP")
+        for url, status in [
+            (reverse("css:records"), "withdrawn"),
+            (reverse("css:index"), "error_at_clinvar"),
+        ]:
+            with self.subTest(url):
+                response = self.client.get(url, {"status": status, "q": "BRCA1"})
+                self.assertContains(response, 'name="affiliation"')
+                self.assertContains(
+                    response, f'<input type="hidden" name="status" value="{status}">'
+                )
+                self.assertContains(response, 'value="BRCA1"')
+
+    def test_new_batch_shows_for_one_affiliation_with_waiting_records(self):
+        self._waiting(10007, "Hearing Loss VCEP")
+        self._waiting(10008, "TP53 VCEP", status=Record.Status.WITHDRAWN)
+        for url in [reverse("css:records"), reverse("css:index")]:
+            with self.subTest(url):
+                response = self.client.get(url, {"affiliation": "10007"})
+                self.assertContains(response, _new_batch_url(10007))
+                response = self.client.get(url, {"affiliation": "10008"})
+                self.assertNotContains(response, _new_batch_url(10008))
+                response = self.client.get(url)
+                self.assertNotContains(response, _new_batch_url(10007))
+
+
 class AffiliationTestCase(TestCase):
     fixtures = ["test_batches.json"]
 
@@ -983,7 +1039,9 @@ class AffiliationFilterTest(AffiliationTestCase):
         names = {s.affiliation_name for s in _listed(response)}
         self.assertEqual(names, {"Cardiomyopathy VCEP"})
         self.assertEqual(len(_listed(response)), 3)
-        self.assertContains(response, "Showing batches from Cardiomyopathy VCEP.")
+        self.assertContains(
+            response, '<option value="10901" selected>Cardiomyopathy VCEP</option>'
+        )
 
     def test_combines_with_the_status_filter(self):
         response = self.client.get(
@@ -1003,6 +1061,7 @@ class AffiliationFilterTest(AffiliationTestCase):
             with self.subTest(value=value):
                 response = self.client.get(reverse("css:index"), {"affiliation": value})
                 self.assertEqual(_listed(response), [])
+                self.assertContains(response, "No affiliation has that ID.")
 
 
 class AffiliationsViewTest(AffiliationTestCase):
