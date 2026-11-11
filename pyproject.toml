@@ -146,6 +146,10 @@ convention = "google"
 "scripts/env_check.py" = [
     "print", # CLI tool: print is the intended output mechanism.
 ]
+"scripts/*send_dummy_records.py" = [
+    "print", # CLI tool: print is the intended output mechanism.
+    "suspicious-non-cryptographic-random-usage", # Dummy data, not secrets.
+]
 
 [tool.coverage.run]
 data_file = "coverage.db"

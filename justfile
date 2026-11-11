@@ -236,6 +236,12 @@ django-poll-clinvar:
     cd src && uv run manage.py poll_clinvar
 alias djpc := django-poll-clinvar
 
+# Send random dummy records to a local CSS, as the VCI would. -------
+[group('django')]
+css-send-dummy-records *args:
+    uv run scripts/send_dummy_records.py {{args}}
+alias csd := css-send-dummy-records
+
 # Replace the CSS's batches and records with the sample fixture. ------
 [group('django')]
 django-loaddata-test:
