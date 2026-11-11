@@ -32,7 +32,9 @@ CSS's largest submissions; Caddy keeps other paths at 2.5 MB.
 
 Extends `base.py` for local development: `DEBUG = True`, an insecure fallback
 `SECRET_KEY` when none is set, `MESSAGE_LEVEL` set to `DEBUG`, and console logging that
-suppresses noisy `httpcore` and `urllib3` debug output from Clerk and Sentry.
+suppresses noisy `httpcore` and `urllib3` debug output from Clerk and Sentry. It's the
+only settings module that reads `CSS_SIMULATE_CLINVAR`, which turns on the CSS's
+simulated ClinVar when it's 1; `base.py` sets it off, so prod can't simulate.
 
 ### `settings/prod.py`
 

@@ -105,11 +105,17 @@ class ClinVarClient:
         """Builds a client from the CSS_ settings.
 
         Returns:
-            A client for the configured ClinVar endpoint.
+            A client for the configured ClinVar endpoint, or a simulated ClinVar when
+            CSS_SIMULATE_CLINVAR is on.
 
         Raises:
             ImproperlyConfigured: If CSS_CLINVAR_API_KEY is empty.
         """
+        if settings.CSS_SIMULATE_CLINVAR:
+            # Imported here, since the simulator imports this module.
+            from clinvar_submission_service.simulation import SimulatedClinVarClient  # ruff: ignore[import-outside-top-level] (It imports this module.)
+
+            return SimulatedClinVarClient()  # ty: ignore[invalid-return-type] (It has the same methods.)
         if not settings.CSS_CLINVAR_API_KEY:
             error_message = "Set CSS_CLINVAR_API_KEY to talk to ClinVar."
             raise ImproperlyConfigured(error_message)

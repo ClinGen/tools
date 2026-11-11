@@ -49,7 +49,8 @@ download its summary report. Every request sends the `SP-API-KEY` header and a t
 A failed request raises `ClinVarError`, which says whether it's worth retrying
 (timeouts, 429s, and 5xx are; 400s and 401s aren't) and carries a 429's `Retry-After`.
 Nothing it logs or raises includes the API key. `ClinVarClient.from_settings()` builds
-one from the `CSS_` settings and raises `ImproperlyConfigured` without a key.
+one from the `CSS_` settings and raises `ImproperlyConfigured` without a key, or returns
+a `simulation.SimulatedClinVarClient` when `CSS_SIMULATE_CLINVAR` is on.
 
 ### `content.py`
 
@@ -271,6 +272,18 @@ A record's result on a batch's page, with a tooltip on the tag: Not Sent when Cl
 doesn't have the batch, No Result Yet before ClinVar reports, and then ClinVar's own
 words from the summary report, Success or Error.
 
+### `simulation.py`
+
+Defines `SimulatedClinVarClient`, which has `ClinVarClient`'s methods and answers as
+ClinVar might when `CSS_SIMULATE_CLINVAR` is on, so the workflow can be tried without
+ClinVar. Sending a batch returns a new `SUB` ID, or fails about one time in ten so
+Resend can be tried. The web server and the poller are separate processes, so it keeps
+nothing in memory and reads each batch and its records from the database. Each poll
+moves a batch one step: submitted, then processing, then processed or error, with
+ClinVar's error code. Its summary report, in ClinVar's shape, gives each record Success
+with an SCV or Error with a plausible message, about 85% Success, decided by a hash of
+the ClinVar ID and local ID so it's the same on every call.
+
 ### `tables.py`
 
 `BatchTable`, the django-tables2 table on the list page: each batch's ID, linked to its
@@ -343,6 +356,15 @@ mixed affiliations, withdrawn or batched records, and too many records are refus
 save nothing; that a batch ClinVar accepts is submitted with its records' content; and
 that a rejected send, or a missing ClinVar key, leaves it send_to_clinvar_failed with
 its records in it, isn't retried, and can be resent.
+
+### `test_simulation.py`
+
+Tests the simulated ClinVar: that `from_settings()` returns it only when the flag is on
+and that the flag is off by default; that sending returns new IDs, sometimes fails, and
+returns nothing for a dry run; that each poll moves a batch one step, with the right
+error code for some or all records failing; that the report has a result per record in
+ClinVar's shape and is the same on every call; and that the poller and
+`save_results()` work against it end to end.
 
 ### `test_views.py`
 

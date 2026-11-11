@@ -1,5 +1,7 @@
 """Provides development settings."""
 
+import os
+
 from django.contrib import messages
 
 from .base import *  # ruff: ignore[undefined-local-with-import-star] (We want to import everything.)
@@ -13,6 +15,10 @@ ALLOWED_HOSTS: list[str] = []
 SECRET_KEY = SECRET_KEY or "django-insecure-dev-key"  # ruff: ignore[hardcoded-password-string]
 
 MESSAGE_LEVEL = messages.DEBUG
+
+# Answer the CSS's ClinVar requests with a simulated ClinVar. See
+# clinvar_submission_service/simulation.py.
+CSS_SIMULATE_CLINVAR = os.getenv("CSS_SIMULATE_CLINVAR") == "1"
 
 LOGGING = {
     "version": 1,

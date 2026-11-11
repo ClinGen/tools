@@ -204,6 +204,10 @@ CSS_CLINVAR_API_URL = (
     os.getenv("CSS_CLINVAR_API_URL") or "https://submit.ncbi.nlm.nih.gov/apitest/v1"
 )
 CSS_CLINVAR_API_KEY = os.getenv("CSS_CLINVAR_API_KEY", "")
+# Whether a simulated ClinVar answers in place of ClinVar's API, so the CSS's workflow
+# can be tried locally. Only the dev settings can turn it on, with
+# CSS_SIMULATE_CLINVAR=1.
+CSS_SIMULATE_CLINVAR = False
 
 # The largest request body Django reads. A CSS submission can hold 10,000 records with
 # long comments, so this is far above Django's 2.5 MB default. Caddy keeps the default
