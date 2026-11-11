@@ -439,7 +439,8 @@ class DetailViewTest(CssViewTestCase):
             error_message="ClinVar returned 401: No valid API key provided",
         )
         response = self.client.get(batch.get_absolute_url())
-        self.assertNotContains(response, "401")
+        # A random ID on the page can hold "401", so check for the error's words.
+        self.assertNotContains(response, "No valid API key provided")
         self.assertContains(response, "ClinVar never got this batch.")
 
     def test_unknown_slug_is_404(self):
@@ -493,7 +494,7 @@ class ResendViewTest(CssViewTestCase):
         self.assertEqual(batch.status, Batch.Status.SEND_TO_CLINVAR_FAILED)
         self.assertEqual(batch.error_message, "ClinVar returned 503")
         self.assertContains(response, "ClinVar still didn&#x27;t get the batch.")
-        self.assertNotContains(response, "503")
+        self.assertNotContains(response, "ClinVar returned 503")
 
     def test_only_send_failed_submissions_can_be_resent(self):
         batch = self._make(
