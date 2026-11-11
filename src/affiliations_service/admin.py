@@ -6,6 +6,7 @@ from affiliations_service.models import (
     CDWG,
     Affiliation,
     ClinVarSubmitterId,
+    Membership,
     Person,
     PersonEmail,
 )
@@ -22,6 +23,20 @@ class ClinVarSubmitterIdInline(admin.TabularInline):
     extra = 0
 
 
+class AffiliationMembershipInline(admin.TabularInline):
+    model = Membership
+    extra = 0
+    autocomplete_fields = ["person"]
+    fields = ["person", "role", "start_date", "end_date"]
+
+
+class PersonMembershipInline(admin.TabularInline):
+    model = Membership
+    extra = 0
+    autocomplete_fields = ["affiliation"]
+    fields = ["affiliation", "role", "start_date", "end_date"]
+
+
 @admin.register(Affiliation)
 class AffiliationAdmin(SimpleHistoryAdmin):
     list_display = [
@@ -35,7 +50,7 @@ class AffiliationAdmin(SimpleHistoryAdmin):
     ]
     list_filter = ["type", "status", "cdwg", "is_deleted"]
     search_fields = ["full_name", "short_name", "affiliation_id", "expert_panel_id"]
-    inlines = [ClinVarSubmitterIdInline]
+    inlines = [ClinVarSubmitterIdInline, AffiliationMembershipInline]
 
     # Other systems use these to refer to an affiliation, so only superusers can change
     # them, to fix mistakes.
@@ -64,4 +79,4 @@ class PersonEmailInline(admin.TabularInline):
 class PersonAdmin(SimpleHistoryAdmin):
     list_display = ["name", "preferred_name", "email", "institution"]
     search_fields = ["name", "preferred_name", "email", "other_emails__email", "orcid"]
-    inlines = [PersonEmailInline]
+    inlines = [PersonEmailInline, PersonMembershipInline]

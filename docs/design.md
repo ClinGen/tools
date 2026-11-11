@@ -217,8 +217,8 @@ point, and we expect to add more.
 
 A membership says that a person holds a role in an affiliation. The roles are
 coordinator, approver, and curator. A person who holds two roles in an affiliation has
-two memberships, one per role. A membership may have a start date and an end date. It's
-current until its end date passes. Ending a membership sets its end date instead of
+two memberships, one per role. A membership may have a start date and an end date. It
+stops being current on its end date. Ending a membership sets its end date instead of
 deleting it, so the AS remembers who was in a group and when. A person can't hold the
 same role in the same affiliation twice at once.
 

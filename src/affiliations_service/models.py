@@ -4,6 +4,7 @@
 these models follow.
 """
 
+import datetime
 import uuid
 from typing import ClassVar
 
@@ -11,6 +12,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models, transaction
 from django.db.models.functions import Lower
+from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
 from common.models import UUIDModel
@@ -494,3 +496,111 @@ class PersonEmail(UUIDModel):
         person = self.person if self.person_id is not None else None
         if self.email and email_is_taken(self.email, person=person):
             raise ValidationError({"email": DUPLICATE_EMAIL_MESSAGE})
+
+
+class MembershipQuerySet(models.QuerySet):
+    """Adds a filter for current memberships."""
+
+    def current(self) -> "MembershipQuerySet":
+        """Returns the memberships with no end date or an end date in the future."""
+        today = timezone.localdate()
+        return self.filter(
+            models.Q(end_date__isnull=True) | models.Q(end_date__gt=today)
+        )
+
+
+class MembershipManager(models.Manager):
+    """Returns `MembershipQuerySet`s."""
+
+    def get_queryset(self) -> MembershipQuerySet:
+        """Returns all memberships, including ended ones."""
+        return MembershipQuerySet(self.model, using=self._db)
+
+    def current(self) -> MembershipQuerySet:
+        """Returns the memberships with no end date or an end date in the future."""
+        return self.get_queryset().current()
+
+
+class Membership(UUIDModel):
+    """A role a person holds in an affiliation.
+
+    A person who holds two roles in an affiliation has two memberships. Memberships
+    aren't deleted; ending one sets its end date, so the AS remembers who was in a
+    group and when.
+    """
+
+    class Role(models.TextChoices):
+        COORDINATOR = "COORDINATOR", "Coordinator"
+        APPROVER = "APPROVER", "Approver"
+        CURATOR = "CURATOR", "Curator"
+
+    person = models.ForeignKey(
+        Person,
+        on_delete=models.PROTECT,
+        related_name="memberships",
+        verbose_name="Person",
+    )
+    affiliation = models.ForeignKey(
+        Affiliation,
+        on_delete=models.PROTECT,
+        related_name="memberships",
+        verbose_name="Affiliation",
+    )
+    role = models.CharField(choices=Role.choices, max_length=16, verbose_name="Role")
+    start_date = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name="Start Date",
+        help_text="When the person started in this role, if known.",
+    )
+    end_date = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name="End Date",
+        help_text="When the person's time in this role ends. Leave blank if it hasn't.",
+    )
+    added_at = models.DateTimeField(auto_now_add=True, verbose_name="Added At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
+    history = HistoricalRecords()
+
+    objects: ClassVar[MembershipManager] = MembershipManager()
+
+    class Meta:  # ty: ignore[invalid-attribute-override] (Each Django model declares its own Meta.)
+        """Provides metadata."""
+
+        ordering = ["role", "person__name"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(start_date__isnull=True)
+                | models.Q(end_date__isnull=True)
+                | models.Q(end_date__gte=models.F("start_date")),
+                name="as_membership_ends_after_it_starts",
+                violation_error_message="The end date can't be before the start date.",
+            ),
+            models.UniqueConstraint(
+                fields=["person", "affiliation", "role"],
+                condition=models.Q(end_date__isnull=True),
+                name="as_membership_one_open_role",
+                violation_error_message=(
+                    "This person already holds this role in this affiliation."
+                ),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        """Returns who holds which role where."""
+        return f"{self.person}, {self.get_role_display()}, {self.affiliation}"  # ty: ignore[unresolved-attribute] (Django adds get_role_display.)
+
+    @property
+    def is_current(self) -> bool:
+        """Whether the membership has no end date or ends in the future."""
+        return self.end_date is None or self.end_date > timezone.localdate()
+
+    def end(self, on: datetime.date | None = None) -> None:
+        """Ends the membership by setting its end date.
+
+        Args:
+            on: The end date. Defaults to today.
+        """
+        self.end_date = on or timezone.localdate()
+        self.save()

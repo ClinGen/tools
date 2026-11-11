@@ -13,8 +13,9 @@ Empty file that marks `affiliations_service` as a Python package.
 
 Registers CDWGs and affiliations in the Django admin, with their history. ClinVar
 submitter IDs are edited inline on their affiliation, and other emails inline on their
-person. Admin search finds a person by any of their emails. Only superusers can change
-an existing affiliation's IDs, type, and GPM UUID.
+person. Memberships are edited inline on both affiliations and people. Admin search
+finds a person by any of their emails. Only superusers can change an existing
+affiliation's IDs, type, and GPM UUID.
 
 ### `apps.py`
 
@@ -36,6 +37,12 @@ share an email, ignoring case, whether it's a primary or another email: constrai
 catch duplicates within each table, and `clean()` catches them across the two. ORCID iDs
 are checked for format and are unique when set.
 
+Finally, it defines `Membership`: a person's role (coordinator, approver, or curator) in
+an affiliation, with optional start and end dates. A person can't hold the same role in
+the same affiliation twice at once, and an end date can't come before its start date.
+`Membership.objects.current()` returns memberships that haven't ended, and `end()` ends
+one by setting its end date instead of deleting it.
+
 ### `templates/affiliations_service/index.html`
 
 The AS's home page.
@@ -44,6 +51,11 @@ The AS's home page.
 
 The AS's title, description, and tabs, shared by its pages. Pages pass `active_tab` to
 highlight their tab.
+
+### `test_memberships.py`
+
+Tests membership roles, constraints, which memberships are current, ending a membership,
+history, and the admin inlines.
 
 ### `test_models.py`
 
