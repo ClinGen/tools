@@ -69,6 +69,13 @@ affiliation's IDs, type, and GPM UUID.
 
 Configures the `affiliations_service` app.
 
+### `forms.py`
+
+Defines the forms on the AS's pages: `AffiliationCreateForm`, `AffiliationEditForm`
+(which leaves out the IDs, type, and GPM UUID, so posting them changes nothing), and
+`SubmitterIdFormSet` for an affiliation's ClinVar submitter IDs. `BulmaFormMixin` gives
+text inputs Bulma's classes.
+
 ### `history.py`
 
 Describes an object's change history in plain language, such as "Changed Status from
@@ -101,10 +108,20 @@ one by setting its end date instead of deleting it.
 only their SHA-256 hash and first eight characters are stored. `ApiKey.objects.verify()`
 finds the active key for a raw value and records its use.
 
+### `templates/affiliations_service/affiliation_delete.html`
+
+Asks staff to confirm deleting an affiliation, and explains that the AS keeps it.
+
 ### `templates/affiliations_service/affiliation_detail.html`
 
 An affiliation's page: its fields, ClinVar submitter IDs, current members by role, past
-members, and history. It says so if the affiliation was deleted.
+members, and history, with Edit and Delete buttons. It says so if the affiliation was
+deleted.
+
+### `templates/affiliations_service/affiliation_form.html`
+
+The form for creating or editing an affiliation, with its ClinVar submitter IDs. When
+editing, it shows the IDs, type, and whether it's linked to the GPM as read-only.
 
 ### `templates/affiliations_service/index.html`
 
@@ -115,6 +132,11 @@ with HTMX as staff type, and work as a plain form without JavaScript.
 
 The AS's title, description, and tabs, shared by its pages. Pages pass `active_tab` to
 highlight their tab.
+
+### `test_affiliation_forms.py`
+
+Tests creating, editing, and deleting affiliations on the AS's pages, including locked
+fields, submitter IDs, plain-language errors, and permissions.
 
 ### `test_affiliation_pages.py`
 
@@ -164,6 +186,10 @@ Tests people's email uniqueness, ORCID iD checks, GPM UUIDs, history, and admin 
 Tests the business rules in `Affiliation.clean()`, the ID checks, the plain-language
 uniqueness errors, and which fields the admin locks for non-superusers.
 
+### `templates/affiliations_service/partials/field.html`
+
+Renders one form field with its label, help text, and errors in Bulma's style.
+
 ### `templates/affiliations_service/partials/history.html`
 
 A table of the changes in `history`, from `history.describe_history()`.
@@ -185,5 +211,6 @@ Routes the AS's pages under `/as/` (an affiliation's page is
 
 ### `views.py`
 
-Defines the AS's pages: the affiliation list and an affiliation's page. Each view
-requires `has_as_permissions`.
+Defines the AS's pages: the affiliation list, an affiliation's page, and the pages that
+create, edit, and delete an affiliation. Deleting marks it deleted. Each view requires
+`has_as_permissions`.

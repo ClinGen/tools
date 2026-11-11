@@ -5,6 +5,12 @@
     <div class="block mt-6 mb-6">
         {% include "affiliations_service/partials/header.html" with active_tab="affiliation" %}
         <h2 class="title is-4">{{ affiliation.full_name }}</h2>
+        <div class="buttons">
+            <a class="button is-link" href="{% url 'as:affiliation-edit' pk=affiliation.pk %}">Edit</a>
+            {% if not affiliation.is_deleted %}
+                <a class="button is-link is-light" href="{% url 'as:affiliation-delete' pk=affiliation.pk %}">Delete</a>
+            {% endif %}
+        </div>
         {% if affiliation.is_deleted %}
             <div class="notification is-warning is-light block">
                 This affiliation has been deleted. It's kept for the record, but it's left

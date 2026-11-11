@@ -8,6 +8,12 @@
                 <span>Affiliations</span>
             </a>
         </li>
+        <li{% if active_tab == "new-affiliation" %} class="is-active"{% endif %}>
+            <a href="{% url 'as:affiliation-create' %}"{% if active_tab == "new-affiliation" %} aria-current="page"{% endif %}>
+                {% include "common/icon.html" with icon_name="plus-circle" %}
+                <span>New Affiliation</span>
+            </a>
+        </li>
         {% if active_tab == "affiliation" %}
             <li class="is-active">
                 <a href="{{ affiliation.get_absolute_url }}" aria-current="page">

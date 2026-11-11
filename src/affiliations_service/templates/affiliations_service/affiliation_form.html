@@ -1,0 +1,67 @@
+{% extends "layouts/base.html" %}
+{% block title %}{% if affiliation %}Edit {{ affiliation.full_name }}{% else %}New Affiliation{% endif %}{% endblock %}
+{% block description %}{% if affiliation %}Change {{ affiliation.full_name }}'s details.{% else %}Add an affiliation to the AS.{% endif %}{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        {% if affiliation %}
+            {% include "affiliations_service/partials/header.html" with active_tab="affiliation" %}
+            <h2 class="title is-4">Edit {{ affiliation.full_name }}</h2>
+        {% else %}
+            {% include "affiliations_service/partials/header.html" with active_tab="new-affiliation" %}
+            <h2 class="title is-4">New Affiliation</h2>
+            <p class="block">The AS gives the affiliation its affiliation ID and expert panel ID
+                when you save it.</p>
+        {% endif %}
+        <form method="post" class="block">{% csrf_token %}
+            {% for error in form.non_field_errors %}
+                <div class="notification is-danger is-light">{{ error }}</div>
+            {% endfor %}
+            {% if affiliation %}
+                <div class="block table-container">
+                    <table class="table">
+                        <tbody>
+                            <tr><td>Affiliation ID</td><td>{{ affiliation.affiliation_id }}</td></tr>
+                            <tr><td>Expert Panel ID</td><td>{{ affiliation.expert_panel_id|default:"None" }}</td></tr>
+                            <tr><td>Type</td><td>{{ affiliation.get_type_display }}</td></tr>
+                            <tr><td>Linked to the GPM</td><td>{{ affiliation.gpm_uuid|yesno:"Yes,No" }}</td></tr>
+                        </tbody>
+                    </table>
+                    <p class="help">Other systems use these to find the affiliation, so they can't
+                        change here. Ask a developer if one is wrong.</p>
+                </div>
+            {% endif %}
+            {% for field in form %}
+                {% include "affiliations_service/partials/field.html" %}
+            {% endfor %}
+
+            <fieldset class="block">
+                <legend class="label">ClinVar Submitter IDs</legend>
+                {{ formset.management_form }}
+                {% for error in formset.non_form_errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+                {% for subform in formset %}
+                    <div class="field is-grouped">
+                        {% for hidden in subform.hidden_fields %}{{ hidden }}{% endfor %}
+                        <div class="control">
+                            <label class="is-sr-only" for="{{ subform.submitter_id.id_for_label }}">ClinVar Submitter ID</label>
+                            {{ subform.submitter_id }}
+                            {% for error in subform.submitter_id.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+                            {% for error in subform.non_field_errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+                        </div>
+                        {% if subform.instance.pk %}
+                            <div class="control">
+                                <label class="checkbox">{{ subform.DELETE }} Remove</label>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+                <p class="help">To add more than one, save, then edit the affiliation again.</p>
+            </fieldset>
+
+            <div class="buttons">
+                <button type="submit" class="button is-link">Save</button>
+                <a class="button is-link is-light"
+                   href="{% if affiliation %}{{ affiliation.get_absolute_url }}{% else %}{% url 'as:index' %}{% endif %}">Cancel</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}
