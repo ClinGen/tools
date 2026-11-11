@@ -115,21 +115,20 @@ UUID and its slug is `B` and the first 8 hex characters of the UUID, such as
 `Batch.objects.due_to_poll()` returns the submitted and processing batches whose next
 poll time has passed, oldest first. Also defines `Record`, one germline variant
 classification a client sent, with slug `R` and the start of its UUID, its own ClinVar
-JSON, affiliation, client, a status relative to the CSS's batches and ClinVar with
-`status_help` for its tooltip, and a copy of its fields: the variant's HGVS and
-assembly, the condition, the classification, mode of inheritance, date last evaluated,
-comment, how the evidence was gathered, and the record's SCV for an update. Its choices,
-defined above the models, are ClinVar's terms, so a value is exactly what ClinVar
-expects; the classifications are the five ACMG terms the VCI uses. Also defines
-`BatchRecord`, one attempt to send a record in a batch: its position in the batch's
-`germlineSubmission` and ClinVar's result for it (Success or Error, the SCV, and
+JSON, affiliation, client, its page from `get_absolute_url()`, a status relative to the
+CSS's batches and ClinVar with `status_help` for its tooltip, and a copy of its fields:
+the variant's HGVS and assembly, the condition, the classification, mode of inheritance,
+date last evaluated, comment, how the evidence was gathered, and the record's SCV for an
+update. Its choices, defined above the models, are ClinVar's terms, so a value is
+exactly what ClinVar expects; the classifications are the five ACMG terms the VCI uses.
+Also defines `BatchRecord`, one attempt to send a record in a batch: its position in the
+batch's `germlineSubmission` and ClinVar's result for it (Success or Error, the SCV, and
 ClinVar's errors for developers). A record is in a batch at most once, and can be in
 several batches over time. Also defines `AffiliationSettings`, the submission-level
 values staff set once per affiliation, with history: its assertion criteria, the
 organization its batches are on behalf of, and its release status. Also defines
-`ApiKey`, the key one client system sends to use
-the API. Only its SHA-256 hash and a short prefix are stored, and each batch records the
-key that sent it.
+`ApiKey`, the key one client system sends to use the API. Only its SHA-256 hash and a
+short prefix are stored, and each batch records the key that sent it.
 
 ### `polling.py`
 
@@ -183,6 +182,13 @@ each record's variant, condition, classification, inheritance, date last evaluat
 whether it's new or an update, with its result and SCV once ClinVar has reported. A
 send_to_clinvar_failed batch's page has a Resend button. It never shows raw JSON or
 ClinVar's error text; developers see those in the Django admin.
+
+### `templates/clinvar_submission_service/record.html`
+
+A record's page: its fields and status, a Withdraw button while it waits, each batch it
+was in with that batch's status, ClinVar's result for the record, and its SCV, and its
+history in plain words. Like the batch page, it never shows raw JSON or ClinVar's
+errors.
 
 ### `templates/clinvar_submission_service/records.html`
 
@@ -245,9 +251,9 @@ page, its affiliation, linked to the list of that affiliation's batches, its rec
 genes, the client that sent it, its status tag, linked to the list filtered to that
 status (keeping the affiliation filter), its ClinVar ID, and when the CSS received it.
 It sorts by every column but the genes and status. `RecordTable`, on the Records page,
-shows each record's ID, local ID, affiliation, linked to the list of its records, gene
-and HGVS, classification, status tag, linked to the list filtered to that status
-(keeping the affiliation filter), and when the CSS received it.
+shows each record's ID, linked to its page, local ID, affiliation, linked to the list of
+its records, gene and HGVS, classification, status tag, linked to the list filtered to
+that status (keeping the affiliation filter), and when the CSS received it.
 
 ### `test_api.py`
 
@@ -331,8 +337,11 @@ tab, and that it shows no raw JSON; and that the new batch page lists an affilia
 waiting records, reviews the picked records or every waiting one, makes and sends the
 batch and records who did, refuses an empty, mixed, or not-waiting selection with a
 plain message, 404s for an unknown affiliation, and is linked from the Records page for
-one affiliation. Against the
-fixtures, tests the affiliations page's counts, order, links, headers, and tab.
+one affiliation; and that a record's page shows its fields, status, attempts with their
+batch, result, and SCV, and its history in plain words, offers Withdraw only while the
+record waits, is linked from the Records list and batch pages, shows no raw JSON or
+ClinVar errors, and 404s for an unknown slug. Against the fixtures, tests the
+affiliations page's counts, order, links, headers, and tab.
 
 ### `tests.py`
 
@@ -352,7 +361,8 @@ relative to ClinVar renames old rows and their history, and back. Also tests tha
 Routes the CSS's pages under the `css` namespace: the batch list at the root, the
 affiliations page at `affiliations/`, an affiliation's new batch at
 `affiliations/<id>/new-batch/`, each batch at `batches/<slug>/`, its resend at
-`batches/<slug>/resend/`, the records list at `records/`, a record's withdraw at
+`batches/<slug>/resend/`, the records list at `records/`, each record at
+`records/<slug>/`, a record's withdraw at
 `records/<slug>/withdraw/`, and the API at `api/v1/` under `css:api-1`.
 
 ### `views.py`

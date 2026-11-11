@@ -65,7 +65,7 @@ class BatchTable(tables.Table):
 class RecordTable(tables.Table):
     """The records list, one row per record."""
 
-    slug = tables.Column(verbose_name="ID")
+    slug = tables.Column(verbose_name="ID", linkify=True)
     local_id = tables.Column(verbose_name="Local ID")
     affiliation_name = tables.Column(verbose_name="Affiliation")
     variant = tables.Column(empty_values=(), orderable=False)

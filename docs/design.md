@@ -328,7 +328,9 @@ affiliation filter, a live search (gene, HGVS, local ID, or affiliation), and st
 tags that link to their filter. Filtered to one affiliation, it links to that
 affiliation's new batch page, where staff pick waiting records, or add every waiting
 record, review them, and send them to ClinVar as one batch. The page explains in plain
-words why a selection can't be batched.
+words why a selection can't be batched. Each record's page shows its fields and status,
+each batch it was in with ClinVar's result for it, its history in plain words, and a
+Withdraw button while it waits.
 
 The CSS's pages list every batch (a submission to ClinVar), newest first, with its
 affiliation and the genes of its records. Pills filter it to one status, or show all of

@@ -22,6 +22,14 @@
                 <span>Records</span>
             </a>
         </li>
+        {% if active_tab == "record" %}
+            <li class="is-active">
+                <a href="{{ record.get_absolute_url }}" aria-current="page">
+                    {% include "common/icon.html" with icon_name="file-earmark-text" %}
+                    <span>Record {{ record.slug }}</span>
+                </a>
+            </li>
+        {% endif %}
         <li{% if active_tab == "affiliations" %} class="is-active"{% endif %}>
             <a href="{% url 'css:affiliations' %}"{% if active_tab == "affiliations" %} aria-current="page"{% endif %}>
                 {% include "common/icon.html" with icon_name="people" %}

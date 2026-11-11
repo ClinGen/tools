@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from urllib.parse import urlencode
 
 from django.contrib import messages
@@ -279,12 +280,73 @@ def resend(request: HttpRequest, slug: str) -> HttpResponse:
     return redirect(batch)
 
 
+@dataclass(frozen=True)
+class HistoryRow:
+    """One change to a record, in plain words.
+
+    Attributes:
+        when: When it happened.
+        what: What happened.
+        who: The staff member who did it, if one did.
+    """
+
+    when: datetime
+    what: str
+    who: str
+
+
+def _history_rows(record: Record) -> list[HistoryRow]:
+    """Returns the record's changes, oldest first, in plain words."""
+    rows = []
+    previous = None
+    history = record.history.select_related("history_user").order_by("history_date")  # type: ignore
+    for entry in history:
+        if entry.history_change_reason:
+            what = entry.history_change_reason
+        elif previous is None:
+            client = entry.api_key.name if entry.api_key_id else ""
+            what = f"Received from the {client}" if client else "Received"
+        elif entry.status != previous.status:
+            what = f"Became {Record.Status(entry.status).label}"
+        else:
+            what = "Replaced by a new version from the client"
+        user = entry.history_user
+        rows.append(
+            HistoryRow(
+                when=entry.history_date, what=what, who=user.email if user else ""
+            )
+        )
+        previous = entry
+    return rows
+
+
+@tool_permission_required("has_css_permissions")
+def record_detail(request: HttpRequest, slug: str) -> HttpResponse:
+    """Shows a record's fields, status, attempts in batches, and history.
+
+    Returns:
+        The record's page.
+    """
+    record = get_object_or_404(Record.objects.select_related("api_key"), slug=slug)
+    attempts = record.batch_records.select_related("batch").order_by("added_at")  # type: ignore
+    return render(
+        request,
+        "clinvar_submission_service/record.html",
+        {
+            "tool": get_tool("css"),
+            "record": record,
+            "attempts": attempts,
+            "history": _history_rows(record),
+        },
+    )
+
+
 @tool_permission_required("has_css_permissions")
 def withdraw(request: HttpRequest, slug: str) -> HttpResponse:
     """Withdraws a waiting record, so it won't be sent to ClinVar.
 
     Returns:
-        A redirect to the batch list, or 405 if the request isn't a POST.
+        A redirect to the record's page, or 405 if the request isn't a POST.
     """
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
@@ -295,7 +357,7 @@ def withdraw(request: HttpRequest, slug: str) -> HttpResponse:
         messages.error(request, str(error))
     else:
         messages.success(request, WITHDRAWN_MESSAGE)
-    return redirect("css:index")
+    return redirect(record)
 
 
 def _affiliation_name(affiliation_id: int) -> str:

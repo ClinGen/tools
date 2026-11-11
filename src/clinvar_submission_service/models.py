@@ -545,6 +545,10 @@ class Record(SlugModel):
         """Returns the record's variant and classification."""
         return f"{self.hgvs}: {self.classification}"
 
+    def get_absolute_url(self) -> str:
+        """Returns the record's page."""
+        return reverse("css:record", kwargs={"slug": self.slug})
+
     @property
     def status_help(self) -> str:
         """What the record's status means, in plain words, for its tooltip."""

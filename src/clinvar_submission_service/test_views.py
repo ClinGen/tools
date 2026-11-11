@@ -21,6 +21,7 @@ from clinvar_submission_service.models import (
     BatchRecord,
     Record,
 )
+from clinvar_submission_service.services import withdraw_record
 from clinvar_submission_service.views import PAGE_SIZE
 
 if TYPE_CHECKING:
@@ -87,6 +88,7 @@ class PermissionTest(CssViewTestCase):
             ("get", reverse("css:records")),
             ("get", _new_batch_url(10007)),
             ("post", _new_batch_url(10007)),
+            ("get", record.get_absolute_url()),
         ]
         self.client.force_login(_make_user("other@example.com"))
         for method, url in pages:
@@ -537,7 +539,7 @@ class WithdrawViewTest(CssViewTestCase):
     def test_staff_can_withdraw_a_waiting_record(self):
         record = self._waiting()
         response = self.withdraw(record)
-        self.assertRedirects(response, reverse("css:index"))
+        self.assertRedirects(response, record.get_absolute_url())
         self.assertContains(response, "The record was withdrawn.")
         record.refresh_from_db()
         self.assertEqual(record.status, Record.Status.WITHDRAWN)
@@ -845,6 +847,109 @@ class NewBatchViewTest(CssViewTestCase):
         self.assertContains(response, _new_batch_url(10007))
         response = self.client.get(reverse("css:records"))
         self.assertNotContains(response, _new_batch_url(10007))
+
+
+class RecordDetailViewTest(CssViewTestCase):
+    def _record(self, **fields: object) -> Record:
+        content = Content.model_validate(
+            make_content(make_record("var-1", recordStatus="novel"))
+        )
+        defaults = {
+            "api_key": self.api_key,
+            "affiliation_id": 10007,
+            "affiliation_name": "Hearing Loss VCEP",
+            "payload": make_record("var-1"),
+        }
+        return Record.objects.create(**(record_fields(content)[0] | defaults | fields))
+
+    def test_shows_the_records_fields_and_status(self):
+        record = self._record()
+        response = self.client.get(record.get_absolute_url())
+        self.assertTemplateUsed(response, "clinvar_submission_service/record.html")
+        for text in [
+            "var-1",
+            "Hearing Loss VCEP",
+            "GCI",
+            "BRCA1",
+            "NC_000017.11:g.43045712T&gt;C",
+            "MONDO:0011450",
+            "Likely Pathogenic",
+            "Criteria met: PM2, PS3, PP3.",
+            "Waiting",
+            "waiting to be added to a batch",
+        ]:
+            with self.subTest(text):
+                self.assertContains(response, text)
+
+    def test_lists_each_attempt_with_its_batch_result_and_scv(self):
+        record = self._record(
+            status=Record.Status.SUCCEEDED_AT_CLINVAR,
+            clinvar_accession="SCV000000001",
+        )
+        failed = Batch.objects.create(status=Batch.Status.ERROR_AT_CLINVAR)
+        BatchRecord.objects.create(
+            batch=failed,
+            record=record,
+            position=0,
+            result="Error",
+            errors=[{"output": {"errors": [{"userMessage": "Duplicate record."}]}}],
+        )
+        accepted = Batch.objects.create(status=Batch.Status.PROCESSED_BY_CLINVAR)
+        BatchRecord.objects.create(
+            batch=accepted,
+            record=record,
+            position=0,
+            result="Success",
+            scv="SCV000000001",
+        )
+        response = self.client.get(record.get_absolute_url())
+        self.assertContains(response, failed.get_absolute_url())
+        self.assertContains(response, accepted.get_absolute_url())
+        self.assertContains(response, "SCV000000001")
+        self.assertContains(response, ">Error<")
+        self.assertContains(response, ">Success<")
+        self.assertNotContains(response, "Duplicate record.")
+
+    def test_shows_its_history_in_plain_words(self):
+        record = self._record()
+        withdraw_record(record, by="staff")
+        response = self.client.get(record.get_absolute_url())
+        self.assertContains(response, "Received from the GCI")
+        self.assertContains(response, "Withdrawn by staff")
+
+    def test_only_a_waiting_record_has_a_withdraw_button(self):
+        for status, shown in [
+            (Record.Status.WAITING_FOR_BATCH, True),
+            (Record.Status.IN_BATCH, False),
+            (Record.Status.SUCCEEDED_AT_CLINVAR, False),
+            (Record.Status.WITHDRAWN, False),
+        ]:
+            with self.subTest(status):
+                record = self._record(status=status)
+                response = self.client.get(record.get_absolute_url())
+                withdraw_url = reverse("css:withdraw", kwargs={"slug": record.slug})
+                if shown:
+                    self.assertContains(response, withdraw_url)
+                else:
+                    self.assertNotContains(response, withdraw_url)
+
+    def test_never_shows_raw_json(self):
+        record = self._record()
+        response = self.client.get(record.get_absolute_url())
+        self.assertNotContains(response, "germlineClassificationDescription")
+
+    def test_the_records_list_and_batch_page_link_to_it(self):
+        batch = self._make(make_record("var-9"))
+        record = batch.records.get()
+        for url in [reverse("css:records"), batch.get_absolute_url()]:
+            with self.subTest(url):
+                self.assertContains(
+                    self.client.get(url), f'href="{record.get_absolute_url()}"'
+                )
+
+    def test_unknown_slug_is_404(self):
+        response = self.client.get(reverse("css:record", kwargs={"slug": "Rmissing"}))
+        self.assertEqual(response.status_code, 404)
 
 
 class AffiliationTestCase(TestCase):

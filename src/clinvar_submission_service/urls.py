@@ -8,6 +8,7 @@ app_name = "css"
 urlpatterns = [
     path("", views.index, name="index"),
     path("records/", views.records, name="records"),
+    path("records/<slug:slug>/", views.record_detail, name="record"),
     path("affiliations/", views.affiliations, name="affiliations"),
     path(
         "affiliations/<int:affiliation_id>/new-batch/",

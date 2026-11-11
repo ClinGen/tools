@@ -62,7 +62,7 @@
                     <tbody>
                         {% for row in rows %}
                             <tr>
-                                <td>{{ row.record.local_id }}</td>
+                                <td><a href="{{ row.record.get_absolute_url }}">{{ row.record.local_id|default:row.record.slug }}</a></td>
                                 <td>
                                     {% if row.record.gene_symbol %}<strong>{{ row.record.gene_symbol }}</strong><br>{% endif %}
                                     {{ row.record.hgvs }}
