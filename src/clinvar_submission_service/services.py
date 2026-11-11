@@ -1,27 +1,37 @@
 """Saves records and batches, forwards batches to ClinVar, and records what happened.
 
-The API saves records through here, and the staff pages forward batches through here.
+The API saves and withdraws records through here, and the staff pages withdraw records
+and make and send batches through here.
 """
 
 import logging
+from collections.abc import Iterable
 from datetime import timedelta
 from typing import Any
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
 from django.utils import timezone
-from simple_history.utils import bulk_create_with_history, update_change_reason
+from simple_history.utils import (
+    bulk_create_with_history,
+    bulk_update_with_history,
+    update_change_reason,
+)
 
 from clinvar_submission_service.clients import ClinVarClient, ClinVarError
 from clinvar_submission_service.content import (
+    MAX_RECORDS,
     Affiliation,
-    Content,
     GermlineRecord,
-    batch_fields,
     fields_of,
-    record_fields,
 )
-from clinvar_submission_service.models import ApiKey, Batch, BatchRecord, Record
+from clinvar_submission_service.models import (
+    AffiliationSettings,
+    ApiKey,
+    Batch,
+    BatchRecord,
+    Record,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -100,50 +110,80 @@ def withdraw_record(record: Record, *, by: str) -> Record:
     return record
 
 
-def save_batch(
-    *, api_key: ApiKey | None, affiliation: Affiliation, payload: dict[str, Any]
-) -> Batch:
-    """Saves a batch not yet sent to ClinVar, and a Record for each of its records.
+class BatchNotMadeError(Exception):
+    """Raised when the chosen records can't make a batch, with a message for staff."""
+
+
+def make_batch(records: Iterable[Record]) -> Batch:
+    """Makes a batch, not yet sent to ClinVar, of one affiliation's waiting records.
+
+    The records go in the batch in the order given and are marked as in a batch, so
+    they can't join another one. The batch copies its affiliation's settings, if it
+    has any, so it keeps the values it's sent with.
 
     Args:
-        api_key: The key of the client that sent it.
-        affiliation: The curation group whose classifications it holds.
-        payload: The ClinVar content as the client sent it.
+        records: The records, all waiting and from one affiliation.
 
     Returns:
-        The batch, not yet sent to ClinVar.
+        The batch.
+
+    Raises:
+        BatchNotMadeError: If there are no records, more than ClinVar takes in one
+            submission, records from more than one affiliation, or records that
+            aren't waiting.
     """
-    content = Content.model_validate(payload)
+    pks = [record.pk for record in records]
+    if not pks:
+        error_message = "Pick at least one record."
+        raise BatchNotMadeError(error_message)
+    if len(pks) > MAX_RECORDS:
+        error_message = f"A batch can hold at most {MAX_RECORDS:,} records."
+        raise BatchNotMadeError(error_message)
     with transaction.atomic():
+        locked = Record.objects.select_for_update().in_bulk(pks)
+        chosen = [locked[pk] for pk in pks]
+        if len({record.affiliation_id for record in chosen}) > 1:
+            error_message = "A batch can hold only one affiliation's records."
+            raise BatchNotMadeError(error_message)
+        if any(r.status != Record.Status.WAITING_FOR_BATCH for r in chosen):
+            error_message = "Only records waiting for a batch can be added to one."
+            raise BatchNotMadeError(error_message)
+        newest = max(chosen, key=lambda record: record.added_at)
+        settings = AffiliationSettings.objects.filter(
+            affiliation_id=newest.affiliation_id
+        ).first()
         batch = Batch.objects.create(
-            api_key=api_key,
-            affiliation_id=affiliation.id,
-            affiliation_name=affiliation.name,
-            **batch_fields(content),
+            affiliation_id=newest.affiliation_id,
+            affiliation_name=newest.affiliation_name,
+            **_settings_fields(settings),
         )
-        # Each record keeps its own JSON, so it can be sent again in another batch.
-        records = [
-            Record(
-                api_key=api_key,
-                affiliation_id=affiliation.id,
-                affiliation_name=affiliation.name,
-                payload=item,
-                status=Record.Status.IN_BATCH,
-                **fields,
-            )
-            for item, fields in zip(
-                payload["germlineSubmission"], record_fields(content), strict=True
-            )
-        ]
-        # bulk_create skips save(), so the slugs and history are added for it.
-        Record.set_unique_slugs(records)
-        bulk_create_with_history(records, Record)
-        attempts = [
-            BatchRecord(batch=batch, record=record, position=position)
-            for position, record in enumerate(records)
-        ]
-        bulk_create_with_history(attempts, BatchRecord)
+        bulk_create_with_history(
+            [
+                BatchRecord(batch=batch, record=record, position=position)
+                for position, record in enumerate(chosen)
+            ],
+            BatchRecord,
+        )
+        for record in chosen:
+            record.status = Record.Status.IN_BATCH
+        bulk_update_with_history(chosen, Record, ["status"])
     return batch
+
+
+def _settings_fields(settings: AffiliationSettings | None) -> dict[str, Any]:
+    """Returns the Batch fields copied from an affiliation's settings.
+
+    Returns:
+        The field values, by name, or {} if the affiliation has no settings.
+    """
+    if settings is None:
+        return {}
+    return {
+        "assertion_criteria_db": settings.assertion_criteria_db,
+        "assertion_criteria_id": settings.assertion_criteria_id,
+        "behalf_org_id": settings.behalf_org_id,
+        "release_status": settings.release_status,
+    }
 
 
 def build_payload(batch: Batch) -> dict[str, Any]:

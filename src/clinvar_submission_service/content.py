@@ -139,21 +139,6 @@ class RecordRequest(ClinVarSchema):
     record: GermlineRecord
 
 
-def batch_fields(content: Content) -> dict[str, Any]:
-    """Returns the content's fields for its Batch.
-
-    Returns:
-        The Batch field values, by field name.
-    """
-    criteria = content.assertion_criteria
-    return {
-        "assertion_criteria_db": criteria.db if criteria else "",
-        "assertion_criteria_id": criteria.id if criteria else "",
-        "behalf_org_id": content.behalf_org_id,
-        "release_status": content.release_status or "",
-    }
-
-
 def record_fields(content: Content) -> list[dict[str, Any]]:
     """Returns the fields of a Record for each of the content's records.
 

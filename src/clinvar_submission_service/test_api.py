@@ -1,20 +1,16 @@
 import json
 from unittest import mock
 
-from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from clinvar_submission_service.api_auth import API_KEY_HEADER
-from clinvar_submission_service.clients import ClinVarError
-from clinvar_submission_service.content import Affiliation
 from clinvar_submission_service.fakes import (
     FakeClinVarClient,
     make_content,
     make_record,
 )
 from clinvar_submission_service.models import ApiKey, Batch, Record
-from clinvar_submission_service.services import forward_batch, save_batch
 from common.models import make_slug
 
 CONTENT = make_content()
@@ -51,52 +47,8 @@ class ApiTestCase(TestCase):
             headers={API_KEY_HEADER: raw_key or self.raw_key},
         )
 
-    def _saved(self) -> Batch:
-        """Returns a batch of CONTENT's records, saved but not yet sent."""
-        return save_batch(
-            api_key=self.api_key,
-            affiliation=Affiliation.model_validate(AFFILIATION),
-            payload=CONTENT,
-        )
-
     def get(self, url: str, raw_key: str | None = None):
         return self.client.get(url, headers={API_KEY_HEADER: raw_key or self.raw_key})
-
-
-class ForwardSubmissionTest(ApiTestCase):
-    def test_a_batch_clinvar_accepts_is_submitted(self):
-        batch = self._saved()
-        forward_batch(batch)
-        batch.refresh_from_db()
-        self.assertEqual(batch.status, Batch.Status.SUBMITTED_TO_CLINVAR)
-        self.assertEqual(batch.clinvar_submission_id, "SUB000001")
-        self.assertIsNotNone(batch.next_poll_at)
-        self.assertEqual(self.fake.submitted, [CONTENT])
-
-    def test_a_batch_clinvar_rejects_is_send_failed(self):
-        self.fake.submit_error = ClinVarError("ClinVar returned 400", retryable=False)
-        batch = self._saved()
-        forward_batch(batch)
-        batch.refresh_from_db()
-        self.assertEqual(batch.status, Batch.Status.SEND_TO_CLINVAR_FAILED)
-        self.assertEqual(batch.error_message, "ClinVar returned 400")
-        self.assertEqual(batch.clinvar_submission_id, "")
-
-    def test_a_failed_send_is_not_retried(self):
-        self.fake.submit_error = ClinVarError("ClinVar returned 503", retryable=True)
-        with mock.patch.object(self.fake, "submit", wraps=self.fake.submit) as submit:
-            forward_batch(self._saved())
-        submit.assert_called_once()
-
-    def test_an_unconfigured_client_is_send_failed(self):
-        batch = self._saved()
-        with mock.patch(
-            "clinvar_submission_service.services.ClinVarClient.from_settings",
-            side_effect=ImproperlyConfigured("Set CSS_CLINVAR_API_KEY."),
-        ):
-            forward_batch(batch)
-        batch.refresh_from_db()
-        self.assertEqual(batch.status, Batch.Status.SEND_TO_CLINVAR_FAILED)
 
 
 class CreateRecordTest(ApiTestCase):

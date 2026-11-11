@@ -228,20 +228,21 @@ client, and a status relative to the CSS's batches and ClinVar: `waiting_for_bat
 `withdrawn`. The client, through the API, or staff, in the CSS, can withdraw a waiting
 record, and its history notes who did.
 
-1. A client POSTs a submission to the CSS API.
-2. The CSS saves a `Batch` with status `not_sent_to_clinvar`, then forwards it to
-   ClinVar. Saving first means the CSS keeps a record of every request, even ones
-   ClinVar never got.
-3. If ClinVar accepts it, the CSS saves the ClinVar submission ID, sets the status to
+1. A client POSTs a record to the CSS API, and it waits in the CSS for a batch.
+2. A staff member makes a `Batch` of one affiliation's waiting records, with status
+   `not_sent_to_clinvar`. The batch copies the affiliation's settings, and its records
+   are marked `in_batch`, so they can't join another batch. The CSS refuses records
+   from more than one affiliation, records that aren't waiting, and more than 10,000.
+3. The CSS builds the batch's content from its records and sends it to ClinVar. If
+   ClinVar accepts it, the CSS saves the ClinVar submission ID, sets the status to
    `submitted_to_clinvar`, and sets `next_poll_at`. If ClinVar rejects it or can't be
    reached, the CSS sets the status to `send_to_clinvar_failed` and saves the error
-   message.
-4. The CSS responds with the submission's slug and status.
-5. The poller checks ClinVar for each `submitted_to_clinvar` or `processing_at_clinvar`
-   submission whose `next_poll_at` has passed, saves the response, and either records a
-   final status or pushes `next_poll_at` further out. When a submission reaches a final
+   message, and the records stay in the batch to be resent.
+4. The poller checks ClinVar for each `submitted_to_clinvar` or `processing_at_clinvar`
+   batch whose `next_poll_at` has passed, saves the response, and either records a
+   final status or pushes `next_poll_at` further out. When a batch reaches a final
    status, the poller downloads its summary report.
-6. Clients and staff read the status through the API or the UI at any time.
+5. Clients and staff read the status through the API or the UI at any time.
 
 Every status names ClinVar, so it's clear which tool it's relative to: `submitted` alone
 could mean submitted to the CSS. The first two are the CSS's own, for a submission
@@ -296,8 +297,8 @@ go in a new version beside it. Ninja validates request bodies and serves OpenAPI
 
 Each client system has its own API key, which it sends in the `X-API-Key` header. The
 Django admin shows a new key once and stores only its hash. A client sees only its own
-records and batches. There are no webhooks: clients poll a submission's GET endpoint to learn
-when its status changes. The API doesn't use Clerk sessions or CSRF protection.
+records and batches. There are no webhooks: clients poll a submission's GET endpoint to
+learn when its status changes. The API doesn't use Clerk sessions or CSRF protection.
 
 #### Poller
 
@@ -333,10 +334,11 @@ each affiliation that has batches, with how many are not sent or failed to send,
 submitted or processing, processed, and in error, and links to the list filtered to that
 affiliation and to the affiliation's settings. Staff set each affiliation's assertion
 criteria, on-behalf-of organization, and release status there, once, since ClinVar
-applies them to a whole submission and the VCI no longer sends them. Like the ETS's pages, they never show raw JSON or ClinVar's error text;
-developers see those, and each batch's change history, in the Django admin. Staff need
-`has_css_permissions`, and every staff member with it sees every batch. The page of a
-`send_to_clinvar_failed` batch has a Resend button.
+applies them to a whole submission and the VCI no longer sends them. Like the ETS's
+pages, they never show raw JSON or ClinVar's error text; developers see those, and each
+batch's change history, in the Django admin. Staff need `has_css_permissions`, and every
+staff member with it sees every batch. The page of a `send_to_clinvar_failed` batch has
+a Resend button.
 
 The CSS reads the ClinVar API key and base from the environment. It never logs the
 ClinVar API key or a client's API key.
