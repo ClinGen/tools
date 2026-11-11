@@ -8,5 +8,13 @@
                 <span>Affiliations</span>
             </a>
         </li>
+        {% if active_tab == "affiliation" %}
+            <li class="is-active">
+                <a href="{{ affiliation.get_absolute_url }}" aria-current="page">
+                    {% include "common/icon.html" with icon_name="journal-text" %}
+                    <span>{{ affiliation.short_name|default:affiliation.full_name|truncatechars:40 }}</span>
+                </a>
+            </li>
+        {% endif %}
     </ul>
 </div>

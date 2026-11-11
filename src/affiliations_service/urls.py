@@ -7,5 +7,10 @@ app_name = "as"
 
 urlpatterns = [
     path("", views.index, name="index"),
+    path(
+        "affiliations/<uuid:pk>/",
+        views.affiliation_detail,
+        name="affiliation",
+    ),
     path("api/v1/", api.urls),
 ]

@@ -14,6 +14,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models, transaction
 from django.db.models.functions import Lower
+from django.urls import reverse
 from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
@@ -202,6 +203,10 @@ class Affiliation(UUIDModel):
     def __str__(self) -> str:
         """Returns the affiliation's full name."""
         return self.full_name
+
+    def get_absolute_url(self) -> str:
+        """Returns the URL of the affiliation's page."""
+        return reverse("as:affiliation", kwargs={"pk": self.pk})
 
     def clean(self) -> None:
         """Checks the rules in "The Affiliations Service" in `docs/design.md`.

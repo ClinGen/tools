@@ -69,6 +69,12 @@ affiliation's IDs, type, and GPM UUID.
 
 Configures the `affiliations_service` app.
 
+### `history.py`
+
+Describes an object's change history in plain language, such as "Changed Status from
+Applying to Active.", for the AS's pages. It shows choice labels instead of stored
+values and names instead of IDs.
+
 ### `models.py`
 
 Defines `CDWG`, `Affiliation`, and `ClinVarSubmitterId`. An affiliation's IDs are
@@ -95,14 +101,25 @@ one by setting its end date instead of deleting it.
 only their SHA-256 hash and first eight characters are stored. `ApiKey.objects.verify()`
 finds the active key for a raw value and records its use.
 
+### `templates/affiliations_service/affiliation_detail.html`
+
+An affiliation's page: its fields, ClinVar submitter IDs, current members by role, past
+members, and history. It says so if the affiliation was deleted.
+
 ### `templates/affiliations_service/index.html`
 
-The AS's home page.
+The AS's home page, which lists affiliations. Its search box and filters update the list
+with HTMX as staff type, and work as a plain form without JavaScript.
 
 ### `templates/affiliations_service/partials/header.html`
 
 The AS's title, description, and tabs, shared by its pages. Pages pass `active_tab` to
 highlight their tab.
+
+### `test_affiliation_pages.py`
+
+Tests the affiliation list's search and filters and the affiliation page's members,
+history, and deleted notice, and that both need `has_as_permissions` and hide UUIDs.
 
 ### `test_api_affiliations.py`
 
@@ -147,6 +164,15 @@ Tests people's email uniqueness, ORCID iD checks, GPM UUIDs, history, and admin 
 Tests the business rules in `Affiliation.clean()`, the ID checks, the plain-language
 uniqueness errors, and which fields the admin locks for non-superusers.
 
+### `templates/affiliations_service/partials/history.html`
+
+A table of the changes in `history`, from `history.describe_history()`.
+
+### `templates/affiliations_service/partials/status.html`
+
+An affiliation's status as a tag: green for active, yellow for applying, and grey
+otherwise.
+
 ### `tests.py`
 
 Tests the AS's pages, including that they require `has_as_permissions`, and that the
@@ -154,8 +180,10 @@ landing page links to the AS.
 
 ### `urls.py`
 
-Routes the AS's pages under `/as/`, and its API under `/as/api/v1/`.
+Routes the AS's pages under `/as/` (an affiliation's page is
+`/as/affiliations/<uuid>/`), and its API under `/as/api/v1/`.
 
 ### `views.py`
 
-Defines the AS's pages. Each view requires `has_as_permissions`.
+Defines the AS's pages: the affiliation list and an affiliation's page. Each view
+requires `has_as_permissions`.

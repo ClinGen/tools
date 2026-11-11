@@ -1,0 +1,7 @@
+{% if affiliation.status == "ACTIVE" %}
+    <span class="tag is-success is-light">{{ affiliation.get_status_display }}</span>
+{% elif affiliation.status == "APPLYING" %}
+    <span class="tag is-warning is-light">{{ affiliation.get_status_display }}</span>
+{% else %}
+    <span class="tag is-light">{{ affiliation.get_status_display }}</span>
+{% endif %}
