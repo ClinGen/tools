@@ -10,45 +10,30 @@
                     <thead>
                         <tr>
                             <th rowspan="2">Affiliation</th>
-                            <th colspan="2">Records</th>
-                            <th colspan="5">Batches</th>
-                            <th rowspan="2">Settings</th>
+                            <th colspan="{{ record_pills|length }}">Records</th>
+                            <th colspan="{{ batch_pills|length }}">Batches</th>
+                            <th rowspan="2"><span class="is-sr-only">Settings</span></th>
                         </tr>
                         <tr>
-                            <th>{% include "common/tooltip.html" with label="Waiting" text="Records the CSS has that are waiting to be added to a batch." %}</th>
-                            <th>Total</th>
-                            <th>{% include "common/tooltip.html" with label="Not Sent or Send Failed" text="ClinVar doesn't have these batches: the CSS hasn't sent them yet, or sending them failed." %}</th>
-                            <th>{% include "common/tooltip.html" with label="Submitted or Processing" text="ClinVar has these batches and hasn't finished processing them." %}</th>
-                            <th>{% include "common/tooltip.html" with label="Processed" text="All records in these batches succeeded." %}</th>
-                            <th>{% include "common/tooltip.html" with label="Error" text="One or more records in each of these batches failed." %}</th>
-                            <th>Total</th>
+                            {% for label in record_pills %}<th>{{ label }}</th>{% endfor %}
+                            {% for label in batch_pills %}<th>{{ label }}</th>{% endfor %}
                         </tr>
                     </thead>
                     <tbody>
                         {% for row in affiliations %}
                             <tr>
                                 <td>{{ row.name }}</td>
+                                {% for label, count, link in row.records %}
+                                    <td><a href="{{ link }}">{{ count }}</a></td>
+                                {% endfor %}
+                                {% for label, count, link in row.batches %}
+                                    <td><a href="{{ link }}">{{ count }}</a></td>
+                                {% endfor %}
                                 <td>
-                                    <a href="{% url 'css:records' %}?affiliation={{ row.affiliation_id }}&amp;status=waiting_for_batch">{{ row.waiting_records }}</a>
-                                </td>
-                                <td>
-                                    <a href="{% url 'css:records' %}?affiliation={{ row.affiliation_id }}">{{ row.records }}</a>
-                                </td>
-                                <td>{{ row.not_sent }}</td>
-                                <td>{{ row.waiting }}</td>
-                                <td>{{ row.accepted }}</td>
-                                <td>
-                                    {% if row.errors %}
-                                        <span class="tag is-danger is-light">{{ row.errors }}</span>
-                                    {% else %}
-                                        0
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <a href="{% url 'css:index' %}?affiliation={{ row.affiliation_id }}">{{ row.batches }}</a>
-                                </td>
-                                <td>
-                                    <a href="{% url 'css:affiliation_settings' affiliation_id=row.affiliation_id %}">Settings</a>
+                                    <a href="{% url 'css:affiliation_settings' affiliation_id=row.affiliation_id %}" title="Settings for {{ row.name }}">
+                                        <i class="bi bi-gear" aria-hidden="true"></i>
+                                        <span class="is-sr-only">Settings for {{ row.name }}</span>
+                                    </a>
                                 </td>
                             </tr>
                         {% endfor %}

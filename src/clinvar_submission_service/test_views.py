@@ -1070,31 +1070,29 @@ class AffiliationsViewTest(AffiliationTestCase):
         response = self.client.get(reverse("css:affiliations"))
         self.assertEqual(response.status_code, 403)
 
-    def test_counts_each_affiliations_records_then_batches(self):
+    def test_counts_each_affiliations_records_and_batches_by_pill(self):
         response = self.client.get(reverse("css:affiliations"))
         self.assertTemplateUsed(
             response, "clinvar_submission_service/affiliations.html"
         )
         counts = {
             row["name"]: (
-                row["waiting_records"],
-                row["records"],
-                row["not_sent"],
-                row["waiting"],
-                row["accepted"],
-                row["errors"],
-                row["batches"],
+                tuple(count for _, count, _ in row["records"]),
+                tuple(count for _, count, _ in row["batches"]),
             )
             for row in response.context["affiliations"]
         }
         self.assertEqual(
             counts,
             {
-                "CDH1 VCEP": (1, 3, 0, 0, 0, 1, 1),
-                "Cardiomyopathy VCEP": (2, 5, 1, 1, 1, 0, 3),
-                "Malignant Hyperthermia Susceptibility VCEP": (0, 1, 0, 1, 0, 0, 1),
-                "Phenylketonuria VCEP": (0, 2, 0, 0, 1, 0, 1),
-                "TP53 VCEP": (0, 3, 1, 0, 0, 1, 2),
+                "CDH1 VCEP": ((3, 1, 0, 2, 0), (1, 0, 0, 0, 0, 0, 1)),
+                "Cardiomyopathy VCEP": ((5, 2, 2, 1, 0), (3, 1, 0, 0, 1, 1, 0)),
+                "Malignant Hyperthermia Susceptibility VCEP": (
+                    (1, 0, 1, 0, 0),
+                    (1, 0, 0, 1, 0, 0, 0),
+                ),
+                "Phenylketonuria VCEP": ((2, 0, 0, 2, 0), (1, 0, 0, 0, 0, 1, 0)),
+                "TP53 VCEP": ((3, 0, 2, 0, 1), (2, 0, 1, 0, 0, 0, 1)),
             },
         )
 
@@ -1107,38 +1105,56 @@ class AffiliationsViewTest(AffiliationTestCase):
         )
         response = self.client.get(reverse("css:affiliations"))
         rows = {row["name"]: row for row in response.context["affiliations"]}
-        self.assertEqual(rows["Hearing Loss VCEP"]["records"], 1)
-        self.assertEqual(rows["Hearing Loss VCEP"]["batches"], 0)
+        self.assertEqual(rows["Hearing Loss VCEP"]["records"][0][1], 1)
+        self.assertEqual(rows["Hearing Loss VCEP"]["batches"][0][1], 0)
 
-    def test_lists_affiliations_by_name_with_links_to_records_and_batches(self):
+    def test_lists_affiliations_by_name(self):
         response = self.client.get(reverse("css:affiliations"))
         names = [row["name"] for row in response.context["affiliations"]]
         self.assertEqual(names, sorted(names))
-        records = reverse("css:records")
-        self.assertContains(response, f'href="{records}?affiliation=10901"')
-        self.assertContains(
-            response, f'href="{records}?affiliation=10901&amp;status=waiting_for_batch"'
-        )
-        self.assertContains(
-            response, f'href="{reverse("css:index")}?affiliation=10901"'
-        )
 
-    def test_record_columns_come_before_batch_columns(self):
+    def test_the_columns_match_each_lists_pills(self):
         html = self.client.get(reverse("css:affiliations")).content.decode()
-        self.assertLess(html.index(">Records<"), html.index(">Batches<"))
-        self.assertLess(html.index(">Waiting<"), html.index(">Not Sent or Send Failed"))
+        head = html[html.index("<thead>") : html.index("</thead>")]
+        labels = [
+            "Affiliation",
+            "Records",
+            "Batches",
+            "All",
+            *Record.Status.labels,
+            "All",
+            *Batch.Status.labels,
+        ]
+        positions = []
+        start = 0
+        for label in labels:
+            start = head.index(f">{label}<", start)
+            positions.append(start)
+        self.assertEqual(positions, sorted(positions))
 
-    def test_the_headers_use_clinvars_wording(self):
+    def test_each_count_links_to_its_filtered_list(self):
         response = self.client.get(reverse("css:affiliations"))
-        for header in (
-            "Not Sent or Send Failed",
-            "Submitted or Processing",
-            "Processed",
-            "Error",
-        ):
-            with self.subTest(header=header):
-                self.assertContains(response, f'">{header}<span class="is-sr-only">')
-        self.assertNotContains(response, "bi-info-circle")
+        records, batches = reverse("css:records"), reverse("css:index")
+        for href in [
+            f"{records}?affiliation=10901",
+            f"{records}?affiliation=10901&amp;status=waiting_for_batch",
+            f"{batches}?affiliation=10901",
+            f"{batches}?affiliation=10901&amp;status=error_at_clinvar",
+        ]:
+            with self.subTest(href):
+                self.assertContains(response, f'href="{href}"')
+
+    def test_settings_is_a_labeled_gear(self):
+        response = self.client.get(reverse("css:affiliations"))
+        self.assertContains(
+            response,
+            f'<a href="{_settings_url(10901)}" '
+            'title="Settings for Cardiomyopathy VCEP">',
+        )
+        self.assertContains(response, "bi-gear")
+        self.assertContains(
+            response, '<span class="is-sr-only">Settings for Cardiomyopathy VCEP</span>'
+        )
 
     def test_the_header_has_an_affiliations_tab(self):
         response = self.client.get(reverse("css:affiliations"))

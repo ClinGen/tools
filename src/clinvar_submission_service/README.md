@@ -178,12 +178,11 @@ with each field's help text and any error in plain words.
 
 ### `templates/clinvar_submission_service/affiliations.html`
 
-The Affiliations tab: each affiliation that has records or batches, by name, with its
-records first (how many are waiting and in all, each linked to the Records list for that
-affiliation) and then its batches (how many are Not Sent or Send Failed, Submitted or
-Processing, Processed, and Error, and in all, linked to the batch list for that
-affiliation), a tooltip on each count's header, and a link to the affiliation's
-settings.
+The Affiliations tab: each affiliation that has records or batches, by name, with a
+column for each of the Records list's pills (All, then each record status) and each of
+the Batches list's pills (All, then each batch status). Each count links to that list
+filtered to the affiliation and status. A gear icon, with a title and screen-reader text
+naming the affiliation, links to its settings.
 
 ### `templates/clinvar_submission_service/detail.html`
 
@@ -362,10 +361,11 @@ one affiliation; and that a record's page shows its fields, status, attempts wit
 batch, result, and SCV, and its history in plain words, offers Withdraw only while the
 record waits, is linked from the Records list and batch pages, shows no raw JSON or
 ClinVar errors, and 404s for an unknown slug. Against the fixtures, tests the
-affiliations page's record and batch counts, an affiliation known only from its records,
-order, links to records and batches, headers, and tab; the tab order; and, on both
-lists, the affiliation select's options, order, and selection, that it keeps the status
-and search, and that New Batch shows only for one affiliation with waiting records.
+affiliations page's counts for each pill, an affiliation known only from its records,
+order, columns matching each list's pills, links to the filtered lists, labeled settings
+gear, and tab; the tab order; and, on both lists, the affiliation select's options,
+order, and selection, that it keeps the status and search, and that New Batch shows only
+for one affiliation with waiting records.
 
 ### `tests.py`
 
@@ -396,8 +396,8 @@ and affiliation filters, search, sorting, and pagination, and just its results f
 HTMX request; the Records page, with the same kinds of filters and search; on both
 lists, an affiliation select of every known affiliation, named from its newest record or
 batch, and a New Batch button for one affiliation with waiting records; the affiliations
-page, which counts each affiliation's records and batches by status and names it from
-its newest record or batch; each affiliation's settings page, which shows and saves its
+page, which counts each affiliation's records and batches like each list's pills, with
+links to the filtered lists; each affiliation's settings page, which shows and saves its
 `AffiliationSettings`; the new batch page, which lists an affiliation's waiting records,
 reviews the picked ones, and makes and sends the batch through `services.make_batch()`
 and `forward_batch()`, with a plain message when it can't; and each batch's page, which

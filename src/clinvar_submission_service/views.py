@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from urllib.parse import urlencode
@@ -7,6 +8,7 @@ from django.contrib.auth.models import User
 from django.db.models import Count, Q, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django_tables2 import RequestConfig
 
 from auth_.permissions import tool_permission_required
@@ -35,20 +37,6 @@ RESEND_FAILED_MESSAGE = (
 NOT_RESENDABLE_MESSAGE = "Only a batch ClinVar never got can be resent."
 
 WITHDRAWN_MESSAGE = "The record was withdrawn."
-
-# The statuses of batches ClinVar never got.
-NOT_SENT_STATUSES = [
-    Batch.Status.NOT_SENT_TO_CLINVAR,
-    Batch.Status.SEND_TO_CLINVAR_FAILED,
-]
-
-# The counts on the affiliations page, by the name each row's count has.
-AFFILIATION_COUNTS = {
-    "not_sent": Q(status__in=NOT_SENT_STATUSES),
-    "waiting": Q(status__in=Batch.POLLABLE_STATUSES),
-    "accepted": Q(status=Batch.Status.PROCESSED_BY_CLINVAR),
-    "errors": Q(status=Batch.Status.ERROR_AT_CLINVAR),
-}
 
 
 def _query_string(**params: str) -> str:
@@ -251,53 +239,80 @@ def records(request: HttpRequest) -> HttpResponse:
     )
 
 
+def _counts_by_status(
+    model: type[Batch] | type[Record],
+) -> dict[int, dict[str, int]]:
+    """Returns how many of the model's rows each affiliation has, by status."""
+    counts: dict[int, dict[str, int]] = {}
+    rows = (
+        model.objects.order_by()  # Clear the ordering, which would split the groups.
+        .filter(affiliation_id__isnull=False)
+        .values_list("affiliation_id", "status")
+        .annotate(count=Count("pk"))
+    )
+    for affiliation_id, status, count in rows:
+        counts.setdefault(affiliation_id, {})[status] = count
+    return counts
+
+
+def _pill_counts(
+    url: str,
+    affiliation_id: int,
+    choices: Iterable[tuple[str, object]],
+    counts: dict[str, int],
+) -> list[tuple[str, int, str]]:
+    """Returns each of a list's pills, with its count and link, for one affiliation.
+
+    Returns:
+        A (label, count, link) per pill: All, then one per status.
+    """
+    pills = [("All", sum(counts.values()), "")]
+    pills += [(str(label), counts.get(value, 0), value) for value, label in choices]
+    return [
+        (
+            label,
+            count,
+            url + _query_string(affiliation=str(affiliation_id), status=value),
+        )
+        for label, count, value in pills
+    ]
+
+
 @tool_permission_required("has_css_permissions")
 def affiliations(request: HttpRequest) -> HttpResponse:
-    """Lists each affiliation with records or batches, with counts of each.
-
-    An affiliation's name is the one on its newest record, or on its newest batch if
-    it has no records, in case it changed.
+    """Lists each affiliation with records or batches, counted like each list's pills.
 
     Returns:
         The affiliations page.
     """
-    batch_counts = {
-        row["affiliation_id"]: row
-        for row in Batch.objects.order_by()  # Clear the ordering, which splits groups.
-        .filter(affiliation_id__isnull=False)
-        .values("affiliation_id")
-        .annotate(
-            batches=Count("pk"),
-            **{name: Count("pk", filter=q) for name, q in AFFILIATION_COUNTS.items()},
-        )
-    }
-    record_counts = {
-        row["affiliation_id"]: row
-        for row in Record.objects.order_by()
-        .filter(affiliation_id__isnull=False)
-        .values("affiliation_id")
-        .annotate(
-            records=Count("pk"),
-            waiting_records=Count(
-                "pk", filter=Q(status=Record.Status.WAITING_FOR_BATCH)
-            ),
-        )
-    }
-    empty = dict.fromkeys(
-        ["batches", "records", "waiting_records", *AFFILIATION_COUNTS], 0
-    )
+    record_counts = _counts_by_status(Record)
+    batch_counts = _counts_by_status(Batch)
     rows = [
-        empty
-        | batch_counts.get(affiliation_id, {})
-        | record_counts.get(affiliation_id, {})
-        | {"affiliation_id": affiliation_id, "name": _affiliation_name(affiliation_id)}
-        for affiliation_id in batch_counts.keys() | record_counts.keys()
+        {
+            "affiliation_id": affiliation_id,
+            "name": name,
+            "records": _pill_counts(
+                reverse("css:records"),
+                affiliation_id,
+                Record.Status.choices,
+                record_counts.get(affiliation_id, {}),
+            ),
+            "batches": _pill_counts(
+                reverse("css:index"),
+                affiliation_id,
+                Batch.Status.choices,
+                batch_counts.get(affiliation_id, {}),
+            ),
+        }
+        for affiliation_id, name in _affiliation_names().items()
     ]
     return render(
         request,
         "clinvar_submission_service/affiliations.html",
         {
             "tool": get_tool("css"),
+            "record_pills": ["All", *Record.Status.labels],
+            "batch_pills": ["All", *Batch.Status.labels],
             "affiliations": sorted(rows, key=lambda row: row["name"]),
         },
     )
