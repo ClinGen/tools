@@ -8,6 +8,11 @@ app_name = "css"
 urlpatterns = [
     path("", views.index, name="index"),
     path("affiliations/", views.affiliations, name="affiliations"),
+    path(
+        "affiliations/<int:affiliation_id>/settings/",
+        views.affiliation_settings,
+        name="affiliation_settings",
+    ),
     path("batches/<slug:slug>/", views.batch_detail, name="detail"),
     path("batches/<slug:slug>/resend/", views.resend, name="resend"),
     path("records/<slug:slug>/withdraw/", views.withdraw, name="withdraw"),

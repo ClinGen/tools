@@ -13,6 +13,7 @@ from django.utils import timezone
 from auth_.models import UserProfile
 from clinvar_submission_service.models import (
     AffectedStatus,
+    AffiliationSettings,
     AlleleOrigin,
     Assembly,
     Batch,
@@ -237,6 +238,31 @@ class StandaloneRecordTest(TestCase):
                 "withdrawn",
             ],
         )
+
+
+class AffiliationSettingsTest(TestCase):
+    def test_saves_an_affiliations_settings_and_keeps_history(self):
+        settings = AffiliationSettings.objects.create(
+            affiliation_id=10007,
+            assertion_criteria_db="PubMed",
+            assertion_criteria_id="25741868",
+            behalf_org_id=506185,
+            release_status="public",
+        )
+        settings.release_status = "hold until published"
+        settings.save()
+        settings.refresh_from_db()
+        self.assertEqual(settings.assertion_criteria_db, "PubMed")
+        self.assertEqual(settings.behalf_org_id, 506185)
+        statuses = settings.history.order_by("history_date").values_list(  # type: ignore
+            "release_status", flat=True
+        )
+        self.assertEqual(list(statuses), ["public", "hold until published"])
+
+    def test_an_affiliation_has_one_set_of_settings(self):
+        AffiliationSettings.objects.create(affiliation_id=10007)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            AffiliationSettings.objects.create(affiliation_id=10007)
 
 
 class DueToPollTest(TestCase):

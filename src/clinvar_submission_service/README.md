@@ -12,7 +12,8 @@ Empty file that marks `clinvar_submission_service` as a Python package.
 
 ### `admin.py`
 
-Registers `Batch`, `Record`, and `ApiKey` in the Django admin, with their history. A
+Registers `Batch`, `Record`, `AffiliationSettings`, and `ApiKey` in the Django admin,
+with their history. A
 batch's ClinVar fields are read-only, since only ClinVar's responses should change them,
 and its records are listed read-only, in order, with each one's result, on its page. A
 record's page lists the batches it was sent in. Adding an API key generates its value
@@ -78,6 +79,13 @@ forwarded to ClinVar, with made-up ClinVar IDs, responses, and summary reports w
 and an error. None is due to poll. Load it with `just django-loaddata-test`; tests load
 it with `fixtures = ["test_batches.json"]`.
 
+### `forms.py`
+
+Defines `AffiliationSettingsForm`, which edits an affiliation's `AffiliationSettings`.
+It rejects values that aren't one of ClinVar's choices, or an on-behalf-of ID below 1,
+with plain messages, and requires both the assertion criteria's database and ID, or
+neither.
+
 ### `management/__init__.py`
 
 Empty file that marks `management` as a Python package.
@@ -116,7 +124,10 @@ expects; the classifications are the five ACMG terms the VCI uses. Also defines
 `BatchRecord`, one attempt to send a record in a batch: its position in the batch's
 `germlineSubmission` and ClinVar's result for it (Success or Error, the SCV, and
 ClinVar's errors for developers). A record is in a batch at most once, and can be in
-several batches over time. Also defines `ApiKey`, the key one client system sends to use
+several batches over time. Also defines `AffiliationSettings`, the submission-level
+values staff set once per affiliation, with history: its assertion criteria, the
+organization its batches are on behalf of, and its release status. Also defines
+`ApiKey`, the key one client system sends to use
 the API. Only its SHA-256 hash and a short prefix are stored, and each batch records the
 key that sent it.
 
@@ -143,12 +154,17 @@ staff Resend button uses. If ClinVar accepts it, the batch is submitted, with
 its ClinVar ID and a first poll time; if ClinVar rejects it, can't be reached, or the
 CSS has no ClinVar key, it's send_to_clinvar_failed, with the error. It never retries.
 
+### `templates/clinvar_submission_service/affiliation_settings.html`
+
+The form where staff set an affiliation's ClinVar settings, under the Affiliations tab,
+with each field's help text and any error in plain words.
+
 ### `templates/clinvar_submission_service/affiliations.html`
 
 The Affiliations tab: each affiliation that has batches, by name, with how many of its
 batches are Not Sent or Send Failed, Submitted or Processing, Processed, and Error, with
 a tooltip on each header's text. Each name links to the list filtered to that
-affiliation.
+affiliation, and each row links to the affiliation's settings.
 
 ### `templates/clinvar_submission_service/detail.html`
 
@@ -260,7 +276,10 @@ never got or hasn't reported on; its plain-language error; that only a
 send_to_clinvar_failed batch has a Resend button; that resending sends it again,
 records who did, keeps a failed resend's new error, and rejects other statuses and GET
 requests; and that staff can withdraw a waiting record, with who did in its history, but
-not a batched or accepted one, and only with a POST. Against the fixtures, tests the affiliations page's counts, order, links,
+not a batched or accepted one, and only with a POST; that the affiliation settings page
+shows, saves, and updates an affiliation's settings, records who saved them, names an
+affiliation known only from its records, rejects bad values with plain messages, 404s
+for an unknown affiliation, and is linked from the affiliations page. Against the fixtures, tests the affiliations page's counts, order, links,
 headers, and tab.
 
 ### `tests.py`
@@ -273,7 +292,8 @@ Also tests `BatchRecord`: a record's order in a batch, that it's in a batch once
 be tried in several, that deleting a batch keeps its records, and `build_payload()`.
 Also tests a standalone `Record`: its R slug, default status, history, status help, and
 bulk slugs that avoid taken ones. Also tests that the migration naming each status
-relative to ClinVar renames old rows and their history, and back.
+relative to ClinVar renames old rows and their history, and back. Also tests that
+`AffiliationSettings` keeps history and that an affiliation has one.
 
 ### `urls.py`
 
@@ -287,7 +307,8 @@ at `api/v1/` under `css:api-1`.
 Serves the CSS's pages to users with CSS permissions: the batch list, with its status
 and affiliation filters, search, sorting, and pagination, and just its results for an
 HTMX request; the affiliations page, which counts each affiliation's batches by status
-and names it from its newest batch; and each batch's page, which pairs each `Record`
+and names it from its newest batch; each affiliation's settings page, which shows and
+saves its `AffiliationSettings`; and each batch's page, which pairs each `Record`
 with its result in ClinVar's summary report. The resend view, which takes only POSTs,
 forwards a send_to_clinvar_failed batch again through `services.forward_batch()` and
 shows a plain error message if ClinVar still didn't get it. The withdraw view, also

@@ -3,7 +3,13 @@ from django.forms import ModelForm
 from django.http import HttpRequest
 from simple_history.admin import SimpleHistoryAdmin
 
-from clinvar_submission_service.models import ApiKey, Batch, BatchRecord, Record
+from clinvar_submission_service.models import (
+    AffiliationSettings,
+    ApiKey,
+    Batch,
+    BatchRecord,
+    Record,
+)
 
 # Tuples, since Django types fields and readonly_fields differently.
 BATCH_RECORD_FIELDS = ("position", "record", "result", "scv", "errors")
@@ -91,6 +97,19 @@ class RecordAdmin(SimpleHistoryAdmin):
     ]
     readonly_fields = ["slug", "added_at", "updated_at"]
     inlines = [RecordBatchInline]
+
+
+@admin.register(AffiliationSettings)
+class AffiliationSettingsAdmin(SimpleHistoryAdmin):
+    list_display = [
+        "affiliation_id",
+        "assertion_criteria_db",
+        "assertion_criteria_id",
+        "behalf_org_id",
+        "release_status",
+    ]
+    search_fields = ["affiliation_id"]
+    readonly_fields = ["updated_at"]
 
 
 @admin.register(ApiKey)

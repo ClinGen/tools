@@ -15,6 +15,7 @@
                             <th>{% include "common/tooltip.html" with label="Processed" text="All records in these batches succeeded." %}</th>
                             <th>{% include "common/tooltip.html" with label="Error" text="One or more records in each of these batches failed." %}</th>
                             <th>Total</th>
+                            <th>Settings</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -34,6 +35,9 @@
                                     {% endif %}
                                 </td>
                                 <td>{{ row.total }}</td>
+                                <td>
+                                    <a href="{% url 'css:affiliation_settings' affiliation_id=row.affiliation_id %}">Settings</a>
+                                </td>
                             </tr>
                         {% endfor %}
                     </tbody>

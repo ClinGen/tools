@@ -3,12 +3,13 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.db.models import Count, OuterRef, Q, QuerySet, Subquery
-from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django_tables2 import RequestConfig
 
 from auth_.permissions import tool_permission_required
-from clinvar_submission_service.models import Batch, Record
+from clinvar_submission_service.forms import AffiliationSettingsForm
+from clinvar_submission_service.models import AffiliationSettings, Batch, Record
 from clinvar_submission_service.services import (
     NotWithdrawableError,
     forward_batch,
@@ -238,3 +239,44 @@ def withdraw(request: HttpRequest, slug: str) -> HttpResponse:
     else:
         messages.success(request, WITHDRAWN_MESSAGE)
     return redirect("css:index")
+
+
+def _affiliation_name(affiliation_id: int) -> str:
+    """Returns an affiliation's name from its newest batch or record.
+
+    Raises:
+        Http404: If the CSS has no batch or record from the affiliation.
+    """
+    for model in (Batch, Record):
+        newest = (
+            model.objects.filter(affiliation_id=affiliation_id)
+            .order_by("-added_at")
+            .values_list("affiliation_name", flat=True)
+            .first()
+        )
+        if newest is not None:
+            return newest
+    raise Http404
+
+
+@tool_permission_required("has_css_permissions")
+def affiliation_settings(request: HttpRequest, affiliation_id: int) -> HttpResponse:
+    """Shows and saves the ClinVar settings an affiliation's batches use.
+
+    Returns:
+        The settings page, or a redirect to it once the settings are saved.
+    """
+    name = _affiliation_name(affiliation_id)
+    instance = AffiliationSettings.objects.filter(
+        affiliation_id=affiliation_id
+    ).first() or AffiliationSettings(affiliation_id=affiliation_id)
+    form = AffiliationSettingsForm(request.POST or None, instance=instance)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, f"Saved the settings for {name}.")
+        return redirect("css:affiliation_settings", affiliation_id=affiliation_id)
+    return render(
+        request,
+        "clinvar_submission_service/affiliation_settings.html",
+        {"tool": get_tool("css"), "affiliation_name": name, "form": form},
+    )

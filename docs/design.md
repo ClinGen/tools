@@ -331,7 +331,9 @@ evaluated, whether it's new or updates an SCV, and, once ClinVar has reported, i
 result in ClinVar's words (Success or Error) and its SCV. An Affiliations page lists
 each affiliation that has batches, with how many are not sent or failed to send,
 submitted or processing, processed, and in error, and links to the list filtered to that
-affiliation. Like the ETS's pages, they never show raw JSON or ClinVar's error text;
+affiliation and to the affiliation's settings. Staff set each affiliation's assertion
+criteria, on-behalf-of organization, and release status there, once, since ClinVar
+applies them to a whole submission and the VCI no longer sends them. Like the ETS's pages, they never show raw JSON or ClinVar's error text;
 developers see those, and each batch's change history, in the Django admin. Staff need
 `has_css_permissions`, and every staff member with it sees every batch. The page of a
 `send_to_clinvar_failed` batch has a Resend button.

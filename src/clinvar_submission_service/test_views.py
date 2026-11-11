@@ -14,7 +14,13 @@ from clinvar_submission_service.fakes import (
     make_content,
     make_record,
 )
-from clinvar_submission_service.models import ApiKey, Batch, BatchRecord, Record
+from clinvar_submission_service.models import (
+    AffiliationSettings,
+    ApiKey,
+    Batch,
+    BatchRecord,
+    Record,
+)
 from clinvar_submission_service.views import PAGE_SIZE
 
 if TYPE_CHECKING:
@@ -76,6 +82,8 @@ class PermissionTest(CssViewTestCase):
             ("get", batch.get_absolute_url()),
             ("post", reverse("css:resend", kwargs={"slug": batch.slug})),
             ("post", reverse("css:withdraw", kwargs={"slug": record.slug})),
+            ("get", _settings_url(10007)),
+            ("post", _settings_url(10007)),
         ]
         self.client.force_login(_make_user("other@example.com"))
         for method, url in pages:
@@ -552,6 +560,100 @@ class WithdrawViewTest(CssViewTestCase):
             reverse("css:withdraw", kwargs={"slug": record.slug})
         )
         self.assertEqual(response.status_code, 405)
+
+
+def _settings_url(affiliation_id: int) -> str:
+    return reverse(
+        "css:affiliation_settings", kwargs={"affiliation_id": affiliation_id}
+    )
+
+
+VALID_SETTINGS = {
+    "assertion_criteria_db": "PubMed",
+    "assertion_criteria_id": "25741868",
+    "behalf_org_id": "506185",
+    "release_status": "public",
+}
+
+
+class AffiliationSettingsViewTest(CssViewTestCase):
+    def setUp(self):
+        super().setUp()
+        self._make()  # The CSS knows the Hearing Loss VCEP from its batch.
+
+    def test_shows_the_affiliations_settings(self):
+        AffiliationSettings.objects.create(
+            affiliation_id=10007, behalf_org_id=506185, release_status="public"
+        )
+        response = self.client.get(_settings_url(10007))
+        self.assertContains(response, "Hearing Loss VCEP")
+        self.assertContains(response, 'value="506185"')
+        self.assertContains(response, '<option value="public" selected>')
+
+    def test_names_an_affiliation_known_only_from_its_records(self):
+        content = Content.model_validate(make_content())
+        Record.objects.create(
+            affiliation_id=10008,
+            affiliation_name="Cardiomyopathy VCEP",
+            **record_fields(content)[0],
+        )
+        response = self.client.get(_settings_url(10008))
+        self.assertContains(response, "Cardiomyopathy VCEP")
+
+    def test_saves_the_settings_and_who_saved_them(self):
+        response = self.client.post(_settings_url(10007), VALID_SETTINGS, follow=True)
+        self.assertRedirects(response, _settings_url(10007))
+        self.assertContains(response, "Saved the settings for Hearing Loss VCEP.")
+        settings = AffiliationSettings.objects.get(affiliation_id=10007)
+        self.assertEqual(settings.assertion_criteria_db, "PubMed")
+        self.assertEqual(settings.assertion_criteria_id, "25741868")
+        self.assertEqual(settings.behalf_org_id, 506185)
+        self.assertEqual(settings.release_status, "public")
+        self.assertEqual(settings.history.first().history_user, self.user)  # type: ignore
+
+    def test_updates_saved_settings(self):
+        AffiliationSettings.objects.create(affiliation_id=10007, behalf_org_id=1)
+        self.client.post(_settings_url(10007), VALID_SETTINGS)
+        settings = AffiliationSettings.objects.get()
+        self.assertEqual(settings.behalf_org_id, 506185)
+
+    def test_rejects_bad_values_with_a_plain_message(self):
+        cases = {
+            "unknown database": (
+                {"assertion_criteria_db": "Wikipedia"},
+                "Pick one of the listed choices.",
+            ),
+            "behalfOrgID below 1": (
+                {"behalf_org_id": "0"},
+                "Enter ClinVar&#x27;s ID for the organization, a number of 1 or more.",
+            ),
+            "unknown release status": (
+                {"release_status": "secret"},
+                "Pick one of the listed choices.",
+            ),
+            "criteria ID without a database": (
+                {"assertion_criteria_db": ""},
+                (
+                    "Enter both the assertion criteria&#x27;s database and its ID, "
+                    "or neither."
+                ),
+            ),
+        }
+        for name, (change, message) in cases.items():
+            with self.subTest(name):
+                response = self.client.post(
+                    _settings_url(10007), VALID_SETTINGS | change
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, message)
+                self.assertFalse(AffiliationSettings.objects.exists())
+
+    def test_an_unknown_affiliation_is_404(self):
+        self.assertEqual(self.client.get(_settings_url(99999)).status_code, 404)
+
+    def test_the_affiliations_page_links_to_the_settings(self):
+        response = self.client.get(reverse("css:affiliations"))
+        self.assertContains(response, _settings_url(10007))
 
 
 class AffiliationTestCase(TestCase):

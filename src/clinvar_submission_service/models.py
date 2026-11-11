@@ -4,6 +4,7 @@ import hashlib
 import secrets
 from typing import ClassVar
 
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.urls import reverse
 from django.utils import timezone
@@ -628,6 +629,77 @@ class BatchRecord(UUIDModel):
     def __str__(self) -> str:
         """Returns the record's and batch's IDs."""
         return f"{self.record.slug} in {self.batch.slug}"
+
+
+class AffiliationSettings(UUIDModel):
+    """The ClinVar submission-level values staff set for one affiliation.
+
+    ClinVar applies these to a whole submission, and a batch holds one affiliation's
+    records, so a batch takes them from its affiliation's settings.
+    """
+
+    affiliation_id = models.PositiveIntegerField(
+        unique=True,
+        verbose_name="Affiliation ID",
+        help_text="The AS ID of the curation group these settings are for.",
+    )
+    assertion_criteria_db = models.CharField(
+        blank=True,
+        choices=AssertionCriteriaDb.choices,
+        default="",
+        max_length=8,
+        verbose_name="Assertion Criteria Database",
+        help_text="Where the criteria used to classify the variants are published.",
+    )
+    assertion_criteria_id = models.CharField(
+        blank=True,
+        default="",
+        max_length=255,
+        verbose_name="Assertion Criteria ID",
+        help_text="The criteria's ID in that database, such as a PubMed ID.",
+    )
+    behalf_org_id = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        validators=[
+            MinValueValidator(
+                1,
+                message=(
+                    "Enter ClinVar's ID for the organization, a number of 1 or more."
+                ),
+            )
+        ],
+        verbose_name="On Behalf Of",
+        help_text=(
+            "ClinVar's ID for the organization the batches are made for, if it isn't "
+            "the submitter."
+        ),
+    )
+    release_status = models.CharField(
+        blank=True,
+        choices=ReleaseStatus.choices,
+        default="",
+        max_length=32,
+        verbose_name="Release Status",
+        help_text="Whether ClinVar may make the records public. Blank means public.",
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Updated At",
+        help_text="When the settings were last changed.",
+    )
+    history = HistoricalRecords()
+
+    class Meta:  # ty: ignore[invalid-attribute-override] (Each Django model declares its own Meta.)
+        """Provides metadata."""
+
+        db_table = "affiliation_settings"
+        verbose_name = "Affiliation Settings"
+        verbose_name_plural = "Affiliation Settings"
+
+    def __str__(self) -> str:
+        """Returns the affiliation's ID."""
+        return f"Settings for affiliation {self.affiliation_id}"
 
 
 def _hash(raw_key: str) -> str:
