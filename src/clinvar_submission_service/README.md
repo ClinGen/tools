@@ -25,8 +25,9 @@ OpenAPI docs at `/css/api/v1/docs`. Every endpoint needs an API key (see `api_au
 and a client sees only its own records and batches. `POST /records` takes the client's
 affiliation and one germline record (`content.RecordRequest`) and saves it to wait for
 a batch, returning 201, or 200 if it replaced a waiting record with the same local ID.
-`GET /records` lists the client's records a page at a time, and `GET /records/{slug}`
-reads one with its JSON. A record that doesn't match, or a body with submission-level
+`GET /records` lists the client's records a page at a time, `GET /records/{slug}` reads
+one with its JSON, and `POST /records/{slug}/withdraw` withdraws a waiting one, or
+returns a 409 for any other. A record that doesn't match, or a body with submission-level
 fields, gets a 422. `GET /submissions` and `GET /submissions/{slug}` list and read the
 client's batches, with ClinVar's responses.
 
@@ -133,7 +134,8 @@ status as it was, and doesn't stop the pass.
 
 Saves a record a client sent with `save_record()`, which replaces the affiliation's
 waiting record with the same local ID, if there is one, so its history keeps the old
-version. Saves a not-yet-sent batch and a `Record` for each of its records, in one
+version. `withdraw_record()` withdraws a waiting record and notes who did in its
+history, or raises `NotWithdrawableError` for any other. Saves a not-yet-sent batch and a `Record` for each of its records, in one
 transaction, with `save_batch()`. `build_payload()` builds a batch's ClinVar content from its
 records' JSON, in order, and the batch's submission-level fields. Forwards a saved batch
 to ClinVar once with `forward_batch()`, which sends that built content and which the
@@ -200,12 +202,15 @@ It sorts by every column but the genes and status.
 ### `test_api.py`
 
 Tests `forward_batch()` and each API endpoint against `FakeClinVarClient`: a batch
-ClinVar accepts or rejects, a missing ClinVar key, that a failed send isn't retried,
-that a body's affiliation, fields, and records are saved and only its content is
-forwarded, as sent, that a missing or bad affiliation gets a 422, that bodies that
-aren't objects, hold too many records, or don't match `Content` get a 422 and save
-nothing, 401s for missing, unknown, and inactive keys, that a client can't read or list
-another client's batches, pagination, and the OpenAPI docs and their fields.
+ClinVar accepts or rejects, a missing ClinVar key, and that a failed send isn't retried;
+that a posted record waits with its JSON, fields, affiliation, and client, that
+re-posting a waiting record with the same local ID replaces it and keeps history, and
+that a batched record, another affiliation's, or one without a local ID makes a new
+record; that a bad record, a missing or bad affiliation, a submission-level field, or a
+body over the upload limit is rejected and saves nothing; that a client can withdraw a
+waiting record, with who did in its history, and gets a 409 for any other; 401s for
+missing, unknown, and inactive keys; that a client can't read, list, or withdraw
+another client's records or batches; pagination; and the OpenAPI docs and endpoints.
 
 ### `test_api_keys.py`
 
@@ -252,9 +257,10 @@ detail page, the list's tags linking to their status (and the detail page's not)
 Error's tooltip by error code; that no page uses the old wording; the detail page's
 records, with ClinVar's result matched by local ID, an update's SCV, and records ClinVar
 never got or hasn't reported on; its plain-language error; that only a
-send_to_clinvar_failed batch has a Resend button; and that resending sends it again,
+send_to_clinvar_failed batch has a Resend button; that resending sends it again,
 records who did, keeps a failed resend's new error, and rejects other statuses and GET
-requests. Against the fixtures, tests the affiliations page's counts, order, links,
+requests; and that staff can withdraw a waiting record, with who did in its history, but
+not a batched or accepted one, and only with a POST. Against the fixtures, tests the affiliations page's counts, order, links,
 headers, and tab.
 
 ### `tests.py`
@@ -273,7 +279,8 @@ relative to ClinVar renames old rows and their history, and back.
 
 Routes the CSS's pages under the `css` namespace: the batch list at the root, the
 affiliations page at `affiliations/`, each batch at `batches/<slug>/`, its resend at
-`batches/<slug>/resend/`, and the API at `api/v1/` under `css:api-1`.
+`batches/<slug>/resend/`, a record's withdraw at `records/<slug>/withdraw/`, and the API
+at `api/v1/` under `css:api-1`.
 
 ### `views.py`
 
@@ -283,4 +290,6 @@ HTMX request; the affiliations page, which counts each affiliation's batches by 
 and names it from its newest batch; and each batch's page, which pairs each `Record`
 with its result in ClinVar's summary report. The resend view, which takes only POSTs,
 forwards a send_to_clinvar_failed batch again through `services.forward_batch()` and
-shows a plain error message if ClinVar still didn't get it.
+shows a plain error message if ClinVar still didn't get it. The withdraw view, also
+POST-only, withdraws a waiting record through `services.withdraw_record()` and returns
+to the batch list with a plain message.

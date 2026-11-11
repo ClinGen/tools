@@ -18,7 +18,11 @@ from ninja.pagination import paginate
 from clinvar_submission_service.api_auth import ApiKeyAuth
 from clinvar_submission_service.content import Affiliation, RecordRequest
 from clinvar_submission_service.models import Batch, Record
-from clinvar_submission_service.services import save_record
+from clinvar_submission_service.services import (
+    NotWithdrawableError,
+    save_record,
+    withdraw_record,
+)
 
 api = NinjaAPI(
     title="ClinVar Submission Service API",
@@ -133,6 +137,30 @@ def read_record(request: HttpRequest, slug: str) -> Record:
         The record, or 404 if the client has none with that slug.
     """
     return get_object_or_404(Record, slug=slug, api_key=request.auth)  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
+
+
+class Error(Schema):
+    """Why a request was refused."""
+
+    detail: str
+
+
+@api.post("/records/{slug}/withdraw", response={200: RecordDetail, 409: Error})
+def withdraw(request: HttpRequest, slug: str) -> Record | Status[Error]:
+    """Withdraws one of the calling client's waiting records.
+
+    A withdrawn record won't be sent to ClinVar. A record that's in a batch, or that
+    ClinVar accepted, can't be withdrawn and gets a 409.
+
+    Returns:
+        The record, 404 if the client has none with that slug, or 409.
+    """
+    api_key = request.auth  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
+    record = get_object_or_404(Record, slug=slug, api_key=api_key)
+    try:
+        return withdraw_record(record, by=f"the {api_key.name}")
+    except NotWithdrawableError as error:
+        return Status(409, Error(detail=str(error)))
 
 
 @api.get("/submissions", response=list[SubmissionSummary])

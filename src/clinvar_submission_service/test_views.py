@@ -69,11 +69,13 @@ class CssViewTestCase(TestCase):
 
 class PermissionTest(CssViewTestCase):
     def test_every_page_needs_css_permissions(self):
-        batch = self._make(status=Batch.Status.SEND_TO_CLINVAR_FAILED)
+        batch = self._make(make_record(), status=Batch.Status.SEND_TO_CLINVAR_FAILED)
+        record = batch.records.get()
         pages = [
             ("get", reverse("css:index")),
             ("get", batch.get_absolute_url()),
             ("post", reverse("css:resend", kwargs={"slug": batch.slug})),
+            ("post", reverse("css:withdraw", kwargs={"slug": record.slug})),
         ]
         self.client.force_login(_make_user("other@example.com"))
         for method, url in pages:
@@ -507,6 +509,47 @@ class ResendViewTest(CssViewTestCase):
     def test_resend_needs_a_post(self):
         batch = self._make(status=Batch.Status.SEND_TO_CLINVAR_FAILED)
         response = self.client.get(reverse("css:resend", kwargs={"slug": batch.slug}))
+        self.assertEqual(response.status_code, 405)
+
+
+class WithdrawViewTest(CssViewTestCase):
+    def _waiting(self, **fields: object) -> Record:
+        content = Content.model_validate(make_content())
+        return Record.objects.create(**(record_fields(content)[0] | fields))
+
+    def withdraw(self, record: Record):
+        return self.client.post(
+            reverse("css:withdraw", kwargs={"slug": record.slug}), follow=True
+        )
+
+    def test_staff_can_withdraw_a_waiting_record(self):
+        record = self._waiting()
+        response = self.withdraw(record)
+        self.assertRedirects(response, reverse("css:index"))
+        self.assertContains(response, "The record was withdrawn.")
+        record.refresh_from_db()
+        self.assertEqual(record.status, Record.Status.WITHDRAWN)
+        latest = record.history.first()  # type: ignore
+        self.assertEqual(latest.history_user, self.user)
+        self.assertEqual(latest.history_change_reason, "Withdrawn by staff")
+
+    def test_a_batched_or_accepted_record_cant_be_withdrawn(self):
+        for status in [Record.Status.IN_BATCH, Record.Status.SUCCEEDED_AT_CLINVAR]:
+            with self.subTest(status):
+                record = self._waiting(status=status)
+                response = self.withdraw(record)
+                self.assertContains(
+                    response,
+                    "Only a record that&#x27;s waiting for a batch can be withdrawn.",
+                )
+                record.refresh_from_db()
+                self.assertEqual(record.status, status)
+
+    def test_withdraw_needs_a_post(self):
+        record = self._waiting()
+        response = self.client.get(
+            reverse("css:withdraw", kwargs={"slug": record.slug})
+        )
         self.assertEqual(response.status_code, 405)
 
 

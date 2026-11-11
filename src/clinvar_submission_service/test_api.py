@@ -351,3 +351,46 @@ class DocsTest(TestCase):
 
     def test_the_api_is_under_the_css_namespace(self):
         self.assertEqual(reverse("css:api-1:create_record"), "/css/api/v1/records")
+
+
+class WithdrawRecordTest(ApiTestCase):
+    def withdraw(self, slug: str, raw_key: str | None = None):
+        return self.client.post(
+            f"{RECORDS_URL}/{slug}/withdraw",
+            headers={API_KEY_HEADER: raw_key or self.raw_key},
+        )
+
+    def test_the_client_can_withdraw_a_waiting_record(self):
+        slug = json.loads(self.post_record(make_record()).content)["slug"]
+        response = self.withdraw(slug)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.content)["status"], "withdrawn")
+        record = Record.objects.get()
+        self.assertEqual(record.status, Record.Status.WITHDRAWN)
+        latest = record.history.first()  # type: ignore
+        self.assertEqual(latest.history_change_reason, "Withdrawn by the GCI")
+
+    def test_a_batched_or_accepted_record_cant_be_withdrawn(self):
+        slug = json.loads(self.post_record(make_record()).content)["slug"]
+        for status in [
+            Record.Status.IN_BATCH,
+            Record.Status.SUCCEEDED_AT_CLINVAR,
+            Record.Status.WITHDRAWN,
+        ]:
+            with self.subTest(status):
+                Record.objects.update(status=status)
+                response = self.withdraw(slug)
+                self.assertEqual(response.status_code, 409)
+                self.assertEqual(
+                    json.loads(response.content)["detail"],
+                    "Only a record that's waiting for a batch can be withdrawn.",
+                )
+                self.assertEqual(Record.objects.get().status, status)
+
+    def test_another_clients_record_is_not_found(self):
+        _, other_raw = ApiKey.objects.create_key(name="VCI")
+        slug = json.loads(self.post_record(make_record(), raw_key=other_raw).content)[
+            "slug"
+        ]
+        self.assertEqual(self.withdraw(slug).status_code, 404)
+        self.assertEqual(Record.objects.get().status, Record.Status.WAITING_FOR_BATCH)

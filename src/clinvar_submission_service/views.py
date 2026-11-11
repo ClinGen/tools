@@ -9,7 +9,11 @@ from django_tables2 import RequestConfig
 
 from auth_.permissions import tool_permission_required
 from clinvar_submission_service.models import Batch, Record
-from clinvar_submission_service.services import forward_batch
+from clinvar_submission_service.services import (
+    NotWithdrawableError,
+    forward_batch,
+    withdraw_record,
+)
 from clinvar_submission_service.tables import BatchTable
 from core.tools import get_tool
 
@@ -22,6 +26,8 @@ RESEND_FAILED_MESSAGE = (
 )
 
 NOT_RESENDABLE_MESSAGE = "Only a batch ClinVar never got can be resent."
+
+WITHDRAWN_MESSAGE = "The record was withdrawn."
 
 # The statuses of batches ClinVar never got.
 NOT_SENT_STATUSES = [
@@ -213,3 +219,22 @@ def resend(request: HttpRequest, slug: str) -> HttpResponse:
     elif forward_batch(batch).status == Batch.Status.SEND_TO_CLINVAR_FAILED:
         messages.error(request, RESEND_FAILED_MESSAGE)
     return redirect(batch)
+
+
+@tool_permission_required("has_css_permissions")
+def withdraw(request: HttpRequest, slug: str) -> HttpResponse:
+    """Withdraws a waiting record, so it won't be sent to ClinVar.
+
+    Returns:
+        A redirect to the batch list, or 405 if the request isn't a POST.
+    """
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    record = get_object_or_404(Record, slug=slug)
+    try:
+        withdraw_record(record, by="staff")
+    except NotWithdrawableError as error:
+        messages.error(request, str(error))
+    else:
+        messages.success(request, WITHDRAWN_MESSAGE)
+    return redirect("css:index")

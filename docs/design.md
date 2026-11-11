@@ -225,7 +225,8 @@ Records extend `SlugModel` with the prefix R, since staff will refer to them as 
 come to wait in the CSS for a batch. Each keeps its own ClinVar JSON, affiliation, and
 client, and a status relative to the CSS's batches and ClinVar: `waiting_for_batch`
 (Waiting), `in_batch` (In a Batch), `succeeded_at_clinvar` (Success, ClinVar's word), or
-`withdrawn`.
+`withdrawn`. The client, through the API, or staff, in the CSS, can withdraw a waiting
+record, and its history notes who did.
 
 1. A client POSTs a submission to the CSS API.
 2. The CSS saves a `Batch` with status `not_sent_to_clinvar`, then forwards it to
@@ -287,6 +288,8 @@ go in a new version beside it. Ninja validates request bodies and serves OpenAPI
   CSS replaces it, keeps the old version in its history, and returns 200.
 - `GET /css/api/v1/records/{slug}`: read a record's affiliation, status, SCV, and JSON.
 - `GET /css/api/v1/records`: list the calling client's records, newest first.
+- `POST /css/api/v1/records/{slug}/withdraw`: withdraw a waiting record, so it won't be
+  sent to ClinVar. A record in a batch, or one ClinVar accepted, gets a 409.
 - `GET /css/api/v1/submissions/{slug}`: read a batch's affiliation, status, ClinVar ID,
   latest response, and summary report.
 - `GET /css/api/v1/submissions`: list the calling client's batches.

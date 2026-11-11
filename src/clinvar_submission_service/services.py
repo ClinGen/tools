@@ -10,7 +10,7 @@ from typing import Any
 from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
 from django.utils import timezone
-from simple_history.utils import bulk_create_with_history
+from simple_history.utils import bulk_create_with_history, update_change_reason
 
 from clinvar_submission_service.clients import ClinVarClient, ClinVarError
 from clinvar_submission_service.content import (
@@ -69,6 +69,35 @@ def save_record(
             setattr(record, name, value)
         record.save()
     return record, created
+
+
+class NotWithdrawableError(Exception):
+    """Raised for a record that's no longer waiting, so it can't be withdrawn."""
+
+    message = "Only a record that's waiting for a batch can be withdrawn."
+
+
+def withdraw_record(record: Record, *, by: str) -> Record:
+    """Withdraws a waiting record, so it won't be sent to ClinVar.
+
+    Args:
+        record: The record.
+        by: Who withdrew it, such as "staff" or "the GCI", for its history.
+
+    Returns:
+        The record, saved.
+
+    Raises:
+        NotWithdrawableError: If the record isn't waiting for a batch.
+    """
+    with transaction.atomic():
+        record = Record.objects.select_for_update().get(pk=record.pk)
+        if record.status != Record.Status.WAITING_FOR_BATCH:
+            raise NotWithdrawableError(NotWithdrawableError.message)
+        record.status = Record.Status.WITHDRAWN
+        record.save()
+        update_change_reason(record, f"Withdrawn by {by}")
+    return record
 
 
 def save_batch(
