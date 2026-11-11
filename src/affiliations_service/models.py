@@ -5,6 +5,8 @@ these models follow.
 """
 
 import datetime
+import hashlib
+import secrets
 import uuid
 from typing import ClassVar
 
@@ -604,3 +606,117 @@ class Membership(UUIDModel):
         """
         self.end_date = on or timezone.localdate()
         self.save()
+
+
+# Every raw key starts with this, so a leaked one is easy to recognize.
+API_KEY_PREFIX = "as_"
+
+# How much of a raw key is kept, so staff can tell keys apart.
+PREFIX_LENGTH = 8
+
+
+def _hash_key(raw_key: str) -> str:
+    """Returns the SHA-256 hash of a raw API key.
+
+    Raw keys are long and random, so a fast hash is safe.
+    """
+    return hashlib.sha256(raw_key.encode()).hexdigest()
+
+
+class ApiKeyManager(models.Manager):
+    """Creates and checks API keys."""
+
+    def create_key(self, *, name: str) -> tuple["ApiKey", str]:
+        """Creates an API key for a client.
+
+        Args:
+            name: The client's name, such as "GCI".
+
+        Returns:
+            The new key and its raw value, which is never stored or shown again.
+        """
+        api_key = self.model(name=name)
+        raw_key = api_key.set_new_key()
+        api_key.save()
+        return api_key, raw_key
+
+    def verify(self, raw_key: str) -> "ApiKey | None":
+        """Returns the active key with this raw value, and records its use.
+
+        Returns:
+            The key, or None if no active key matches.
+        """
+        if not raw_key:
+            return None
+        api_key = self.filter(key_hash=_hash_key(raw_key), is_active=True).first()
+        if api_key:
+            # update() skips the history, which shouldn't get a row per request.
+            now = timezone.now()
+            self.filter(pk=api_key.pk).update(last_used_at=now)
+            api_key.last_used_at = now
+        return api_key
+
+
+class ApiKey(UUIDModel):
+    """The key one client system sends to use the AS's API.
+
+    Every active key can read and change everything in the AS. Only a hash of the key
+    is stored. Staff create keys in the Django admin, which shows the raw key once.
+    """
+
+    name = models.CharField(
+        max_length=128,
+        verbose_name="Client",
+        help_text="The client system that uses this key, such as the GCI.",
+    )
+    prefix = models.CharField(
+        editable=False,
+        max_length=PREFIX_LENGTH,
+        verbose_name="Prefix",
+        help_text="The start of the key, so you can tell keys apart.",
+    )
+    key_hash = models.CharField(
+        editable=False,
+        max_length=64,
+        unique=True,
+        verbose_name="Key Hash",
+        help_text="The SHA-256 hash of the key. The key itself isn't stored.",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Active",
+        help_text="Whether the key can call the API. Turn it off to revoke the key.",
+    )
+    added_at = models.DateTimeField(auto_now_add=True, verbose_name="Added At")
+    last_used_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        editable=False,
+        verbose_name="Last Used At",
+        help_text="When the key last called the API.",
+    )
+    history = HistoricalRecords()
+
+    objects: ClassVar[ApiKeyManager] = ApiKeyManager()
+
+    class Meta:  # ty: ignore[invalid-attribute-override] (Each Django model declares its own Meta.)
+        """Provides metadata."""
+
+        ordering = ["name"]
+        verbose_name = "API Key"
+        verbose_name_plural = "API Keys"
+
+    def __str__(self) -> str:
+        """Returns the client's name and the start of the key."""
+        return f"{self.name} ({self.prefix}…)"
+
+    def set_new_key(self) -> str:
+        """Gives the key a new random value, without saving it.
+
+        Returns:
+            The raw value, which is never stored or shown again.
+        """
+        raw_key = f"{API_KEY_PREFIX}{secrets.token_urlsafe(32)}"
+        self.prefix = raw_key[:PREFIX_LENGTH]
+        self.key_hash = _hash_key(raw_key)
+        return raw_key

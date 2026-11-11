@@ -1,10 +1,12 @@
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.forms import ModelForm
 from django.http import HttpRequest
 from simple_history.admin import SimpleHistoryAdmin
 
 from affiliations_service.models import (
     CDWG,
     Affiliation,
+    ApiKey,
     ClinVarSubmitterId,
     Membership,
     Person,
@@ -80,3 +82,30 @@ class PersonAdmin(SimpleHistoryAdmin):
     list_display = ["name", "preferred_name", "email", "institution"]
     search_fields = ["name", "preferred_name", "email", "other_emails__email", "orcid"]
     inlines = [PersonEmailInline, PersonMembershipInline]
+
+
+@admin.register(ApiKey)
+class ApiKeyAdmin(SimpleHistoryAdmin):
+    list_display = ["name", "prefix", "is_active", "added_at", "last_used_at"]
+    fields = ["name", "is_active", "prefix", "added_at", "last_used_at"]
+    readonly_fields = ["prefix", "added_at", "last_used_at"]
+
+    def save_model(
+        self,
+        request: HttpRequest,
+        obj: ApiKey,
+        form: ModelForm,
+        change: bool,  # ruff: ignore[boolean-type-hint-positional-argument] (Django's signature.)
+    ) -> None:
+        """Gives a new key its value and shows that value once.
+
+        The raw key is shown in a warning message, an exception to the rule that
+        flash messages are only for problems, since there's no other place to show it.
+        """
+        raw_key = None if change else obj.set_new_key()
+        super().save_model(request, obj, form, change)
+        if raw_key:
+            messages.warning(
+                request,
+                f"Copy {obj.name}'s API key now. It won't be shown again: {raw_key}",
+            )
