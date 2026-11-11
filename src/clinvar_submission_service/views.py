@@ -4,7 +4,7 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.models import User
-from django.db.models import Count, OuterRef, Q, QuerySet, Subquery
+from django.db.models import Count, Q, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django_tables2 import RequestConfig
@@ -217,31 +217,53 @@ def records(request: HttpRequest) -> HttpResponse:
 
 @tool_permission_required("has_css_permissions")
 def affiliations(request: HttpRequest) -> HttpResponse:
-    """Lists each affiliation that has batches, with counts by status.
+    """Lists each affiliation with records or batches, with counts of each.
 
-    An affiliation's name is the one on its newest batch, in case it changed.
+    An affiliation's name is the one on its newest record, or on its newest batch if
+    it has no records, in case it changed.
 
     Returns:
         The affiliations page.
     """
-    newest_name = (
-        Batch.objects.filter(affiliation_id=OuterRef("affiliation_id"))
-        .order_by("-added_at")
-        .values("affiliation_name")[:1]
-    )
-    counts = {name: Count("pk", filter=q) for name, q in AFFILIATION_COUNTS.items()}
-    rows = (
-        # Clear the default ordering, which would split the groups.
-        Batch.objects.order_by()
+    batch_counts = {
+        row["affiliation_id"]: row
+        for row in Batch.objects.order_by()  # Clear the ordering, which splits groups.
         .filter(affiliation_id__isnull=False)
         .values("affiliation_id")
-        .annotate(name=Subquery(newest_name), total=Count("pk"), **counts)
-        .order_by("name")
+        .annotate(
+            batches=Count("pk"),
+            **{name: Count("pk", filter=q) for name, q in AFFILIATION_COUNTS.items()},
+        )
+    }
+    record_counts = {
+        row["affiliation_id"]: row
+        for row in Record.objects.order_by()
+        .filter(affiliation_id__isnull=False)
+        .values("affiliation_id")
+        .annotate(
+            records=Count("pk"),
+            waiting_records=Count(
+                "pk", filter=Q(status=Record.Status.WAITING_FOR_BATCH)
+            ),
+        )
+    }
+    empty = dict.fromkeys(
+        ["batches", "records", "waiting_records", *AFFILIATION_COUNTS], 0
     )
+    rows = [
+        empty
+        | batch_counts.get(affiliation_id, {})
+        | record_counts.get(affiliation_id, {})
+        | {"affiliation_id": affiliation_id, "name": _affiliation_name(affiliation_id)}
+        for affiliation_id in batch_counts.keys() | record_counts.keys()
+    ]
     return render(
         request,
         "clinvar_submission_service/affiliations.html",
-        {"tool": get_tool("css"), "affiliations": rows},
+        {
+            "tool": get_tool("css"),
+            "affiliations": sorted(rows, key=lambda row: row["name"]),
+        },
     )
 
 
@@ -362,12 +384,12 @@ def withdraw(request: HttpRequest, slug: str) -> HttpResponse:
 
 
 def _affiliation_name(affiliation_id: int) -> str:
-    """Returns an affiliation's name from its newest batch or record.
+    """Returns an affiliation's name from its newest record, or else its newest batch.
 
     Raises:
         Http404: If the CSS has no batch or record from the affiliation.
     """
-    for model in (Batch, Record):
+    for model in (Record, Batch):
         newest = (
             model.objects.filter(affiliation_id=affiliation_id)
             .order_by("-added_at")

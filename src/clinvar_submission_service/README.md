@@ -178,10 +178,12 @@ with each field's help text and any error in plain words.
 
 ### `templates/clinvar_submission_service/affiliations.html`
 
-The Affiliations tab: each affiliation that has batches, by name, with how many of its
-batches are Not Sent or Send Failed, Submitted or Processing, Processed, and Error, with
-a tooltip on each header's text. Each name links to the list filtered to that
-affiliation, and each row links to the affiliation's settings.
+The Affiliations tab: each affiliation that has records or batches, by name, with its
+records first (how many are waiting and in all, each linked to the Records list for that
+affiliation) and then its batches (how many are Not Sent or Send Failed, Submitted or
+Processing, Processed, and Error, and in all, linked to the batch list for that
+affiliation), a tooltip on each count's header, and a link to the affiliation's
+settings.
 
 ### `templates/clinvar_submission_service/detail.html`
 
@@ -237,8 +239,8 @@ fetch it alone with HTMX and swap it in.
 ### `templates/clinvar_submission_service/partials/header.html`
 
 The top of every CSS page: the CSS's name and description from `core.tools`, and boxed
-tabs for Batches, that batch when you're on a batch's page, and Affiliations, with the
-current page's tab active.
+tabs for Affiliations, Records, that record when you're on a record's page, Batches, and
+that batch when you're on a batch's page, with the current page's tab active.
 
 ### `templates/clinvar_submission_service/partials/status.html`
 
@@ -354,7 +356,8 @@ one affiliation; and that a record's page shows its fields, status, attempts wit
 batch, result, and SCV, and its history in plain words, offers Withdraw only while the
 record waits, is linked from the Records list and batch pages, shows no raw JSON or
 ClinVar errors, and 404s for an unknown slug. Against the fixtures, tests the
-affiliations page's counts, order, links, headers, and tab.
+affiliations page's record and batch counts, an affiliation known only from its records,
+order, links to records and batches, headers, and tab; and the tab order.
 
 ### `tests.py`
 
@@ -383,13 +386,13 @@ affiliations page at `affiliations/`, an affiliation's new batch at
 Serves the CSS's pages to users with CSS permissions: the batch list, with its status
 and affiliation filters, search, sorting, and pagination, and just its results for an
 HTMX request; the Records page, with the same kinds of filters and search; the
-affiliations page, which counts each affiliation's batches by status and names it from
-its newest batch; each affiliation's settings page, which shows and saves its
-`AffiliationSettings`; the new batch page, which lists an affiliation's waiting records,
-reviews the picked ones, and makes and sends the batch through `services.make_batch()`
-and `forward_batch()`, with a plain message when it can't; and each batch's page, which
-pairs each `Record` with its result in ClinVar's summary report. The resend view, which
-takes only POSTs, forwards a send_to_clinvar_failed batch again through
-`services.forward_batch()` and shows a plain error message if ClinVar still didn't get
-it. The withdraw view, also POST-only, withdraws a waiting record through
-`services.withdraw_record()` and returns to the batch list with a plain message.
+affiliations page, which counts each affiliation's records and batches by status and
+names it from its newest record or batch; each affiliation's settings page, which shows
+and saves its `AffiliationSettings`; the new batch page, which lists an affiliation's
+waiting records, reviews the picked ones, and makes and sends the batch through
+`services.make_batch()` and `forward_batch()`, with a plain message when it can't; and
+each batch's page, which pairs each `Record` with its result in ClinVar's summary
+report. The resend view, which takes only POSTs, forwards a send_to_clinvar_failed batch
+again through `services.forward_batch()` and shows a plain error message if ClinVar
+still didn't get it. The withdraw view, also POST-only, withdraws a waiting record
+through `services.withdraw_record()` and returns to the batch list with a plain message.

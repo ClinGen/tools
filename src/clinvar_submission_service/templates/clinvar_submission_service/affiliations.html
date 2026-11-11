@@ -1,6 +1,6 @@
 {% extends "layouts/base.html" %}
 {% block title %}CSS Affiliations{% endblock %}
-{% block description %}See each affiliation's ClinVar submissions.{% endblock %}
+{% block description %}See each affiliation's records and batches.{% endblock %}
 {% block main %}
     <div class="block mt-6 mb-6">
         {% include "clinvar_submission_service/partials/header.html" with active_tab="affiliations" %}
@@ -9,20 +9,30 @@
                 <table class="table is-hoverable">
                     <thead>
                         <tr>
-                            <th>Affiliation</th>
+                            <th rowspan="2">Affiliation</th>
+                            <th colspan="2">Records</th>
+                            <th colspan="5">Batches</th>
+                            <th rowspan="2">Settings</th>
+                        </tr>
+                        <tr>
+                            <th>{% include "common/tooltip.html" with label="Waiting" text="Records the CSS has that are waiting to be added to a batch." %}</th>
+                            <th>Total</th>
                             <th>{% include "common/tooltip.html" with label="Not Sent or Send Failed" text="ClinVar doesn't have these batches: the CSS hasn't sent them yet, or sending them failed." %}</th>
                             <th>{% include "common/tooltip.html" with label="Submitted or Processing" text="ClinVar has these batches and hasn't finished processing them." %}</th>
                             <th>{% include "common/tooltip.html" with label="Processed" text="All records in these batches succeeded." %}</th>
                             <th>{% include "common/tooltip.html" with label="Error" text="One or more records in each of these batches failed." %}</th>
                             <th>Total</th>
-                            <th>Settings</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for row in affiliations %}
                             <tr>
+                                <td>{{ row.name }}</td>
                                 <td>
-                                    <a href="{% url 'css:index' %}?affiliation={{ row.affiliation_id }}">{{ row.name }}</a>
+                                    <a href="{% url 'css:records' %}?affiliation={{ row.affiliation_id }}&amp;status=waiting_for_batch">{{ row.waiting_records }}</a>
+                                </td>
+                                <td>
+                                    <a href="{% url 'css:records' %}?affiliation={{ row.affiliation_id }}">{{ row.records }}</a>
                                 </td>
                                 <td>{{ row.not_sent }}</td>
                                 <td>{{ row.waiting }}</td>
@@ -34,7 +44,9 @@
                                         0
                                     {% endif %}
                                 </td>
-                                <td>{{ row.total }}</td>
+                                <td>
+                                    <a href="{% url 'css:index' %}?affiliation={{ row.affiliation_id }}">{{ row.batches }}</a>
+                                </td>
                                 <td>
                                     <a href="{% url 'css:affiliation_settings' affiliation_id=row.affiliation_id %}">Settings</a>
                                 </td>
@@ -44,7 +56,7 @@
                 </table>
             </div>
         {% else %}
-            <p>No batches yet.</p>
+            <p>No records or batches yet.</p>
         {% endif %}
     </div>
 {% endblock %}
