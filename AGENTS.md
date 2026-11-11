@@ -80,8 +80,8 @@ internal tools. Each tool is mounted under its own path on tools.clinicalgenome.
   from an old email to a new one.
 - `/`: a landing page that links to each tool.
 
-The AS is a port of the standalone `affiliations-service` repository, and its design
-carries over unless `docs/design.md` says otherwise. The stack and conventions follow the HLA Curation
+The AS replaces the standalone `affiliations-service`, but it's built from scratch, with
+a new data model and API, and doesn't reuse the old one's code. The stack and conventions follow the HLA Curation
 Interface (HCI). `docs/design.md` describes the design, including what the tools share
 and what each one owns.
 

@@ -6,8 +6,8 @@ ClinGen Tools is a web application built by the Stanford University ClinGen team
 houses the team's internal tools in one Django project, served from
 tools.clinicalgenome.org:
 
-- **Affiliations Service (AS)**, at `/as/`: replaces `affiliations-service`
-  (as.clinicalgenome.org).
+- **Affiliations Service (AS)**, at `/as/`: replaces `affiliations-service`, but is
+  built here from scratch rather than ported.
 - **ClinVar Submission Service (CSS)**, at `/css/`: replaces
   `clinvar-submission-service`.
 - **Email Transfer Service (ETS)**, at `/ets/`: new; it replaces nothing.
@@ -23,9 +23,7 @@ tool.
 
 This document is for engineers who are new to the codebase and for product owners who
 want to understand the system's architecture and key design decisions. It covers what
-the tools share, how they're kept apart, and the design of the CSS and the ETS. The AS's
-domain design (its affiliation model and legacy JSON format) carries over from its
-standalone repository's `docs/design.md` unless this document says otherwise.
+the tools share, how they're kept apart, and the design of the AS, the CSS, and the ETS.
 
 ## Goals
 
@@ -59,9 +57,10 @@ records, and keeps every other path at Django's 2.5 MB default.
 
 Each tool keeps the external integrations it had as a standalone service:
 
-- **AS**: other ClinGen tools (the GCI, the VCI, and others) read and write affiliation
-  data through its REST API. The Group and Personnel Management (GPM) system at UNC
-  links to affiliations by UUID.
+- **AS**: other ClinGen tools (the GCI, the VCI, and others) read and write
+  affiliations, the people in them, and their memberships through its REST API.
+  Affiliations, CDWGs, and people can carry the UUID that the Group and Personnel
+  Management (GPM) system at UNC gives them.
 - **CSS**: ClinGen clients send records through its API, and staff send them in batches
   to the NCBI ClinVar Submission API.
 - **ETS**: reads and changes user accounts in the Gene Curation Interface (GCI) and the
@@ -92,10 +91,8 @@ the UI, with HTMX where a page needs a little interactivity.
 - **AWS client (ETS)**: boto3
 - **HTTP client (CSS)**: requests
 
-Every tool's API uses Django Ninja. The standalone AS used Django REST Framework, so
-porting it means rewriting its API in Ninja. Its URLs and response formats, including
-the legacy JSON format, must stay the same apart from the new `/as/` prefix, so that
-clients only have to change their base URL.
+Every tool's API uses Django Ninja. The AS's API is new; it doesn't keep the standalone
+AS's URLs or response formats.
 
 ### URL Layout
 
@@ -103,7 +100,7 @@ clients only have to change their base URL.
 matching the prefix:
 
 - `/`: the landing page (`core`).
-- `/as/`: the AS UI. Its API lives under `/as/api/`.
+- `/as/`: the AS UI. Its API lives under `/as/api/v1/`.
 - `/css/`: the CSS UI. Its API lives under `/css/api/v1/`.
 - `/ets/`: the ETS.
 - `/admin/`: the Django admin, shared by every tool.
@@ -172,6 +169,75 @@ Machine clients use API keys, as they did with the standalone services. A key be
 one tool: an AS key can't call the CSS API. Keys are hashed at rest, and staff manage
 them in the Django admin.
 
+### The Affiliations Service
+
+The AS is the source of truth for ClinGen affiliations and for the people in them. It
+replaces the standalone `affiliations-service`, but it isn't a port: it starts with an
+empty database, its own data model, and a new API. It doesn't keep the old service's
+URLs, response formats, legacy JSON format, or API keys. Moving the old service's
+clients and data to the AS is later work.
+
+**Affiliations.** An affiliation is a group that curates for ClinGen: a Variant Curation
+Expert Panel (VCEP), a Gene Curation Expert Panel (GCEP), a Somatic Cancer VCEP
+(SC-VCEP), or an independent curation group. Its status is one of applying (the
+default), active, inactive, retired, or archived. Each affiliation belongs to a Clinical
+Domain Working Group (CDWG), such as Cardiovascular or Hereditary Cancer. CDWG names are
+unique, ignoring case. An affiliation also has a full name, a short name, and a list of
+ClinVar submitter IDs.
+
+**IDs.** Affiliations keep the old ID scheme, because GCI and VCI curation records
+already use these IDs, even though the AS starts without the old data:
+
+- Each new affiliation gets the next affiliation ID, counting up from 10000. IDs never
+  reach 20000.
+- A GCEP's expert panel ID is its affiliation ID plus 30000, which puts it in the 40000
+  range. A VCEP's or SC-VCEP's is its affiliation ID plus 40000, in the 50000 range. An
+  independent curation group has no expert panel ID.
+- Some older groups are both a VCEP and a GCEP. They're two affiliations that share an
+  affiliation ID, each with its own expert panel ID. So an affiliation ID is unique per
+  type, and an expert panel ID is unique.
+
+The AS assigns both IDs when it creates an affiliation. After that, the affiliation ID,
+the expert panel ID, the type, and the GPM UUID can't change, except by a superuser in
+the Django admin, for fixing mistakes. A superuser's edit can't reuse another
+affiliation's ID, and the last three digits of the two IDs must still match: 10042 goes
+with 40042 or 50042.
+
+**Rules.** An SC-VCEP belongs to the Somatic Cancer CDWG. An independent curation group
+belongs to the CDWG named None and has no GPM UUID. Affiliations are never deleted,
+since curation records in other systems refer to them. Deleting one marks it as deleted,
+and it drops out of lists.
+
+**People and memberships.** The AS tracks each person in ClinGen's affiliations, not
+just their names. A person has a name, an optional preferred name, a primary email,
+other emails, an institution, an ORCID iD, credentials (such as "PhD, CGC"), and an
+optional GPM UUID. No two people share an email, ignoring case, whether it's their
+primary email or another one. People are never deleted. These fields are a starting
+point, and we expect to add more.
+
+A membership says that a person holds a role in an affiliation. The roles are
+coordinator, approver, and curator. A person who holds two roles in an affiliation has
+two memberships, one per role. A membership may have a start date and an end date. It's
+current until its end date passes. Ending a membership sets its end date instead of
+deleting it, so the AS remembers who was in a group and when. A person can't hold the
+same role in the same affiliation twice at once.
+
+**API.** Other ClinGen tools use the AS's REST API, a Django Ninja API at `/as/api/v1/`,
+with OpenAPI docs at `/as/api/v1/docs`. The version is in the path, so a breaking change
+can live at `/as/api/v2/` while clients move. The API has four resources: affiliations,
+people, memberships, and CDWGs. Each is addressed by its UUID. Lists are paginated, and
+updates use `PATCH`. A request that fails validation gets a 422, and one that breaks a
+rule above gets a 400 with a `detail` message. Deleting an affiliation through the API
+marks it as deleted; people and memberships have no delete endpoint.
+
+Clients send an API key in the `X-Api-Key` header. Any active AS key can read and change
+everything in the AS; there are no read-only keys. Staff create and revoke keys in the
+Django admin, which shows a new key once. The AS stores only a hash of each key.
+
+**Staff UI.** Staff with the AS permission (`has_as_permissions`) manage affiliations,
+people, memberships, and CDWGs on the AS's pages. Like the ETS's pages, they're written
+for non-technical staff and never show UUIDs.
+
 ### The ClinVar Submission Service
 
 ClinGen client systems, such as the VCI, send ClinVar records to the CSS through its
@@ -234,17 +300,17 @@ record, and its history notes who did.
 1. A client POSTs a record to the CSS API, and it waits in the CSS for a batch.
 2. A staff member makes a `Batch` of one affiliation's waiting records, with status
    `not_sent_to_clinvar`. The batch copies the affiliation's settings, and its records
-   are marked `in_batch`, so they can't join another batch. The CSS refuses records
-   from more than one affiliation, records that aren't waiting, and more than 10,000.
+   are marked `in_batch`, so they can't join another batch. The CSS refuses records from
+   more than one affiliation, records that aren't waiting, and more than 10,000.
 3. The CSS builds the batch's content from its records and sends it to ClinVar. If
    ClinVar accepts it, the CSS saves the ClinVar submission ID, sets the status to
    `submitted_to_clinvar`, and sets `next_poll_at`. If ClinVar rejects it or can't be
    reached, the CSS sets the status to `send_to_clinvar_failed` and saves the error
    message, and the records stay in the batch to be resent.
 4. The poller checks ClinVar for each `submitted_to_clinvar` or `processing_at_clinvar`
-   batch whose `next_poll_at` has passed, saves the response, and either records a
-   final status or pushes `next_poll_at` further out. When a batch reaches a final
-   status, the poller downloads its summary report and saves each record's result.
+   batch whose `next_poll_at` has passed, saves the response, and either records a final
+   status or pushes `next_poll_at` further out. When a batch reaches a final status, the
+   poller downloads its summary report and saves each record's result.
 5. Clients and staff read the status through the API or the UI at any time.
 
 Every status names ClinVar, so it's clear which tool it's relative to: `submitted` alone
@@ -285,8 +351,8 @@ go in a new version beside it. Ninja validates request bodies and serves OpenAPI
   `{"affiliation": {"id": 10007, "name": "Hearing Loss VCEP"}, "record": {...}}`. The
   affiliation is the curation group whose classification the record is, with its AS ID
   and the name the client got from the AS, so the CSS can group records without reading
-  the AS's data. The record must match the part of ClinVar's `germlineSubmission`
-  schema the CSS models, and any other field, including the submission-level
+  the AS's data. The record must match the part of ClinVar's `germlineSubmission` schema
+  the CSS models, and any other field, including the submission-level
   `assertionCriteria`, `behalfOrgID`, and `clinvarSubmissionReleaseStatus`, gets a 422.
   The CSS keeps those once per affiliation instead. The CSS saves the record as sent,
   and returns 201. If the affiliation has a waiting record with the same `localID`, the
@@ -483,10 +549,9 @@ Moving a standalone tool here means porting its code into its app, moving its da
 the shared database, and pointing its clients at the new base URL. Each move is its own
 epic.
 
-The AS is in production at as.clinicalgenome.org, so its clients need time to switch.
-For six months after the move, as.clinicalgenome.org redirects each request to the same
-path under tools.clinicalgenome.org/as/. The CSS was never in production, so it has no
-old URLs to redirect.
+The AS is the exception: it's built here from scratch rather than ported (see "The
+Affiliations Service"). How the standalone AS's clients and data move to it hasn't been
+designed yet. The CSS was never in production, so it has no old URLs to redirect.
 
 ## Alternatives Considered
 
