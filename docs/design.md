@@ -274,24 +274,26 @@ The API is a Django Ninja `NinjaAPI` mounted at `/css/api/v1/`, so a breaking ch
 go in a new version beside it. Ninja validates request bodies and serves OpenAPI docs at
 `/css/api/v1/docs`. The endpoints are:
 
-- `POST /css/api/v1/submissions`: create a submission and forward it to ClinVar. The
-  body is the client's affiliation and the ClinVar content:
-  `{"affiliation": {"id": 10007, "name": "Hearing Loss VCEP"}, "content": {...}}`. The
-  affiliation is the curation group whose classifications the submission holds, with its
-  AS ID and the name the client got from the AS, so the CSS can group submissions
-  without reading the AS's data. The CSS adds the `actions` envelope to the content. The
-  content must match the part of ClinVar's schema the CSS models: 1 to 10,000
-  `germlineSubmission` records, plus `assertionCriteria`, `behalfOrgID`, and
-  `clinvarSubmissionReleaseStatus`. Any other field gets a 422, so a submission's fields
-  always hold everything that's forwarded. The CSS saves the content as sent, with a
-  `Record` per record, and forwards it unchanged.
-- `GET /css/api/v1/submissions/{slug}`: read a submission's affiliation, status, ClinVar
-  ID, latest response, and summary report.
-- `GET /css/api/v1/submissions`: list the calling client's submissions.
+- `POST /css/api/v1/records`: send one record to wait in the CSS for a batch. The body
+  is the client's affiliation and one germline record:
+  `{"affiliation": {"id": 10007, "name": "Hearing Loss VCEP"}, "record": {...}}`. The
+  affiliation is the curation group whose classification the record is, with its AS ID
+  and the name the client got from the AS, so the CSS can group records without reading
+  the AS's data. The record must match the part of ClinVar's `germlineSubmission`
+  schema the CSS models, and any other field, including the submission-level
+  `assertionCriteria`, `behalfOrgID`, and `clinvarSubmissionReleaseStatus`, gets a 422.
+  The CSS keeps those once per affiliation instead. The CSS saves the record as sent,
+  and returns 201. If the affiliation has a waiting record with the same `localID`, the
+  CSS replaces it, keeps the old version in its history, and returns 200.
+- `GET /css/api/v1/records/{slug}`: read a record's affiliation, status, SCV, and JSON.
+- `GET /css/api/v1/records`: list the calling client's records, newest first.
+- `GET /css/api/v1/submissions/{slug}`: read a batch's affiliation, status, ClinVar ID,
+  latest response, and summary report.
+- `GET /css/api/v1/submissions`: list the calling client's batches.
 
 Each client system has its own API key, which it sends in the `X-API-Key` header. The
 Django admin shows a new key once and stores only its hash. A client sees only its own
-submissions. There are no webhooks: clients poll a submission's GET endpoint to learn
+records and batches. There are no webhooks: clients poll a submission's GET endpoint to learn
 when its status changes. The API doesn't use Clerk sessions or CSRF protection.
 
 #### Poller

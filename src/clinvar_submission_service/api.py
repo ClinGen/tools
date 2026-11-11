@@ -1,7 +1,8 @@
 """Serves the CSS's API, version 1, at /css/api/v1/.
 
+Clients send records one at a time, and staff later send them to ClinVar in batches.
 Clients authenticate with an API key in the X-API-Key header and see only their own
-batches. The OpenAPI docs are at /css/api/v1/docs.
+records and batches. The OpenAPI docs are at /css/api/v1/docs.
 """
 
 import json
@@ -11,20 +12,20 @@ from typing import Any
 from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
-from ninja import NinjaAPI, Schema, Status
+from ninja import Field, NinjaAPI, Schema, Status
 from ninja.pagination import paginate
 
 from clinvar_submission_service.api_auth import ApiKeyAuth
-from clinvar_submission_service.content import Affiliation, SubmissionRequest
-from clinvar_submission_service.models import Batch
-from clinvar_submission_service.services import forward_batch, save_batch
+from clinvar_submission_service.content import Affiliation, RecordRequest
+from clinvar_submission_service.models import Batch, Record
+from clinvar_submission_service.services import save_record
 
 api = NinjaAPI(
     title="ClinVar Submission Service API",
     version="1",
     description=(
-        "Forwards ClinVar submissions to ClinVar and tracks each one until ClinVar has "
-        "processed it."
+        "Holds ClinVar records until staff send them to ClinVar in batches, and "
+        "tracks each batch until ClinVar has processed it."
     ),
     auth=ApiKeyAuth(),
     # The API is mounted inside the CSS's URLconf, so its namespace is nested in css.
@@ -51,9 +52,37 @@ class SubmissionSummary(Schema):
         Returns:
             The affiliation, or None for a batch saved before affiliations.
         """
-        if batch.affiliation_id is None:
-            return None
-        return Affiliation(id=batch.affiliation_id, name=batch.affiliation_name)
+        return _affiliation_of(batch)
+
+
+def _affiliation_of(obj: Batch | Record) -> Affiliation | None:
+    """Returns a batch's or record's affiliation, or None if it has none."""
+    if obj.affiliation_id is None:
+        return None
+    return Affiliation(id=obj.affiliation_id, name=obj.affiliation_name)
+
+
+class RecordSummary(Schema):
+    """A record's status and the fields that identify it."""
+
+    slug: str
+    affiliation: Affiliation | None
+    status: str
+    local_id: str
+    clinvar_accession: str
+    added_at: datetime
+    updated_at: datetime
+
+    @staticmethod
+    def resolve_affiliation(record: Record) -> Affiliation | None:
+        """Returns the record's affiliation, if it has one."""
+        return _affiliation_of(record)
+
+
+class RecordDetail(RecordSummary):
+    """A record's status and its ClinVar JSON as the client sent it."""
+
+    record: dict[str, Any] = Field(alias="payload")
 
 
 class SubmissionDetail(SubmissionSummary):
@@ -64,27 +93,46 @@ class SubmissionDetail(SubmissionSummary):
     summary_report: dict[str, Any] | None
 
 
-@api.post("/submissions", response={201: SubmissionDetail})
-def create_batch(request: HttpRequest, body: SubmissionRequest) -> Status[Batch]:
-    """Saves a batch and forwards it to ClinVar.
+@api.post("/records", response={200: RecordDetail, 201: RecordDetail})
+def create_record(request: HttpRequest, body: RecordRequest) -> Status[Record]:
+    """Saves a record to wait in the CSS until staff send it to ClinVar in a batch.
 
-    The body is the client's affiliation and the ClinVar content, which holds germline
-    records. The CSS wraps the content in ClinVar's AddData action and forwards it as
-    sent. A body that doesn't match gets a 422. The response's status is
-    submitted_to_clinvar if ClinVar accepted it, or send_to_clinvar_failed, with an
-    error message, if it didn't.
+    The body is the client's affiliation and one germline record. If the affiliation
+    has a record with the same localID that's still waiting, the CSS replaces it and
+    keeps the old version. A body that doesn't match gets a 422.
 
     Returns:
-        201 and the batch.
+        201 and the new record, or 200 and the record it replaced.
     """
-    # Save the content as sent, not as Ninja parsed it, since that's what's forwarded.
-    payload = json.loads(request.body)["content"]
-    batch = save_batch(
+    # Save the record as sent, not as Ninja parsed it, since that's what's forwarded.
+    payload = json.loads(request.body)["record"]
+    record, created = save_record(
         api_key=request.auth,  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
         affiliation=body.affiliation,
         payload=payload,
     )
-    return Status(201, forward_batch(batch))
+    return Status(201 if created else 200, record)
+
+
+@api.get("/records", response=list[RecordSummary])
+@paginate
+def list_records(request: HttpRequest) -> QuerySet[Record]:
+    """Lists the calling client's records, newest first.
+
+    Returns:
+        The client's records, a page at a time.
+    """
+    return Record.objects.filter(api_key=request.auth).order_by("-added_at")  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
+
+
+@api.get("/records/{slug}", response=RecordDetail)
+def read_record(request: HttpRequest, slug: str) -> Record:
+    """Reads one of the calling client's records.
+
+    Returns:
+        The record, or 404 if the client has none with that slug.
+    """
+    return get_object_or_404(Record, slug=slug, api_key=request.auth)  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
 
 
 @api.get("/submissions", response=list[SubmissionSummary])

@@ -22,12 +22,13 @@ and shows it once, in a warning message; after that, only its prefix is shown.
 
 Serves the CSS's API, version 1, as a Django Ninja `NinjaAPI` at `/css/api/v1/`, with
 OpenAPI docs at `/css/api/v1/docs`. Every endpoint needs an API key (see `api_auth.py`),
-and a client sees only its own batches. `POST /submissions` takes the client's
-affiliation and the ClinVar content (`content.SubmissionRequest`), saves them as a batch
-with its records, and forwards the content as sent, `GET /submissions` lists the
-client's batches a page at a time, and `GET /submissions/{slug}` reads one with
-ClinVar's responses. Content that doesn't match, including more than 10,000 records,
-gets a 422.
+and a client sees only its own records and batches. `POST /records` takes the client's
+affiliation and one germline record (`content.RecordRequest`) and saves it to wait for
+a batch, returning 201, or 200 if it replaced a waiting record with the same local ID.
+`GET /records` lists the client's records a page at a time, and `GET /records/{slug}`
+reads one with its JSON. A record that doesn't match, or a body with submission-level
+fields, gets a 422. `GET /submissions` and `GET /submissions/{slug}` list and read the
+client's batches, with ClinVar's responses.
 
 ### `api_auth.py`
 
@@ -54,10 +55,11 @@ one from the `CSS_` settings and raises `ImproperlyConfigured` without a key.
 Describes the ClinVar content the API accepts as Ninja schemas, with ClinVar's field
 names as aliases: `Content` holds 1 to 10,000 germline records, each with one HGVS
 variant, one condition, and one observation, plus the assertion criteria, on-behalf-of
-organization, and release status. `SubmissionRequest`, the API's body, wraps the content
-with the client's `Affiliation`: its AS ID and name. A field the CSS doesn't model is
-rejected, and an update must name its SCV. `batch_fields()` and `record_fields()` copy
-validated content into `Batch` and `Record` fields.
+organization, and release status. `RecordRequest`, the API's body, wraps one
+`GermlineRecord` with the client's `Affiliation`: its AS ID and name. A field the CSS
+doesn't model is rejected, and an update must name its SCV. `batch_fields()` copies
+validated content into `Batch` fields, and `fields_of()` and `record_fields()` copy one
+record, or each of the content's records, into `Record` fields.
 
 ### `fakes.py`
 
@@ -129,11 +131,13 @@ status as it was, and doesn't stop the pass.
 
 ### `services.py`
 
-Saves a not-yet-sent batch and a `Record` for each of its records, in one transaction,
-with `save_batch()`. `build_payload()` builds a batch's ClinVar content from its
+Saves a record a client sent with `save_record()`, which replaces the affiliation's
+waiting record with the same local ID, if there is one, so its history keeps the old
+version. Saves a not-yet-sent batch and a `Record` for each of its records, in one
+transaction, with `save_batch()`. `build_payload()` builds a batch's ClinVar content from its
 records' JSON, in order, and the batch's submission-level fields. Forwards a saved batch
-to ClinVar once with `forward_batch()`, which sends that built content and which the API
-and the staff Resend button share. If ClinVar accepts it, the batch is submitted, with
+to ClinVar once with `forward_batch()`, which sends that built content and which the
+staff Resend button uses. If ClinVar accepts it, the batch is submitted, with
 its ClinVar ID and a first poll time; if ClinVar rejects it, can't be reached, or the
 CSS has no ClinVar key, it's send_to_clinvar_failed, with the error. It never retries.
 

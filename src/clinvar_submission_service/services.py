@@ -1,7 +1,6 @@
-"""Saves batches, forwards them to ClinVar, and records what happened.
+"""Saves records and batches, forwards batches to ClinVar, and records what happened.
 
-The API and the staff Resend button both forward batches through here, so a
-batch ends up in the same state whichever one sent it.
+The API saves records through here, and the staff pages forward batches through here.
 """
 
 import logging
@@ -17,7 +16,9 @@ from clinvar_submission_service.clients import ClinVarClient, ClinVarError
 from clinvar_submission_service.content import (
     Affiliation,
     Content,
+    GermlineRecord,
     batch_fields,
+    fields_of,
     record_fields,
 )
 from clinvar_submission_service.models import ApiKey, Batch, BatchRecord, Record
@@ -27,6 +28,47 @@ logger = logging.getLogger(__name__)
 # ClinVar takes at least minutes to start processing a batch, so the poller's first
 # check waits this long.
 FIRST_POLL_DELAY = timedelta(minutes=5)
+
+
+def save_record(
+    *, api_key: ApiKey | None, affiliation: Affiliation, payload: dict[str, Any]
+) -> tuple[Record, bool]:
+    """Saves a record to wait for a batch.
+
+    If the affiliation has a waiting record with the same local ID, that record is
+    replaced, and its history keeps the old version. Otherwise a new record is made.
+
+    Args:
+        api_key: The key of the client that sent it.
+        affiliation: The curation group whose classification it is.
+        payload: The record's ClinVar JSON as the client sent it.
+
+    Returns:
+        The record, and whether it's new.
+    """
+    fields = fields_of(GermlineRecord.model_validate(payload))
+    with transaction.atomic():
+        record = None
+        if fields["local_id"]:
+            record = (
+                Record.objects.select_for_update()
+                .filter(
+                    affiliation_id=affiliation.id,
+                    local_id=fields["local_id"],
+                    status=Record.Status.WAITING_FOR_BATCH,
+                )
+                .first()
+            )
+        created = record is None
+        if record is None:
+            record = Record(affiliation_id=affiliation.id)
+        record.api_key = api_key
+        record.affiliation_name = affiliation.name
+        record.payload = payload
+        for name, value in fields.items():
+            setattr(record, name, value)
+        record.save()
+    return record, created
 
 
 def save_batch(

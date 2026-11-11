@@ -1,10 +1,11 @@
-"""Describes the submissions the CSS accepts, and copies them into fields.
+"""Describes the records the CSS accepts and the content it sends to ClinVar.
 
-A client sends a `SubmissionRequest`: its affiliation and the ClinVar content. The
-content is validated against `Content`, which is the part of ClinVar's
-submission schema the CSS models: germline variant classifications, one condition and
-one observation each. Field names are ClinVar's, as aliases, and a field the CSS doesn't
-model is rejected, so a submission's fields always hold everything that's forwarded.
+A client sends a `RecordRequest`: its affiliation and one germline record. A record is
+validated against `GermlineRecord`, and a batch's content against `Content`, which is
+the part of ClinVar's submission schema the CSS models: germline variant
+classifications, one condition and one observation each. Field names are ClinVar's, as
+aliases, and a field the CSS doesn't model is rejected, so a record's fields always
+hold everything that's forwarded. Functions copy them into model fields.
 """
 
 from datetime import date
@@ -131,11 +132,11 @@ class Affiliation(ClinVarSchema):
     name: str = Field(min_length=1, description="The affiliation's name.")
 
 
-class SubmissionRequest(ClinVarSchema):
-    """The body a client sends: its affiliation and the ClinVar content."""
+class RecordRequest(ClinVarSchema):
+    """The body a client sends: its affiliation and one germline record."""
 
     affiliation: Affiliation
-    content: Content
+    record: GermlineRecord
 
 
 def batch_fields(content: Content) -> dict[str, Any]:
@@ -160,30 +161,34 @@ def record_fields(content: Content) -> list[dict[str, Any]]:
         One dictionary of Record field values, by field name, per record, in the
         content's order.
     """
-    fields = []
-    for record in content.germline_batch:
-        variant = record.variant_set.variant[0]
-        condition = record.condition_set.condition[0]
-        classification = record.germline_classification
-        observation = record.observed_in[0]
-        fields.append(
-            {
-                "record_status": record.record_status,
-                "clinvar_accession": record.clinvar_accession or "",
-                "local_id": record.local_id or "",
-                "local_key": record.local_key or "",
-                "submitted_assembly": record.submitted_assembly,
-                "hgvs": variant.hgvs,
-                "gene_symbol": variant.gene[0].symbol if variant.gene else "",
-                "condition_db": condition.db,
-                "condition_id": condition.id,
-                "classification": classification.description,
-                "mode_of_inheritance": classification.mode_of_inheritance or "",
-                "date_last_evaluated": classification.date_last_evaluated,
-                "comment": classification.comment or "",
-                "allele_origin": observation.allele_origin,
-                "affected_status": observation.affected_status,
-                "collection_method": observation.collection_method,
-            }
-        )
-    return fields
+    return [fields_of(record) for record in content.germline_batch]
+
+
+def fields_of(record: GermlineRecord) -> dict[str, Any]:
+    """Returns the fields of a Record for one germline record.
+
+    Returns:
+        The Record field values, by field name.
+    """
+    variant = record.variant_set.variant[0]
+    condition = record.condition_set.condition[0]
+    classification = record.germline_classification
+    observation = record.observed_in[0]
+    return {
+        "record_status": record.record_status,
+        "clinvar_accession": record.clinvar_accession or "",
+        "local_id": record.local_id or "",
+        "local_key": record.local_key or "",
+        "submitted_assembly": record.submitted_assembly,
+        "hgvs": variant.hgvs,
+        "gene_symbol": variant.gene[0].symbol if variant.gene else "",
+        "condition_db": condition.db,
+        "condition_id": condition.id,
+        "classification": classification.description,
+        "mode_of_inheritance": classification.mode_of_inheritance or "",
+        "date_last_evaluated": classification.date_last_evaluated,
+        "comment": classification.comment or "",
+        "allele_origin": observation.allele_origin,
+        "affected_status": observation.affected_status,
+        "collection_method": observation.collection_method,
+    }
