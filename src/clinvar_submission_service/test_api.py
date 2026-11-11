@@ -230,63 +230,15 @@ class AuthTest(ApiTestCase):
         inactive.is_active = False
         inactive.save()
         cases = {
-            "missing": self.client.get(SUBMISSIONS_URL),
-            "unknown": self.get(SUBMISSIONS_URL, raw_key="css_unknown"),
-            "inactive": self.get(SUBMISSIONS_URL, raw_key=inactive_raw),
+            "missing": self.client.get(RECORDS_URL),
+            "unknown": self.get(RECORDS_URL, raw_key="css_unknown"),
+            "inactive": self.get(RECORDS_URL, raw_key=inactive_raw),
             "post": self.post_record(make_record(), raw_key="css_unknown"),
         }
         for name, response in cases.items():
             with self.subTest(name):
                 self.assertEqual(response.status_code, 401)
         self.assertFalse(Record.objects.exists())
-
-
-class ReadSubmissionTest(ApiTestCase):
-    def test_returns_the_clients_batch(self):
-        batch = Batch.objects.create(
-            api_key=self.api_key,
-            affiliation_id=10007,
-            affiliation_name="Hearing Loss VCEP",
-            status=Batch.Status.PROCESSED_BY_CLINVAR,
-            clinvar_submission_id="SUB000009",
-            latest_response={"actions": []},
-            summary_report={"totalCount": 1},
-        )
-        response = self.get(f"{SUBMISSIONS_URL}/{batch.slug}")
-        self.assertEqual(response.status_code, 200)
-        body = json.loads(response.content)
-        self.assertEqual(body["affiliation"], AFFILIATION)
-        self.assertEqual(body["status"], "processed_by_clinvar")
-        self.assertEqual(body["clinvar_submission_id"], "SUB000009")
-        self.assertEqual(body["latest_response"], {"actions": []})
-        self.assertEqual(body["summary_report"], {"totalCount": 1})
-
-    def test_another_clients_batch_is_not_found(self):
-        other, _ = ApiKey.objects.create_key(name="VCI")
-        batch = Batch.objects.create(api_key=other)
-        response = self.get(f"{SUBMISSIONS_URL}/{batch.slug}")
-        self.assertEqual(response.status_code, 404)
-
-
-class ListSubmissionsTest(ApiTestCase):
-    def test_lists_only_the_clients_submissions_newest_first(self):
-        other, _ = ApiKey.objects.create_key(name="VCI")
-        Batch.objects.create(api_key=other)
-        older = Batch.objects.create(api_key=self.api_key)
-        newer = Batch.objects.create(api_key=self.api_key)
-        response = self.get(SUBMISSIONS_URL)
-        self.assertEqual(response.status_code, 200)
-        body = json.loads(response.content)
-        self.assertEqual(body["count"], 2)
-        slugs = [item["slug"] for item in body["items"]]
-        self.assertEqual(slugs, [newer.slug, older.slug])
-
-    def test_is_paginated(self):
-        for _ in range(3):
-            Batch.objects.create(api_key=self.api_key)
-        response = self.get(f"{SUBMISSIONS_URL}?limit=2")
-        self.assertEqual(len(json.loads(response.content)["items"]), 2)
-        self.assertEqual(json.loads(response.content)["count"], 3)
 
 
 class DocsTest(TestCase):
@@ -299,7 +251,15 @@ class DocsTest(TestCase):
         self.assertEqual(set(schema["paths"]["/css/api/v1/records"]), {"get", "post"})
         self.assertIn("get", schema["paths"]["/css/api/v1/records/{slug}"])
         self.assertIn("germlineClassificationDescription", json.dumps(schema))
-        self.assertNotIn("post", schema["paths"]["/css/api/v1/submissions"])
+        self.assertFalse(any("submissions" in path for path in schema["paths"]))
+
+    def test_the_old_batch_endpoints_are_gone(self):
+        _, raw_key = ApiKey.objects.create_key(name="GCI")
+        batch = Batch.objects.create()
+        for url in [SUBMISSIONS_URL, f"{SUBMISSIONS_URL}/{batch.slug}"]:
+            with self.subTest(url):
+                response = self.client.get(url, headers={API_KEY_HEADER: raw_key})
+                self.assertEqual(response.status_code, 404)
 
     def test_the_api_is_under_the_css_namespace(self):
         self.assertEqual(reverse("css:api-1:create_record"), "/css/api/v1/records")

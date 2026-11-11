@@ -23,14 +23,13 @@ and shows it once, in a warning message; after that, only its prefix is shown.
 
 Serves the CSS's API, version 1, as a Django Ninja `NinjaAPI` at `/css/api/v1/`, with
 OpenAPI docs at `/css/api/v1/docs`. Every endpoint needs an API key (see `api_auth.py`),
-and a client sees only its own records and batches. `POST /records` takes the client's
-affiliation and one germline record (`content.RecordRequest`) and saves it to wait for a
-batch, returning 201, or 200 if it replaced a waiting record with the same local ID.
-`GET /records` lists the client's records a page at a time, `GET /records/{slug}` reads
-one with its JSON, and `POST /records/{slug}/withdraw` withdraws a waiting one, or
-returns a 409 for any other. A record that doesn't match, or a body with
-submission-level fields, gets a 422. `GET /submissions` and `GET /submissions/{slug}`
-list and read the client's batches, with ClinVar's responses.
+and a client sees only its own records. `POST /records` takes the client's affiliation
+and one germline record (`content.RecordRequest`) and saves it to wait for a batch,
+returning 201, or 200 if it replaced a waiting record with the same local ID. `GET
+/records` lists the client's records a page at a time, `GET /records/{slug}` reads one
+with its JSON, and `POST /records/{slug}/withdraw` withdraws a waiting one, or returns a
+409 for any other. A record that doesn't match, or a body with submission-level fields,
+gets a 422. Clients don't see batches, which staff make.
 
 ### `api_auth.py`
 
@@ -267,8 +266,8 @@ ID makes a new record; that a bad record, a missing or bad affiliation, a
 submission-level field, or a body over the upload limit is rejected and saves nothing;
 that a client can withdraw a waiting record, with who did in its history, and gets a 409
 for any other; 401s for missing, unknown, and inactive keys; that a client can't read,
-list, or withdraw another client's records or batches; pagination; and the OpenAPI docs
-and endpoints.
+list, or withdraw another client's records; pagination; the OpenAPI docs and endpoints;
+and that the old batch endpoints are gone.
 
 ### `test_api_keys.py`
 

@@ -2,7 +2,7 @@
 
 Clients send records one at a time, and staff later send them to ClinVar in batches.
 Clients authenticate with an API key in the X-API-Key header and see only their own
-records and batches. The OpenAPI docs are at /css/api/v1/docs.
+records. The OpenAPI docs are at /css/api/v1/docs.
 """
 
 import json
@@ -17,7 +17,7 @@ from ninja.pagination import paginate
 
 from clinvar_submission_service.api_auth import ApiKeyAuth
 from clinvar_submission_service.content import Affiliation, RecordRequest
-from clinvar_submission_service.models import Batch, Record
+from clinvar_submission_service.models import Record
 from clinvar_submission_service.services import (
     NotWithdrawableError,
     save_record,
@@ -37,33 +37,11 @@ api = NinjaAPI(
 )
 
 
-class SubmissionSummary(Schema):
-    """A batch's status, without ClinVar's responses."""
-
-    slug: str
-    affiliation: Affiliation | None
-    status: str
-    clinvar_submission_id: str
-    clinvar_error_code: int | None
-    error_message: str
-    added_at: datetime
-    updated_at: datetime
-
-    @staticmethod
-    def resolve_affiliation(batch: Batch) -> Affiliation | None:
-        """Returns the batch's affiliation, if it has one.
-
-        Returns:
-            The affiliation, or None for a batch saved before affiliations.
-        """
-        return _affiliation_of(batch)
-
-
-def _affiliation_of(obj: Batch | Record) -> Affiliation | None:
-    """Returns a batch's or record's affiliation, or None if it has none."""
-    if obj.affiliation_id is None:
+def _affiliation_of(record: Record) -> Affiliation | None:
+    """Returns a record's affiliation, or None if it has none."""
+    if record.affiliation_id is None:
         return None
-    return Affiliation(id=obj.affiliation_id, name=obj.affiliation_name)
+    return Affiliation(id=record.affiliation_id, name=record.affiliation_name)
 
 
 class RecordSummary(Schema):
@@ -87,14 +65,6 @@ class RecordDetail(RecordSummary):
     """A record's status and its ClinVar JSON as the client sent it."""
 
     record: dict[str, Any] = Field(alias="payload")
-
-
-class SubmissionDetail(SubmissionSummary):
-    """A batch's status and ClinVar's responses."""
-
-    clinvar_updated_at: datetime | None
-    latest_response: dict[str, Any] | None
-    summary_report: dict[str, Any] | None
 
 
 @api.post("/records", response={200: RecordDetail, 201: RecordDetail})
@@ -161,24 +131,3 @@ def withdraw(request: HttpRequest, slug: str) -> Record | Status[Error]:
         return withdraw_record(record, by=f"the {api_key.name}")
     except NotWithdrawableError as error:
         return Status(409, Error(detail=str(error)))
-
-
-@api.get("/submissions", response=list[SubmissionSummary])
-@paginate
-def list_batches(request: HttpRequest) -> QuerySet[Batch]:
-    """Lists the calling client's batches, newest first.
-
-    Returns:
-        The client's batches, a page at a time.
-    """
-    return Batch.objects.filter(api_key=request.auth)  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
-
-
-@api.get("/submissions/{slug}", response=SubmissionDetail)
-def read_batch(request: HttpRequest, slug: str) -> Batch:
-    """Reads one of the calling client's batches.
-
-    Returns:
-        The batch, or 404 if the client has none with that slug.
-    """
-    return get_object_or_404(Batch, slug=slug, api_key=request.auth)  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)

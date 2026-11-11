@@ -295,14 +295,12 @@ go in a new version beside it. Ninja validates request bodies and serves OpenAPI
 - `GET /css/api/v1/records`: list the calling client's records, newest first.
 - `POST /css/api/v1/records/{slug}/withdraw`: withdraw a waiting record, so it won't be
   sent to ClinVar. A record in a batch, or one ClinVar accepted, gets a 409.
-- `GET /css/api/v1/submissions/{slug}`: read a batch's affiliation, status, ClinVar ID,
-  latest response, and summary report.
-- `GET /css/api/v1/submissions`: list the calling client's batches.
 
 Each client system has its own API key, which it sends in the `X-API-Key` header. The
 Django admin shows a new key once and stores only its hash. A client sees only its own
-records and batches. There are no webhooks: clients poll a record's GET endpoint to
-learn when its status changes. The API doesn't use Clerk sessions or CSRF protection.
+records; batches are the staff's. There are no webhooks: clients poll a record's GET
+endpoint to learn when its status changes. The API doesn't use Clerk sessions or CSRF
+protection.
 
 #### Poller
 
