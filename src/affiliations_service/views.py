@@ -2,13 +2,14 @@
 
 from django import forms
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 
 from affiliations_service.forms import (
     AffiliationCreateForm,
     AffiliationEditForm,
+    CdwgForm,
     MembershipAddForm,
     OtherEmailFormSet,
     PersonForm,
@@ -389,3 +390,61 @@ def person_edit(request: HttpRequest, pk: str) -> HttpResponse:
         The form, or a redirect to the person's page.
     """
     return _person_form(request, get_object_or_404(Person, pk=pk))
+
+
+@tool_permission_required("has_as_permissions")
+def cdwg_list(request: HttpRequest) -> HttpResponse:
+    """Lists the CDWGs, with how many affiliations each one has.
+
+    Deleted affiliations aren't counted.
+
+    Returns:
+        The CDWG list.
+    """
+    cdwgs = CDWG.objects.annotate(
+        affiliation_count=Count(
+            "affiliations", filter=Q(affiliations__is_deleted=False)
+        )
+    ).order_by("name")
+    return render(
+        request,
+        "affiliations_service/cdwg_list.html",
+        {"tool": get_tool("as"), "cdwgs": cdwgs},
+    )
+
+
+def _cdwg_form(request: HttpRequest, cdwg: CDWG | None) -> HttpResponse:
+    """Shows the CDWG form, and saves the CDWG when the form is valid.
+
+    Returns:
+        The form page, or a redirect to the CDWG list once it's saved.
+    """
+    form = CdwgForm(request.POST if request.method == "POST" else None, instance=cdwg)
+    if form.is_valid():
+        form.save()
+        return redirect("as:cdwgs")
+    return render(
+        request,
+        "affiliations_service/cdwg_form.html",
+        {"tool": get_tool("as"), "form": form, "cdwg": cdwg},
+    )
+
+
+@tool_permission_required("has_as_permissions")
+def cdwg_create(request: HttpRequest) -> HttpResponse:
+    """Adds a CDWG.
+
+    Returns:
+        The form, or a redirect to the CDWG list.
+    """
+    return _cdwg_form(request, None)
+
+
+@tool_permission_required("has_as_permissions")
+def cdwg_edit(request: HttpRequest, pk: str) -> HttpResponse:
+    """Changes a CDWG.
+
+    Returns:
+        The form, or a redirect to the CDWG list.
+    """
+    return _cdwg_form(request, get_object_or_404(CDWG, pk=pk))

@@ -38,5 +38,8 @@ urlpatterns = [
     path("people/new/", views.person_create, name="person-create"),
     path("people/<uuid:pk>/edit/", views.person_edit, name="person-edit"),
     path("people/<uuid:pk>/", views.person_detail, name="person"),
+    path("cdwgs/", views.cdwg_list, name="cdwgs"),
+    path("cdwgs/new/", views.cdwg_create, name="cdwg-create"),
+    path("cdwgs/<uuid:pk>/edit/", views.cdwg_edit, name="cdwg-edit"),
     path("api/v1/", api.urls),
 ]

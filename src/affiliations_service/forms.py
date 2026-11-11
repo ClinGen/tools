@@ -5,6 +5,7 @@ from typing import Any
 from django import forms
 
 from affiliations_service.models import (
+    CDWG,
     Affiliation,
     ClinVarSubmitterId,
     Membership,
@@ -136,3 +137,13 @@ class MembershipAddForm(BulmaFormMixin, forms.ModelForm):
         if membership.person_id and membership.role:  # ty: ignore[unresolved-attribute] (Django adds person_id.)
             membership.validate_constraints()
         return cleaned_data
+
+
+class CdwgForm(BulmaFormMixin, forms.ModelForm):
+    """The fields staff fill in for a CDWG."""
+
+    class Meta:
+        """Provides metadata."""
+
+        model = CDWG
+        fields = ["name", "gpm_uuid"]

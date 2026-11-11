@@ -1,0 +1,21 @@
+{% extends "layouts/base.html" %}
+{% block title %}{% if cdwg %}Edit {{ cdwg.name }}{% else %}New CDWG{% endif %}{% endblock %}
+{% block description %}{% if cdwg %}Change the {{ cdwg.name }} CDWG.{% else %}Add a CDWG to the AS.{% endif %}{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        {% include "affiliations_service/partials/header.html" with active_tab="cdwgs" %}
+        <h2 class="title is-4">{% if cdwg %}Edit {{ cdwg.name }}{% else %}New CDWG{% endif %}</h2>
+        <form method="post" class="block">{% csrf_token %}
+            {% for error in form.non_field_errors %}
+                <div class="notification is-danger is-light">{{ error }}</div>
+            {% endfor %}
+            {% for field in form %}
+                {% include "affiliations_service/partials/field.html" %}
+            {% endfor %}
+            <div class="buttons">
+                <button type="submit" class="button is-link">Save</button>
+                <a class="button is-link is-light" href="{% url 'as:cdwgs' %}">Cancel</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

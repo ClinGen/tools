@@ -20,6 +20,12 @@
                 <span>People</span>
             </a>
         </li>
+        <li{% if active_tab == "cdwgs" %} class="is-active"{% endif %}>
+            <a href="{% url 'as:cdwgs' %}"{% if active_tab == "cdwgs" %} aria-current="page"{% endif %}>
+                {% include "common/icon.html" with icon_name="diagram-3" %}
+                <span>CDWGs</span>
+            </a>
+        </li>
         {% if active_tab == "affiliation" %}
             <li class="is-active">
                 <a href="{{ affiliation.get_absolute_url }}" aria-current="page">

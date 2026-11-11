@@ -1,0 +1,32 @@
+{% extends "layouts/base.html" %}
+{% block title %}CDWGs{% endblock %}
+{% block description %}See the Clinical Domain Working Groups that affiliations belong to.{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        {% include "affiliations_service/partials/header.html" with active_tab="cdwgs" %}
+        <p class="block">Each affiliation belongs to one Clinical Domain Working Group (CDWG).</p>
+        <div class="buttons">
+            <a class="button is-link" href="{% url 'as:cdwg-create' %}">Add CDWG</a>
+        </div>
+        {% if cdwgs %}
+            <div class="block table-container">
+                <table class="table is-hoverable">
+                    <thead>
+                        <tr><th>Name</th><th>Affiliations</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        {% for cdwg in cdwgs %}
+                            <tr>
+                                <td>{{ cdwg.name }}</td>
+                                <td><a href="{% url 'as:index' %}?cdwg={{ cdwg.pk }}">{{ cdwg.affiliation_count }}</a></td>
+                                <td><a href="{% url 'as:cdwg-edit' pk=cdwg.pk %}">Edit</a></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p>There are no CDWGs yet.</p>
+        {% endif %}
+    </div>
+{% endblock %}

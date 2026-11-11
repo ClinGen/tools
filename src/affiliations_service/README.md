@@ -76,7 +76,7 @@ Defines the forms on the AS's pages: `AffiliationCreateForm`, `AffiliationEditFo
 `SubmitterIdFormSet` for an affiliation's ClinVar submitter IDs, `PersonForm`, and
 `OtherEmailFormSet` for a person's other emails, and `MembershipAddForm`, which also
 checks the membership constraints that Django would skip because the affiliation isn't a
-form field. `BulmaFormMixin` gives text inputs Bulma's classes.
+form field, and `CdwgForm`. `BulmaFormMixin` gives text inputs Bulma's classes.
 
 ### `history.py`
 
@@ -125,6 +125,15 @@ deleted.
 
 The form for creating or editing an affiliation, with its ClinVar submitter IDs. When
 editing, it shows the IDs, type, and whether it's linked to the GPM as read-only.
+
+### `templates/affiliations_service/cdwg_form.html`
+
+The form for adding or editing a CDWG.
+
+### `templates/affiliations_service/cdwg_list.html`
+
+Lists the CDWGs with how many affiliations each has, linking to the affiliation list
+filtered by that CDWG. CDWGs aren't deleted from the UI, since affiliations need them.
 
 ### `templates/affiliations_service/index.html`
 
@@ -175,6 +184,11 @@ ORCID iD checks, 404s, and that people can't be deleted.
 
 Tests adding and ending memberships from an affiliation's page, with and without HTMX,
 and the person search behind the add-member form.
+
+### `test_cdwg_pages.py`
+
+Tests the CDWG list's counts and links, adding and editing CDWGs, and the error for a
+name that differs from another only in case.
 
 ### `test_memberships.py`
 
