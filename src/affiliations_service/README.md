@@ -12,8 +12,9 @@ Empty file that marks `affiliations_service` as a Python package.
 ### `admin.py`
 
 Registers CDWGs and affiliations in the Django admin, with their history. ClinVar
-submitter IDs are edited inline on their affiliation. Only superusers can change an
-existing affiliation's IDs, type, and GPM UUID.
+submitter IDs are edited inline on their affiliation, and other emails inline on their
+person. Admin search finds a person by any of their emails. Only superusers can change
+an existing affiliation's IDs, type, and GPM UUID.
 
 ### `apps.py`
 
@@ -30,6 +31,11 @@ business rules (an SC-VCEP's CDWG, an independent curation group's CDWG and GPM 
 and that hand-set IDs are in range and end in the same three digits. Constraint and
 uniqueness errors have plain-language messages, so forms can show them to staff.
 
+It also defines `Person` and `PersonEmail` (a person's other emails). No two people
+share an email, ignoring case, whether it's a primary or another email: constraints
+catch duplicates within each table, and `clean()` catches them across the two. ORCID iDs
+are checked for format and are unique when set.
+
 ### `templates/affiliations_service/index.html`
 
 The AS's home page.
@@ -42,6 +48,10 @@ highlight their tab.
 ### `test_models.py`
 
 Tests ID assignment, soft deletion, uniqueness constraints, and history.
+
+### `test_people.py`
+
+Tests people's email uniqueness, ORCID iD checks, GPM UUIDs, history, and admin search.
 
 ### `test_rules.py`
 

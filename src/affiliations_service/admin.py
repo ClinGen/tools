@@ -2,7 +2,13 @@ from django.contrib import admin
 from django.http import HttpRequest
 from simple_history.admin import SimpleHistoryAdmin
 
-from affiliations_service.models import CDWG, Affiliation, ClinVarSubmitterId
+from affiliations_service.models import (
+    CDWG,
+    Affiliation,
+    ClinVarSubmitterId,
+    Person,
+    PersonEmail,
+)
 
 
 @admin.register(CDWG)
@@ -47,3 +53,15 @@ class AffiliationAdmin(SimpleHistoryAdmin):
         if obj is not None and not getattr(request.user, "is_superuser", False):
             readonly += self.locked_fields
         return readonly
+
+
+class PersonEmailInline(admin.TabularInline):
+    model = PersonEmail
+    extra = 0
+
+
+@admin.register(Person)
+class PersonAdmin(SimpleHistoryAdmin):
+    list_display = ["name", "preferred_name", "email", "institution"]
+    search_fields = ["name", "preferred_name", "email", "other_emails__email", "orcid"]
+    inlines = [PersonEmailInline]
