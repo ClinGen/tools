@@ -1,10 +1,12 @@
 from django.contrib.auth.models import User
+from django.db.models import Count
 from django.test import TestCase
+from django.urls import reverse
 
 from auth_.models import UserProfile
 from clinvar_submission_service.content import Content, record_fields
-from clinvar_submission_service.models import Batch
-from clinvar_submission_service.services import build_payload
+from clinvar_submission_service.models import Batch, BatchRecord, Record
+from clinvar_submission_service.services import build_payload, report_results
 from common.models import make_slug
 
 FORWARDED_STATUSES = {
@@ -15,7 +17,7 @@ FORWARDED_STATUSES = {
 }
 
 
-class BatchFixtureTest(TestCase):
+class FixtureTest(TestCase):
     fixtures = ["test_batches.json"]
 
     def test_has_a_batch_in_every_status(self):
@@ -64,15 +66,52 @@ class BatchFixtureTest(TestCase):
                 )
                 fields = record_fields(content)
                 for record, expected in zip(records, fields, strict=True):
+                    if record.status == Record.Status.SUCCEEDED_AT_CLINVAR:
+                        # ClinVar gave an accepted record its SCV.
+                        del expected["clinvar_accession"]
                     for name, value in expected.items():
                         self.assertEqual(getattr(record, name), value, name)
                     self.assertEqual(record.affiliation_id, batch.affiliation_id)
 
-    def test_every_submissions_page_renders(self):
+    def test_has_a_record_in_every_status(self):
+        statuses = set(Record.objects.values_list("status", flat=True))
+        self.assertEqual(statuses, set(Record.Status.values))
+
+    def test_has_a_record_retried_across_two_batches(self):
+        retried = Record.objects.annotate(tries=Count("batch_records")).filter(
+            tries__gte=2
+        )
+        self.assertTrue(retried.exists())
+        attempts = retried.first().batch_records.order_by("batch__added_at")  # type: ignore
+        self.assertEqual(attempts.first().result, BatchRecord.Result.ERROR)
+
+    def test_each_attempts_result_matches_its_batchs_report(self):
+        for attempt in BatchRecord.objects.select_related("batch", "record"):
+            with self.subTest(attempt):
+                result = report_results(attempt.batch.summary_report).get(
+                    attempt.record.local_id
+                )
+                self.assertEqual(
+                    attempt.result, result["processingStatus"] if result else ""
+                )
+
+    def test_every_page_renders(self):
         user = User.objects.create_user(username="staff@example.com")
         UserProfile.objects.create(user=user, has_css_permissions=True)
         self.client.force_login(user)
-        for batch in Batch.objects.all():
-            with self.subTest(batch.slug):
-                response = self.client.get(batch.get_absolute_url())
-                self.assertEqual(response.status_code, 200)
+        affiliation_ids = set(Record.objects.values_list("affiliation_id", flat=True))
+        pages = [
+            reverse("css:index"),
+            reverse("css:records"),
+            reverse("css:affiliations"),
+            *(batch.get_absolute_url() for batch in Batch.objects.all()),
+            *(record.get_absolute_url() for record in Record.objects.all()),
+            *(
+                reverse(name, kwargs={"affiliation_id": affiliation_id})
+                for affiliation_id in affiliation_ids
+                for name in ["css:new_batch", "css:affiliation_settings"]
+            ),
+        ]
+        for url in pages:
+            with self.subTest(url):
+                self.assertEqual(self.client.get(url).status_code, 200)

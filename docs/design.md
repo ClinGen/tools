@@ -62,7 +62,7 @@ Each tool keeps the external integrations it had as a standalone service:
 - **AS**: other ClinGen tools (the GCI, the VCI, and others) read and write affiliation
   data through its REST API. The Group and Personnel Management (GPM) system at UNC
   links to affiliations by UUID.
-- **CSS**: ClinGen clients send submissions through its API, and the CSS forwards them
+- **CSS**: ClinGen clients send records through its API, and staff send them in batches
   to the NCBI ClinVar Submission API.
 - **ETS**: reads and changes user accounts in the Gene Curation Interface (GCI) and the
   Variant Curation Interface (VCI). Those accounts live in two places: an AWS Cognito
@@ -174,12 +174,15 @@ them in the Django admin.
 
 ### The ClinVar Submission Service
 
-ClinGen client systems send ClinVar submissions to the CSS through its API. The CSS
-forwards each one to the NCBI ClinVar Submission API, polls ClinVar until the submission
-reaches a final status, and shows staff every submission and ClinVar's responses. The
-CSS doesn't validate submissions against ClinVar's schema beyond what it needs to store
-and forward them, because ClinVar is the source of truth for what's valid. It stores
-only the submissions it sent and ClinVar's responses to them, not a mirror of ClinVar.
+ClinGen client systems, such as the VCI, send ClinVar records to the CSS through its
+API, one at a time, and the records wait in the CSS. A staff member picks one
+affiliation's waiting records, makes a batch of them, and sends the batch to the NCBI
+ClinVar Submission API as one submission. The CSS polls ClinVar until the batch reaches
+a final status, saves ClinVar's result for each record, and shows staff every record,
+every batch, and ClinVar's responses. The CSS doesn't validate records against ClinVar's
+schema beyond what it needs to store and send them, because ClinVar is the source of
+truth for what's valid. It stores only the records and batches it has and ClinVar's
+responses to them, not a mirror of ClinVar.
 
 #### The ClinVar Submission API
 
@@ -208,8 +211,8 @@ requests.
 #### Batch Lifecycle
 
 A `Batch` is one submission to ClinVar. Its slug is `B` and the start of its UUID, such
-as `B3f2a9c1e`. It records the client that sent it, its records, the ClinVar submission
-ID, its status, ClinVar's latest response and that response's `updated` timestamp and
+as `B3f2a9c1e`. It records its affiliation, its records, the ClinVar submission ID, its
+status, ClinVar's latest response and that response's `updated` timestamp and
 `errorCode`, the summary report, and any error message.
 
 Each of a batch's records is a `Record`: one germline variant classification, with its
@@ -265,10 +268,11 @@ description in a tooltip. The statuses are:
   Final.
 
 `send_to_clinvar_failed` and `error_at_clinvar` stay separate: the first means ClinVar
-never got the submission, and the second means ClinVar processed it and reported record
-errors. The CSS never resends a submission on its own. Staff resend a
-`send_to_clinvar_failed` submission from its page, which repeats step 3, or the client
-sends a new submission.
+never got the batch, and the second means ClinVar processed it and reported record
+errors. The CSS never resends a batch on its own. Staff resend a
+`send_to_clinvar_failed` batch from its page, which repeats step 3. A record that failed
+at ClinVar goes back to waiting, where the client can replace it with a corrected
+version and staff can add it to a later batch.
 
 #### API
 
@@ -297,28 +301,28 @@ go in a new version beside it. Ninja validates request bodies and serves OpenAPI
 
 Each client system has its own API key, which it sends in the `X-API-Key` header. The
 Django admin shows a new key once and stores only its hash. A client sees only its own
-records and batches. There are no webhooks: clients poll a submission's GET endpoint to
+records and batches. There are no webhooks: clients poll a record's GET endpoint to
 learn when its status changes. The API doesn't use Clerk sessions or CSRF protection.
 
 #### Poller
 
 The poller is the `poll_clinvar` management command (see Processes). Each pass, it:
 
-- takes a small batch of the submissions that are due
-- reads each one's status from ClinVar with a request timeout, logging with the
-  submission's slug
-- backs off exponentially through `next_poll_at` while a submission is still processing
-  or ClinVar returns an error, up to a maximum interval
+- takes a few of the batches that are due
+- reads each one's status from ClinVar with a request timeout, logging with the batch's
+  slug
+- backs off exponentially through `next_poll_at` while a batch is still processing or
+  ClinVar returns an error, up to a maximum interval
 - waits at least as long as ClinVar's `Retry-After` header says when ClinVar returns 429
-- reports errors it catches to Sentry, so a failing submission doesn't go unnoticed, and
-  moves on to the next submission
+- reports errors it catches to Sentry, so a failing batch doesn't go unnoticed, and
+  moves on to the next batch
 - saves each record's result from a finished batch's summary report, matched by local
   ID: a record ClinVar accepted gets its SCV, and one that failed goes back to waiting,
   so it can join a later batch, with ClinVar's errors kept on that attempt
 
 ClinVar's processing can take days, so the poller checks on a scale of minutes, not
 seconds. It keeps its state in the database, so restarting it loses nothing, and it
-exits cleanly on SIGTERM after finishing the submission it's working on.
+exits cleanly on SIGTERM after finishing the batch it's working on.
 
 #### Staff Pages
 

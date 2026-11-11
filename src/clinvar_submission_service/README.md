@@ -72,12 +72,15 @@ replaced, and `make_content()` wraps records in content.
 
 ### `fixtures/test_batches.json`
 
-A Django fixture with a VCI API key and eight batches from five made-up affiliations,
-with at least one in each status and one to three records each: ones ClinVar never got
-(not sent and send failed), and submitted, processing, processed, and error ones
-forwarded to ClinVar, with made-up ClinVar IDs, responses, and summary reports with SCVs
-and an error. None is due to poll. Load it with `just django-loaddata-test`; tests load
-it with `fixtures = ["test_batches.json"]`.
+A Django fixture with a VCI API key, records from five made-up affiliations, and eight
+batches of them, with at least one batch in each status: ones ClinVar never got (not
+sent and send failed), and submitted, processing, processed, and error ones sent to
+ClinVar, with made-up ClinVar IDs, responses, and summary reports with SCVs and errors.
+Each attempt's result matches its batch's report. Records are in every status, including
+waiting ones not yet in a batch, a withdrawn one, accepted ones with their SCVs, one
+that failed and waits again, and one retried across two batches. Two affiliations have
+settings. No batch is made by a client, and none is due to poll. Load it with `just
+django-loaddata-test`; tests load it with `fixtures = ["test_batches.json"]`.
 
 ### `forms.py`
 
@@ -288,9 +291,11 @@ are set in the environment.
 
 ### `test_fixtures.py`
 
-Tests the fixture: it has a batch in every status, from several affiliations, only
-forwarded ones have a ClinVar ID, only finished ones have a summary report, each batch's
-records match what parsing its payload gives, and every batch's page renders.
+Tests the fixture: it has a batch and a record in every status, from several
+affiliations, only sent batches have a ClinVar ID, only finished ones have a summary
+report, each batch's records match what parsing its content gives, each attempt's result
+matches its batch's report, a record is retried across two batches, and every CSS page
+renders, including each batch's, record's, new batch, and settings page.
 
 ### `test_polling.py`
 
