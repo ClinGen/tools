@@ -43,8 +43,9 @@ ClinGen Tools is maintained by the Stanford contingent of
 - Apply migrations: `just django-migrate`.
 - Run the development server: `just django-runserver`.
 
-Run `just --list` to see every recipe. `docs/how-to.md` covers infrastructure and
-deployment.
+Run `just --list` to see every recipe. `docs/how-to.md` covers infrastructure,
+deployment, and trying the CSS workflow locally with dummy records and a simulated
+ClinVar.
 
 ## Contributing
 

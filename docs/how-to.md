@@ -206,3 +206,58 @@ it's polling before it stops.
 - Open `/css/` to see them. Loading the fixtures again resets them: it deletes every CSS
   batch, record, and affiliation setting first, including ones you made in the UI, but
   keeps API keys.
+
+## How to Try the CSS Workflow Locally
+
+This sends dummy records to your local CSS, as the VCI would, and has a simulated
+ClinVar accept and process the batches you send, so nothing reaches the VCI or ClinVar.
+
+- Make an API key for the dummy records. Run `just django-runserver`, open
+  `/admin/clinvar_submission_service/apikey/add/`, name it `Dummy VCI`, and save. Copy
+  the key from the message at the top of the page; it's shown only once.
+- In `.env`, set:
+
+  ```
+  CSS_DUMMY_API_KEY=<the key>
+  CSS_SIMULATE_CLINVAR=1
+  ```
+
+- Restart the development server, so it reads `.env`:
+
+  ```
+  just django-runserver
+  ```
+
+  Every CSS page now says ClinVar is simulated.
+
+- In a second terminal, run the poller:
+
+  ```
+  just django-poll-clinvar
+  ```
+
+  While ClinVar is simulated, it checks every few seconds instead of every few minutes.
+
+- In a third terminal, send some dummy records:
+
+  ```
+  just css-send-dummy-records --count 10
+  ```
+
+  Add `--resend` to send about half of them again with a new classification, which
+  replaces the waiting records and keeps the old versions in their history.
+
+- Open `/css/records/` to see the records waiting for a batch.
+- Open `/css/affiliations/`, click an affiliation's gear, and set its assertion
+  criteria, such as PubMed 25741868. A batch takes these settings when it's made.
+- On `/css/records/`, pick that affiliation in the select and click **New Batch**. Pick
+  records, or click **Add Every Waiting Record**, review them, and click **Send to
+  ClinVar**.
+- On the batch's page, watch it move from Submitted to Processing to Processed or Error
+  as the poller checks on it. Reload to see each step. Most records get Success with a
+  made-up SCV; the rest get Error and go back to waiting, ready for a later batch.
+- About one send in ten fails on purpose, so the batch shows Send Failed. Click
+  **Resend** on its page to try again.
+- To stop simulating, empty `CSS_SIMULATE_CLINVAR` in `.env` and restart the server and
+  the poller. To clear the records and batches, run `just django-loaddata-test`, which
+  replaces them with the sample fixture.
