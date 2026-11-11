@@ -114,40 +114,47 @@ class BatchNotMadeError(Exception):
     """Raised when the chosen records can't make a batch, with a message for staff."""
 
 
-def make_batch(records: Iterable[Record]) -> Batch:
-    """Makes a batch, not yet sent to ClinVar, of one affiliation's waiting records.
-
-    The records go in the batch in the order given and are marked as in a batch, so
-    they can't join another one. The batch copies its affiliation's settings, if it
-    has any, so it keeps the values it's sent with.
-
-    Args:
-        records: The records, all waiting and from one affiliation.
-
-    Returns:
-        The batch.
+def check_batchable(records: list[Record]) -> None:
+    """Checks that records can make a batch, without making one.
 
     Raises:
         BatchNotMadeError: If there are no records, more than ClinVar takes in one
             submission, records from more than one affiliation, or records that
             aren't waiting.
     """
-    pks = [record.pk for record in records]
-    if not pks:
+    if not records:
         error_message = "Pick at least one record."
         raise BatchNotMadeError(error_message)
-    if len(pks) > MAX_RECORDS:
+    if len(records) > MAX_RECORDS:
         error_message = f"A batch can hold at most {MAX_RECORDS:,} records."
         raise BatchNotMadeError(error_message)
+    if len({record.affiliation_id for record in records}) > 1:
+        error_message = "A batch can hold only one affiliation's records."
+        raise BatchNotMadeError(error_message)
+    if any(r.status != Record.Status.WAITING_FOR_BATCH for r in records):
+        error_message = "Only records waiting for a batch can be added to one."
+        raise BatchNotMadeError(error_message)
+
+
+def make_batch(records: Iterable[Record]) -> Batch:
+    """Makes a batch, not yet sent to ClinVar, of one affiliation's waiting records.
+
+    The records go in the batch in the order given and are marked as in a batch, so
+    they can't join another one. The batch copies its affiliation's settings, if it
+    has any, so it keeps the values it's sent with. If `check_batchable()` refuses
+    the records, its BatchNotMadeError passes through and nothing is saved.
+
+    Args:
+        records: The records, all waiting and from one affiliation.
+
+    Returns:
+        The batch.
+    """
+    pks = [record.pk for record in records]
     with transaction.atomic():
         locked = Record.objects.select_for_update().in_bulk(pks)
         chosen = [locked[pk] for pk in pks]
-        if len({record.affiliation_id for record in chosen}) > 1:
-            error_message = "A batch can hold only one affiliation's records."
-            raise BatchNotMadeError(error_message)
-        if any(r.status != Record.Status.WAITING_FOR_BATCH for r in chosen):
-            error_message = "Only records waiting for a batch can be added to one."
-            raise BatchNotMadeError(error_message)
+        check_batchable(chosen)
         newest = max(chosen, key=lambda record: record.added_at)
         settings = AffiliationSettings.objects.filter(
             affiliation_id=newest.affiliation_id

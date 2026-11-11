@@ -325,7 +325,10 @@ exits cleanly on SIGTERM after finishing the submission it's working on.
 A Records tab lists every record in the CSS, newest first, with its affiliation, gene
 and HGVS, classification, and status. Like the batch list, it has status pills, an
 affiliation filter, a live search (gene, HGVS, local ID, or affiliation), and status
-tags that link to their filter.
+tags that link to their filter. Filtered to one affiliation, it links to that
+affiliation's new batch page, where staff pick waiting records, or add every waiting
+record, review them, and send them to ClinVar as one batch. The page explains in plain
+words why a selection can't be batched.
 
 The CSS's pages list every batch (a submission to ClinVar), newest first, with its
 affiliation and the genes of its records. Pills filter it to one status, or show all of

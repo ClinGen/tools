@@ -147,20 +147,21 @@ status as it was, and doesn't stop the pass.
 Saves a record a client sent with `save_record()`, which replaces the affiliation's
 waiting record with the same local ID, if there is one, so its history keeps the old
 version. `withdraw_record()` withdraws a waiting record and notes who did in its
-history, or raises `NotWithdrawableError` for any other. `make_batch()` makes a
-not-yet-sent batch of one affiliation's waiting records, in the order given, copies the
-affiliation's `AffiliationSettings` onto it, and marks the records as in a batch; it
-raises `BatchNotMadeError`, with a message for staff, for no records, more than 10,000,
-mixed affiliations, or records that aren't waiting. `build_payload()` builds a batch's
-ClinVar content from its records' JSON, in order, and the batch's submission-level
-fields. `report_results()` reads each record's result from a summary report by local ID,
-and `save_results()` saves them: a record ClinVar accepted gets its SCV, and one that
-failed goes back to waiting, with ClinVar's errors kept on its attempt. Forwards a batch
-to ClinVar once with `forward_batch()`, which sends that built content and which the
-staff Resend button uses. If ClinVar accepts it, the batch is submitted, with its
-ClinVar ID and a first poll time; if ClinVar rejects it, can't be reached, or the CSS
-has no ClinVar key, it's send_to_clinvar_failed, with the error, and its records stay in
-it. It never retries.
+history, or raises `NotWithdrawableError` for any other. `check_batchable()` checks that
+records can make a batch, and `make_batch()` makes a not-yet-sent batch of one
+affiliation's waiting records, in the order given, copies the affiliation's
+`AffiliationSettings` onto it, and marks the records as in a batch; it raises
+`BatchNotMadeError`, with a message for staff, for no records, more than 10,000, mixed
+affiliations, or records that aren't waiting. `build_payload()` builds a batch's ClinVar
+content from its records' JSON, in order, and the batch's submission-level fields.
+`report_results()` reads each record's result from a summary report by local ID, and
+`save_results()` saves them: a record ClinVar accepted gets its SCV, and one that failed
+goes back to waiting, with ClinVar's errors kept on its attempt. Forwards a batch to
+ClinVar once with `forward_batch()`, which sends that built content and which the staff
+Resend button uses. If ClinVar accepts it, the batch is submitted, with its ClinVar ID
+and a first poll time; if ClinVar rejects it, can't be reached, or the CSS has no
+ClinVar key, it's send_to_clinvar_failed, with the error, and its records stay in it. It
+never retries.
 
 ### `templates/clinvar_submission_service/affiliation_settings.html`
 
@@ -186,8 +187,14 @@ ClinVar's error text; developers see those in the Django admin.
 ### `templates/clinvar_submission_service/records.html`
 
 The Records tab, laid out like the batch list: status pills, a notice when it shows one
-affiliation, and a search box that updates the results as you type and matches genes,
-HGVS, local IDs, and affiliations.
+affiliation, with a Make a Batch button for it, and a search box that updates the
+results as you type and matches genes, HGVS, local IDs, and affiliations.
+
+### `templates/clinvar_submission_service/new_batch.html`
+
+The page where staff make a batch for one affiliation: its waiting records with
+checkboxes, an Add Every Waiting Record shortcut, a review of the picked records, and a
+Send to ClinVar button.
 
 ### `templates/clinvar_submission_service/partials/record_results.html`
 
@@ -320,7 +327,11 @@ affiliation known only from its records, rejects bad values with plain messages,
 for an unknown affiliation, and is linked from the affiliations page; and the Records
 page's order, status pills and filter, affiliation filter, search by gene, HGVS, local
 ID, or affiliation, status tags linking to their filter, results-only HTMX response,
-tab, and that it shows no raw JSON. Against the
+tab, and that it shows no raw JSON; and that the new batch page lists an affiliation's
+waiting records, reviews the picked records or every waiting one, makes and sends the
+batch and records who did, refuses an empty, mixed, or not-waiting selection with a
+plain message, 404s for an unknown affiliation, and is linked from the Records page for
+one affiliation. Against the
 fixtures, tests the affiliations page's counts, order, links, headers, and tab.
 
 ### `tests.py`
@@ -339,7 +350,8 @@ relative to ClinVar renames old rows and their history, and back. Also tests tha
 ### `urls.py`
 
 Routes the CSS's pages under the `css` namespace: the batch list at the root, the
-affiliations page at `affiliations/`, each batch at `batches/<slug>/`, its resend at
+affiliations page at `affiliations/`, an affiliation's new batch at
+`affiliations/<id>/new-batch/`, each batch at `batches/<slug>/`, its resend at
 `batches/<slug>/resend/`, the records list at `records/`, a record's withdraw at
 `records/<slug>/withdraw/`, and the API at `api/v1/` under `css:api-1`.
 
@@ -348,11 +360,13 @@ affiliations page at `affiliations/`, each batch at `batches/<slug>/`, its resen
 Serves the CSS's pages to users with CSS permissions: the batch list, with its status
 and affiliation filters, search, sorting, and pagination, and just its results for an
 HTMX request; the Records page, with the same kinds of filters and search; the
-affiliations page, which counts each affiliation's batches by status
-and names it from its newest batch; each affiliation's settings page, which shows and
-saves its `AffiliationSettings`; and each batch's page, which pairs each `Record`
-with its result in ClinVar's summary report. The resend view, which takes only POSTs,
-forwards a send_to_clinvar_failed batch again through `services.forward_batch()` and
-shows a plain error message if ClinVar still didn't get it. The withdraw view, also
-POST-only, withdraws a waiting record through `services.withdraw_record()` and returns
-to the batch list with a plain message.
+affiliations page, which counts each affiliation's batches by status and names it from
+its newest batch; each affiliation's settings page, which shows and saves its
+`AffiliationSettings`; the new batch page, which lists an affiliation's waiting records,
+reviews the picked ones, and makes and sends the batch through `services.make_batch()`
+and `forward_batch()`, with a plain message when it can't; and each batch's page, which
+pairs each `Record` with its result in ClinVar's summary report. The resend view, which
+takes only POSTs, forwards a send_to_clinvar_failed batch again through
+`services.forward_batch()` and shows a plain error message if ClinVar still didn't get
+it. The withdraw view, also POST-only, withdraws a waiting record through
+`services.withdraw_record()` and returns to the batch list with a plain message.

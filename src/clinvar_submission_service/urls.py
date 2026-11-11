@@ -10,6 +10,11 @@ urlpatterns = [
     path("records/", views.records, name="records"),
     path("affiliations/", views.affiliations, name="affiliations"),
     path(
+        "affiliations/<int:affiliation_id>/new-batch/",
+        views.new_batch,
+        name="new_batch",
+    ),
+    path(
         "affiliations/<int:affiliation_id>/settings/",
         views.affiliation_settings,
         name="affiliation_settings",

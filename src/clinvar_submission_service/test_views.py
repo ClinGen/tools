@@ -85,6 +85,8 @@ class PermissionTest(CssViewTestCase):
             ("get", _settings_url(10007)),
             ("post", _settings_url(10007)),
             ("get", reverse("css:records")),
+            ("get", _new_batch_url(10007)),
+            ("post", _new_batch_url(10007)),
         ]
         self.client.force_login(_make_user("other@example.com"))
         for method, url in pages:
@@ -741,6 +743,108 @@ class RecordListViewTest(CssViewTestCase):
         self.assertContains(
             response, f'<a href="{reverse("css:records")}" aria-current="page">'
         )
+
+
+def _new_batch_url(affiliation_id: int) -> str:
+    return reverse("css:new_batch", kwargs={"affiliation_id": affiliation_id})
+
+
+class NewBatchViewTest(CssViewTestCase):
+    def setUp(self):
+        super().setUp()
+        self.fake = FakeClinVarClient()
+        patcher = mock.patch(
+            "clinvar_submission_service.services.ClinVarClient.from_settings",
+            return_value=self.fake,
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.first = self._record("var-1")
+        self.second = self._record("var-2")
+
+    def _record(self, local_id: str, **fields: object) -> Record:
+        content = Content.model_validate(make_content(make_record(local_id)))
+        defaults = {
+            "affiliation_id": 10007,
+            "affiliation_name": "Hearing Loss VCEP",
+            "payload": make_record(local_id),
+        }
+        return Record.objects.create(**(record_fields(content)[0] | defaults | fields))
+
+    def post(self, action: str, *records: Record, **extra: object):
+        data = {"action": action, "records": [r.slug for r in records]}
+        return self.client.post(_new_batch_url(10007), data | extra, follow=True)
+
+    def test_lists_the_affiliations_waiting_records_to_pick(self):
+        withdrawn = self._record("var-3", status=Record.Status.WITHDRAWN)
+        theirs = self._record("var-4", affiliation_id=10008)
+        response = self.client.get(_new_batch_url(10007))
+        self.assertContains(response, "Hearing Loss VCEP")
+        for record in (self.first, self.second):
+            self.assertContains(response, f'value="{record.slug}"')
+        for record in (withdrawn, theirs):
+            self.assertNotContains(response, record.slug)
+        self.assertContains(response, "Add Every Waiting Record")
+
+    def test_reviews_the_chosen_records_before_sending(self):
+        response = self.post("review", self.second)
+        self.assertContains(response, "Review the Batch")
+        self.assertContains(response, f'value="{self.second.slug}"')
+        self.assertNotContains(response, self.first.slug)
+        self.assertContains(response, "Send to ClinVar")
+        self.assertFalse(Batch.objects.exists())
+
+    def test_the_shortcut_reviews_every_waiting_record(self):
+        response = self.post("review_all")
+        for record in (self.first, self.second):
+            self.assertContains(response, f'value="{record.slug}"')
+        self.assertFalse(Batch.objects.exists())
+
+    def test_sending_makes_and_sends_the_batch(self):
+        response = self.post("send", self.first, self.second)
+        batch = Batch.objects.get()
+        self.assertRedirects(response, batch.get_absolute_url())
+        self.assertEqual(
+            list(batch.records.order_by("batch_records")), [self.first, self.second]
+        )
+        self.assertEqual(batch.status, Batch.Status.SUBMITTED_TO_CLINVAR)
+        self.assertEqual(len(self.fake.submitted), 1)
+        self.assertContains(response, "var-1")
+        self.assertContains(response, "var-2")
+        self.assertEqual(batch.history.first().history_user, self.user)  # type: ignore
+
+    def test_refuses_an_empty_or_mixed_selection_with_a_plain_message(self):
+        theirs = self._record("var-3", affiliation_id=10008)
+        cases = {
+            "empty review": ("review", [], "Pick at least one record."),
+            "empty send": ("send", [], "Pick at least one record."),
+            "mixed": (
+                "send",
+                [self.first, theirs],
+                "A batch can hold only one affiliation&#x27;s records.",
+            ),
+            "not waiting": (
+                "review",
+                [self._record("var-4", status=Record.Status.IN_BATCH)],
+                "Only records waiting for a batch can be added to one.",
+            ),
+        }
+        for name, (action, records, message) in cases.items():
+            with self.subTest(name):
+                response = self.post(action, *records)
+                self.assertContains(response, message)
+                self.assertContains(response, "Add Every Waiting Record")
+        self.assertFalse(Batch.objects.exists())
+        self.assertEqual(self.fake.submitted, [])
+
+    def test_an_unknown_affiliation_is_404(self):
+        self.assertEqual(self.client.get(_new_batch_url(99999)).status_code, 404)
+
+    def test_the_records_list_links_to_it_for_one_affiliation(self):
+        response = self.client.get(reverse("css:records"), {"affiliation": "10007"})
+        self.assertContains(response, _new_batch_url(10007))
+        response = self.client.get(reverse("css:records"))
+        self.assertNotContains(response, _new_batch_url(10007))
 
 
 class AffiliationTestCase(TestCase):

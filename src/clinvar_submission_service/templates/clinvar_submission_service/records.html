@@ -12,6 +12,10 @@
                     No affiliation has that ID.
                 {% endif %}
                 <a href="{% url 'css:records' %}">Show every affiliation</a>
+                {% if affiliation_name %}
+                    <a class="button is-link is-small ml-3"
+                       href="{% url 'css:new_batch' affiliation_id=affiliation %}">Make a Batch</a>
+                {% endif %}
             </div>
         {% endif %}
         <div class="tabs is-toggle is-small">

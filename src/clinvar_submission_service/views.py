@@ -11,8 +11,11 @@ from auth_.permissions import tool_permission_required
 from clinvar_submission_service.forms import AffiliationSettingsForm
 from clinvar_submission_service.models import AffiliationSettings, Batch, Record
 from clinvar_submission_service.services import (
+    BatchNotMadeError,
     NotWithdrawableError,
+    check_batchable,
     forward_batch,
+    make_batch,
     report_results,
     withdraw_record,
 )
@@ -333,4 +336,61 @@ def affiliation_settings(request: HttpRequest, affiliation_id: int) -> HttpRespo
         request,
         "clinvar_submission_service/affiliation_settings.html",
         {"tool": get_tool("css"), "affiliation_name": name, "form": form},
+    )
+
+
+def _chosen_records(slugs: list[str]) -> list[Record]:
+    """Returns the records with the slugs, in their order.
+
+    Raises:
+        BatchNotMadeError: If a slug isn't a record's.
+    """
+    by_slug = Record.objects.in_bulk(slugs, field_name="slug")
+    if len(by_slug) != len(set(slugs)):
+        error_message = "Some of the chosen records couldn't be found."
+        raise BatchNotMadeError(error_message)
+    return [by_slug[slug] for slug in dict.fromkeys(slugs)]
+
+
+@tool_permission_required("has_css_permissions")
+def new_batch(request: HttpRequest, affiliation_id: int) -> HttpResponse:
+    """Makes a batch of an affiliation's waiting records and sends it to ClinVar.
+
+    A GET lists the waiting records to pick. A POST's action= says what to do with
+    the records= picked: review shows them before sending, review_all reviews every
+    waiting record, and send makes the batch and sends it.
+
+    Returns:
+        The page, or a redirect to the new batch's page once it's sent.
+    """
+    name = _affiliation_name(affiliation_id)
+    waiting = Record.objects.filter(
+        affiliation_id=affiliation_id, status=Record.Status.WAITING_FOR_BATCH
+    )
+    chosen: list[Record] = []
+    if request.method == "POST":
+        action = request.POST.get("action")
+        try:
+            if action == "review_all":
+                chosen = list(waiting)
+            else:
+                chosen = _chosen_records(request.POST.getlist("records"))
+            check_batchable(chosen)
+            if action == "send":
+                batch = forward_batch(make_batch(chosen))
+                if batch.status == Batch.Status.SEND_TO_CLINVAR_FAILED:
+                    messages.error(request, RESEND_FAILED_MESSAGE)
+                return redirect(batch)
+        except BatchNotMadeError as error:
+            messages.error(request, str(error))
+            chosen = []
+    return render(
+        request,
+        "clinvar_submission_service/new_batch.html",
+        {
+            "tool": get_tool("css"),
+            "affiliation_name": name,
+            "records": chosen or waiting,
+            "reviewing": bool(chosen),
+        },
     )
