@@ -324,7 +324,7 @@ exits cleanly on SIGTERM after finishing the batch it's working on.
 
 #### Staff Pages
 
-A Records tab lists every record in the CSS, newest first, with its affiliation, gene
+A Records page lists every record in the CSS, newest first, with its affiliation, gene
 and HGVS, classification, and status. Like the batch list, it has status pills, an
 affiliation filter, a live search (gene, HGVS, local ID, or affiliation), and status
 tags that link to their filter. Filtered to one affiliation, it links to that
@@ -347,16 +347,17 @@ evaluated, whether it's new or updates an SCV, and, once ClinVar has reported, i
 result in ClinVar's words (Success or Error) and its SCV. An Affiliations page lists
 each affiliation that has records or batches, with a column for each pill on the Records
 and Batches lists, so each count links to that list filtered to the affiliation and
-status, and a gear that links to its settings. The tabs run Affiliations, Records, then
-Batches, the order staff work in. Both lists have an affiliation select beside their
-status pills, and when a list shows one affiliation with waiting records, a New Batch
-button opens its new batch page. Staff set each affiliation's assertion criteria,
-on-behalf-of organization, and release status there, once, since ClinVar applies them to
-a whole submission and the VCI no longer sends them. Like the ETS's pages, they never
-show raw JSON or ClinVar's error text; developers see those, and each batch's change
-history, in the Django admin. Staff need `has_css_permissions`, and every staff member
-with it sees every batch. The page of a `send_to_clinvar_failed` batch has a Resend
-button.
+status, and a gear that links to its settings. Under the CSS's title, a navbar links to
+Records, Batches, and Affiliations, and each page's breadcrumbs start at its section, as
+in the HCI: Records / R3f2a9c1e Details, or Records / New Batch. Both lists have an
+affiliation select beside their status pills, and when a list shows one affiliation with
+waiting records, a New Batch button opens its new batch page. Staff set each
+affiliation's assertion criteria, on-behalf-of organization, and release status there,
+once, since ClinVar applies them to a whole submission and the VCI no longer sends them.
+Like the ETS's pages, they never show raw JSON or ClinVar's error text; developers see
+those, and each batch's change history, in the Django admin. Staff need
+`has_css_permissions`, and every staff member with it sees every batch. The page of a
+`send_to_clinvar_failed` batch has a Resend button.
 
 The CSS reads the ClinVar API key and base from the environment. It never logs the
 ClinVar API key or a client's API key.

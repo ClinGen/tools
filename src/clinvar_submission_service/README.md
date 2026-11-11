@@ -173,12 +173,12 @@ never retries.
 
 ### `templates/clinvar_submission_service/affiliation_settings.html`
 
-The form where staff set an affiliation's ClinVar settings, under the Affiliations tab,
+The form where staff set an affiliation's ClinVar settings, in the Affiliations section,
 with each field's help text and any error in plain words.
 
 ### `templates/clinvar_submission_service/affiliations.html`
 
-The Affiliations tab: each affiliation that has records or batches, by name, with a
+The Affiliations page: each affiliation that has records or batches, by name, with a
 column for each of the Records list's pills (All, then each record status) and each of
 the Batches list's pills (All, then each batch status). Each count links to that list
 filtered to the affiliation and status. A gear icon, with a title and screen-reader text
@@ -202,7 +202,7 @@ errors.
 
 ### `templates/clinvar_submission_service/records.html`
 
-The Records tab, laid out like the batch list, with the filters from
+The Records page, laid out like the batch list, with the filters from
 `partials/list_filters.html` searching genes, HGVS, local IDs, and affiliations.
 
 ### `templates/clinvar_submission_service/new_batch.html`
@@ -241,11 +241,22 @@ The list's results: how many batches match and the `BatchTable`, or a line sayin
 do. The list page includes it, and the search box and the table's sort and page links
 fetch it alone with HTMX and swap it in.
 
+### `templates/clinvar_submission_service/partials/breadcrumb_trail.html`
+
+The breadcrumbs nav that `partials/breadcrumbs.html` fills in: a section crumb, linked
+when there's a page below it, and the current page, in bold and marked current.
+
+### `templates/clinvar_submission_service/partials/breadcrumbs.html`
+
+A page's breadcrumbs, as in the HCI. It starts at the page's section (Affiliations,
+Records, or Batches) and, below a section's list, ends with the current page, such as
+Records / R3f2a9c1e Details or Records / New Batch.
+
 ### `templates/clinvar_submission_service/partials/header.html`
 
-The top of every CSS page: the CSS's name and description from `core.tools`, and boxed
-tabs for Affiliations, Records, that record when you're on a record's page, Batches, and
-that batch when you're on a batch's page, with the current page's tab active.
+The top of every CSS page: the CSS's name and description from `core.tools`, then a
+navbar linking to the Records, Batches, and Affiliations sections, with the current
+section in bold.
 
 ### `templates/clinvar_submission_service/partials/status.html`
 
@@ -352,20 +363,22 @@ saves, and updates an affiliation's settings, records who saved them, names an
 affiliation known only from its records, rejects bad values with plain messages, 404s
 for an unknown affiliation, and is linked from the affiliations page; and the Records
 page's order, status pills and filter, affiliation filter, search by gene, HGVS, local
-ID, or affiliation, status tags linking to their filter, results-only HTMX response,
-tab, and that it shows no raw JSON; and that the new batch page lists an affiliation's
-waiting records, reviews the picked records or every waiting one, makes and sends the
-batch and records who did, refuses an empty, mixed, or not-waiting selection with a
-plain message, 404s for an unknown affiliation, and is linked from the Records page for
-one affiliation; and that a record's page shows its fields, status, attempts with their
+ID, or affiliation, status tags linking to their filter, results-only HTMX response, and
+that it shows no raw JSON; and that the new batch page lists an affiliation's waiting
+records, reviews the picked records or every waiting one, makes and sends the batch and
+records who did, refuses an empty, mixed, or not-waiting selection with a plain message,
+404s for an unknown affiliation, and is linked from the Records page for one
+affiliation; and that a record's page shows its fields, status, attempts with their
 batch, result, and SCV, and its history in plain words, offers Withdraw only while the
 record waits, is linked from the Records list and batch pages, shows no raw JSON or
 ClinVar errors, and 404s for an unknown slug. Against the fixtures, tests the
 affiliations page's counts for each pill, an affiliation known only from its records,
-order, columns matching each list's pills, links to the filtered lists, labeled settings
-gear, and tab; the tab order; and, on both lists, the affiliation select's options,
-order, and selection, that it keeps the status and search, and that New Batch shows only
-for one affiliation with waiting records.
+order, columns matching each list's pills, links to the filtered lists, and labeled
+settings gear; and, on both lists, the affiliation select's options, order, and
+selection, that it keeps the status and search, and that New Batch shows only for one
+affiliation with waiting records. Also tests each page's breadcrumbs, that the navbar
+under the subtitle links to each section in order and bolds the current one, and that no
+page has the old tabs.
 
 ### `tests.py`
 

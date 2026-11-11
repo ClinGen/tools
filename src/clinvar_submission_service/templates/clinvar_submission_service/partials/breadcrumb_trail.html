@@ -1,0 +1,30 @@
+{# The breadcrumbs nav itself, for partials/breadcrumbs.html. #}
+<nav class="breadcrumb" aria-label="breadcrumbs">
+    <ul>
+        {% if current %}
+            <li>
+                <a href="{{ section_url }}">
+                    {% include "common/icon.html" with icon_name=section_icon %}
+                    {{ section_label }}
+                </a>
+            </li>
+            <li class="is-active">
+                <b>
+                    <a href="" aria-current="page">
+                        {% include "common/icon.html" with icon_name=current_icon %}
+                        {{ current }}
+                    </a>
+                </b>
+            </li>
+        {% else %}
+            <li class="is-active">
+                <b>
+                    <a href="" aria-current="page">
+                        {% include "common/icon.html" with icon_name=section_icon %}
+                        {{ section_label }}
+                    </a>
+                </b>
+            </li>
+        {% endif %}
+    </ul>
+</nav>

@@ -1,3 +1,4 @@
+import re
 from typing import TYPE_CHECKING
 from unittest import mock
 
@@ -271,14 +272,6 @@ class ListViewTest(CssViewTestCase):
         response = self.client.get(reverse("css:index"))
         self.assertContains(response, "No batches yet.")
 
-    def test_has_the_header_with_the_list_tab_active(self):
-        response = self.client.get(reverse("css:index"))
-        self.assertContains(response, "ClinVar Submission Service")
-        self.assertContains(
-            response,
-            f'<a href="{reverse("css:index")}" aria-current="page">',
-        )
-
 
 class StatusTagTest(CssViewTestCase):
     def test_each_status_has_clinvars_wording_and_a_tooltip(self):
@@ -393,19 +386,7 @@ class DetailViewTest(CssViewTestCase):
         self.assertContains(response, "SUB000009")
         self.assertContains(response, "<td>Made By</td><td>staff@example.com</td>")
         self.assertContains(response, "Hearing Loss VCEP")
-        self.assertContains(response, f"Batch {batch.slug}")
-
-    def test_the_tabs_go_affiliations_records_batches(self):
-        batch = self._make(make_record())
-        record = batch.records.get()
-        html = self.client.get(batch.get_absolute_url()).content.decode()
-        tabs = ["Affiliations", "Records", "Batches", f"Batch {batch.slug}"]
-        positions = [html.index(f"<span>{tab}</span>") for tab in tabs]
-        self.assertEqual(positions, sorted(positions))
-        html = self.client.get(record.get_absolute_url()).content.decode()
-        tabs = ["Affiliations", "Records", f"Record {record.slug}", "Batches"]
-        positions = [html.index(f"<span>{tab}</span>") for tab in tabs]
-        self.assertEqual(positions, sorted(positions))
+        self.assertContains(response, f"{batch.slug} Details")
 
     def test_shows_each_records_classification_and_clinvar_result(self):
         batch = self._make(
@@ -763,12 +744,6 @@ class RecordListViewTest(CssViewTestCase):
             response, "clinvar_submission_service/partials/record_results.html"
         )
         self.assertTemplateNotUsed(response, "clinvar_submission_service/records.html")
-
-    def test_the_header_has_a_records_tab(self):
-        response = self.client.get(reverse("css:records"))
-        self.assertContains(
-            response, f'<a href="{reverse("css:records")}" aria-current="page">'
-        )
 
 
 def _new_batch_url(affiliation_id: int) -> str:
@@ -1156,8 +1131,92 @@ class AffiliationsViewTest(AffiliationTestCase):
             response, '<span class="is-sr-only">Settings for Cardiomyopathy VCEP</span>'
         )
 
-    def test_the_header_has_an_affiliations_tab(self):
-        response = self.client.get(reverse("css:affiliations"))
-        self.assertContains(
-            response, f'<a href="{reverse("css:affiliations")}" aria-current="page">'
+
+def _between(html: str, start: str, end: str) -> str:
+    """Returns the part of the HTML from start to the next end."""
+    begin = html.index(start)
+    return html[begin : html.index(end, begin)]
+
+
+def _breadcrumbs(response: "Response") -> list[tuple[str, str]]:
+    """Returns each breadcrumb's text and link; the current page's link is ""."""
+    nav = _between(response.content.decode(), '<nav class="breadcrumb"', "</nav>")
+    crumbs = []
+    for item in re.findall(r"<li[^>]*>(.*?)</li>", nav, re.S):
+        current = 'aria-current="page"' in item
+        link = re.search(r'href="([^"]*)"', item)
+        href = "" if current or link is None else link.group(1)
+        text = " ".join(re.sub(r"<[^>]+>", " ", item).split())
+        crumbs.append((text, href))
+    return crumbs
+
+
+class NavigationTest(CssViewTestCase):
+    def setUp(self):
+        super().setUp()
+        self.batch = self._make(make_record())
+        self.record = self.batch.records.get()
+        Record.objects.filter(pk=self.record.pk).update(
+            affiliation_id=10007, affiliation_name="Hearing Loss VCEP"
         )
+
+    def pages(self) -> dict[str, tuple[str, str, list[tuple[str, str]]]]:
+        """Returns each page's URL, section, and breadcrumbs, by name."""
+        records, batches = reverse("css:records"), reverse("css:index")
+        affiliations = reverse("css:affiliations")
+        return {
+            "affiliations": (affiliations, "Affiliations", [("Affiliations", "")]),
+            "settings": (
+                _settings_url(10007),
+                "Affiliations",
+                [("Affiliations", affiliations), ("Hearing Loss VCEP Settings", "")],
+            ),
+            "records": (records, "Records", [("Records", "")]),
+            "record": (
+                self.record.get_absolute_url(),
+                "Records",
+                [("Records", records), (f"{self.record.slug} Details", "")],
+            ),
+            "new batch": (
+                _new_batch_url(10007),
+                "Records",
+                [("Records", records), ("New Batch", "")],
+            ),
+            "batches": (batches, "Batches", [("Batches", "")]),
+            "batch": (
+                self.batch.get_absolute_url(),
+                "Batches",
+                [("Batches", batches), (f"{self.batch.slug} Details", "")],
+            ),
+        }
+
+    def test_each_page_has_its_breadcrumbs(self):
+        for name, (url, _, crumbs) in self.pages().items():
+            with self.subTest(name):
+                self.assertEqual(_breadcrumbs(self.client.get(url)), crumbs)
+
+    def test_the_navbar_links_to_each_section_and_marks_the_current_one(self):
+        sections = {
+            "Records": reverse("css:records"),
+            "Batches": reverse("css:index"),
+            "Affiliations": reverse("css:affiliations"),
+        }
+        for name, (url, section, _) in self.pages().items():
+            with self.subTest(name):
+                html = self.client.get(url).content.decode()
+                navbar = _between(
+                    html, '<nav class="navbar" aria-label="CSS"', "</nav>"
+                )
+                hrefs = [navbar.index(f'href="{href}"') for href in sections.values()]
+                self.assertEqual(hrefs, sorted(hrefs))
+                bold = re.findall(
+                    r'<a href="([^"]*)" class="navbar-item has-text-weight-bold"',
+                    navbar,
+                )
+                self.assertEqual(bold, [sections[section]])
+                self.assertLess(html.index('<h2 class="subtitle">'), html.index(navbar))
+
+    def test_no_page_has_the_old_tabs(self):
+        for name, (url, _, _) in self.pages().items():
+            with self.subTest(name):
+                self.assertNotContains(self.client.get(url), "tabs is-boxed")
