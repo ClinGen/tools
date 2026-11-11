@@ -14,10 +14,12 @@ from auth_.models import UserProfile
 from auth_.permissions import ToolPermissionMixin, tool_permission_required
 
 
-def _make_user(username: str, *, ets: bool = False) -> User:
-    """Returns a user whose profile has the given ETS permission."""
+def _make_user(username: str, *, ets: bool = False, as_: bool = False) -> User:
+    """Returns a user whose profile has the given ETS and AS permissions."""
     user = User.objects.create_user(username=username, email=username)
-    UserProfile.objects.create(user=user, has_ets_permissions=ets)
+    UserProfile.objects.create(
+        user=user, has_ets_permissions=ets, has_as_permissions=as_
+    )
     return user
 
 
@@ -79,6 +81,45 @@ class ToolPermissionTest(TestCase):
             view(self._request(user))
 
 
+class AsPermissionTest(TestCase):
+    """Checks that the AS's flag works with the permission helpers."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+
+        class _AsView(ToolPermissionMixin, View):
+            tool_permission = "has_as_permissions"
+
+            @staticmethod
+            def get(
+                _request: object, *_args: object, **_kwargs: object
+            ) -> HttpResponse:
+                return HttpResponse("ok")
+
+        @tool_permission_required("has_as_permissions")
+        def _as_function_view(_request: HttpRequest) -> HttpResponse:
+            return HttpResponse("ok")
+
+        self.views = {"mixin": _AsView.as_view(), "decorator": _as_function_view}
+
+    def _request(self, user: User) -> HttpRequest:
+        request = self.factory.get("/as/")
+        request.user = user
+        return request
+
+    def test_user_without_the_flag_gets_403(self):
+        user = _make_user("no-as@example.com", ets=True)
+        for kind, view in self.views.items():
+            with self.subTest(kind=kind), self.assertRaises(PermissionDenied):
+                view(self._request(user))
+
+    def test_user_with_the_flag_gets_200(self):
+        user = _make_user("as@example.com", as_=True)
+        for kind, view in self.views.items():
+            with self.subTest(kind=kind):
+                self.assertEqual(view(self._request(user)).status_code, 200)
+
+
 class GrantingPermissionTest(TestCase):
     def test_granting_a_flag_is_recorded_in_history(self):
         user = _make_user("grant@example.com")
@@ -87,6 +128,14 @@ class GrantingPermissionTest(TestCase):
         profile.save()
         latest = profile.history.first()
         self.assertTrue(latest.has_ets_permissions)
+        self.assertEqual(profile.history.count(), 2)
+
+    def test_granting_the_as_flag_is_recorded_in_history(self):
+        user = _make_user("grant-as@example.com")
+        profile = user.profile  # type: ignore
+        profile.has_as_permissions = True
+        profile.save()
+        self.assertTrue(profile.history.first().has_as_permissions)
         self.assertEqual(profile.history.count(), 2)
 
 
@@ -235,6 +284,19 @@ class ProfileViewTest(TestCase):
         response = self.client.get(reverse("profile"))
         self.assertContains(response, "CSS Permissions")
         self.assertContains(response, "You can use the ClinVar Submission Service.")
+
+    def test_shows_whether_the_user_has_as_permissions(self):
+        self.client.force_login(_make_user("as-yes@example.com", as_=True))
+        response = self.client.get(reverse("profile"))
+        self.assertContains(response, "AS Permissions")
+        self.assertContains(response, "You can use the Affiliations Service.")
+
+    def test_tells_users_without_as_permissions_whom_to_ask(self):
+        self.client.force_login(_make_user("as-no@example.com"))
+        response = self.client.get(reverse("profile"))
+        self.assertContains(
+            response, "Ask an administrator to grant you AS permissions."
+        )
 
 
 class LandingPageAuthTest(TestCase):

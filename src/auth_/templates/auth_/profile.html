@@ -10,6 +10,30 @@
                 <tbody>
 
                     <tr>
+                        <td>AS Permissions</td>
+                        <td>
+                            {% if request.user.profile.has_as_permissions %}
+                                <div class="has-text-success">
+                                    {% include "common/icon.html" with icon_name="check-circle-fill" %}
+                                    Granted
+                                </div>
+                            {% else %}
+                                <div class="has-text-danger">
+                                    {% include "common/icon.html" with icon_name="x-circle-fill" %}
+                                    Not Granted
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if request.user.profile.has_as_permissions %}
+                                You can use the Affiliations Service.
+                            {% else %}
+                                Ask an administrator to grant you AS permissions.
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <tr>
                         <td>CSS Permissions</td>
                         <td>
                             {% if request.user.profile.has_css_permissions %}

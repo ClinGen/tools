@@ -41,8 +41,9 @@ signed in. `build.js` bundles it into `src/static/tools/js/sign-in.js`.
 ### `models.py`
 
 Defines `UserProfile`, which has a UUID primary key, links a Django user to a Clerk user
-ID, and holds one permission flag per tool: `has_css_permissions` and
-`has_ets_permissions`. Add a flag here when you add a tool that needs one.
+ID, and holds one permission flag per tool: `has_as_permissions` for the AS,
+`has_css_permissions` for the CSS, and `has_ets_permissions` for the ETS. Add a flag
+here when you add a tool that needs one.
 
 ### `permissions.py`
 

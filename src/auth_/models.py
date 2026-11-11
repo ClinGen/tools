@@ -26,6 +26,11 @@ class UserProfile(UUIDModel):
         verbose_name="ETS Permissions",
         help_text="Whether the user can use the Email Transfer Service.",
     )
+    has_as_permissions = models.BooleanField(
+        default=False,
+        verbose_name="AS Permissions",
+        help_text="Whether the user can manage affiliations and people in the AS.",
+    )
     clerk_user_id = models.CharField(
         max_length=255,
         null=True,
