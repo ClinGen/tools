@@ -13,6 +13,13 @@ Empty file that marks `affiliations_service` as a Python package.
 
 Marks `api` as a Python package.
 
+### `api/people.py`
+
+Serves `/people`: list (paginated, with `q` searching names and every email, and exact
+filters for `email`, `orcid`, and `gpm_uuid`), get, create, and update (`PATCH`).
+Sending `other_emails` replaces the list. There's no delete, since people stay on
+record.
+
 ### `api/v1.py`
 
 Defines the AS's API, a Django Ninja `NinjaAPI` served at `/as/api/v1/`, with OpenAPI
@@ -104,6 +111,11 @@ key; the other API tests extend it.
 
 Tests API keys: hashing, verification, the 401 for a missing, unknown, or inactive key,
 the public docs, and showing a new key once in the admin.
+
+### `test_api_people.py`
+
+Tests the API's person endpoints: search and filters, other emails, duplicate emails,
+ORCID iD checks, 404s, and that people can't be deleted.
 
 ### `test_memberships.py`
 
