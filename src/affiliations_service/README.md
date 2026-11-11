@@ -13,12 +13,18 @@ Empty file that marks `affiliations_service` as a Python package.
 
 Marks `api` as a Python package.
 
+### `api/memberships.py`
+
+Serves `/memberships`: list (paginated, filtered by affiliation, person, role, and
+`current`), get, create, and `PATCH` for the dates. Setting `end_date` ends a
+membership; there's no delete. A deleted affiliation can't get new members.
+
 ### `api/people.py`
 
 Serves `/people`: list (paginated, with `q` searching names and every email, and exact
 filters for `email`, `orcid`, and `gpm_uuid`), get, create, and update (`PATCH`).
 Sending `other_emails` replaces the list. There's no delete, since people stay on
-record.
+record. Responses for one person include their current memberships.
 
 ### `api/v1.py`
 
@@ -34,6 +40,7 @@ Serves `/affiliations`. The list is paginated, leaves out deleted affiliations u
 panel ID, and searches names with `q`. Creating one assigns its IDs, so a request can't
 send them. `PATCH` can't change the IDs, type, or GPM UUID, and sending
 `clinvar_submitter_ids` replaces the list. `DELETE` marks the affiliation deleted.
+Responses for one affiliation include its current memberships.
 
 ### `api/auth.py`
 
@@ -111,6 +118,11 @@ key; the other API tests extend it.
 
 Tests API keys: hashing, verification, the 401 for a missing, unknown, or inactive key,
 the public docs, and showing a new key once in the admin.
+
+### `test_api_memberships.py`
+
+Tests the API's membership endpoints: filters, creating, ending, constraint errors, no
+delete, and the current memberships in affiliation and person responses.
 
 ### `test_api_people.py`
 

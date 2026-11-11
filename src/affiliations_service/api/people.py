@@ -12,7 +12,8 @@ from ninja.pagination import paginate
 from pydantic import ConfigDict
 
 from affiliations_service.api.helpers import save_validated
-from affiliations_service.models import Person, PersonEmail
+from affiliations_service.api.memberships import MembershipOut
+from affiliations_service.models import Membership, Person, PersonEmail
 
 router = Router()
 
@@ -36,6 +37,17 @@ class PersonOut(Schema):
     def resolve_other_emails(person: Person) -> list[str]:
         """Returns the person's other emails as strings."""
         return [item.email for item in person.other_emails.all()]  # ty: ignore[unresolved-attribute] (Django adds the reverse relation.)
+
+
+class PersonDetail(PersonOut):
+    """A person, with their current memberships."""
+
+    current_memberships: list[MembershipOut]
+
+    @staticmethod
+    def resolve_current_memberships(person: Person) -> list[Membership]:
+        """Returns the memberships that haven't ended."""
+        return list(person.memberships.current())  # ty: ignore[unresolved-attribute] (Django adds the reverse relation.)
 
 
 class PersonIn(Schema):
@@ -129,7 +141,7 @@ def list_people(
     return people.distinct()
 
 
-@router.get("/{person_id}", response=PersonOut)
+@router.get("/{person_id}", response=PersonDetail)
 def get_person(request: HttpRequest, person_id: uuid.UUID) -> Person:  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     """Gets one person.
 
@@ -139,7 +151,7 @@ def get_person(request: HttpRequest, person_id: uuid.UUID) -> Person:  # ruff: i
     return get_object_or_404(_people(), pk=person_id)
 
 
-@router.post("", response={201: PersonOut})
+@router.post("", response={201: PersonDetail})
 def create_person(
     request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     data: PersonIn,
@@ -156,7 +168,7 @@ def create_person(
     return Status(201, get_object_or_404(_people(), pk=person.pk))
 
 
-@router.patch("/{person_id}", response=PersonOut)
+@router.patch("/{person_id}", response=PersonDetail)
 def update_person(
     request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     person_id: uuid.UUID,

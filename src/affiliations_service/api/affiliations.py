@@ -14,7 +14,13 @@ from pydantic import ConfigDict
 
 from affiliations_service.api.cdwgs import CdwgOut
 from affiliations_service.api.helpers import save_validated
-from affiliations_service.models import CDWG, Affiliation, ClinVarSubmitterId
+from affiliations_service.api.memberships import MembershipOut
+from affiliations_service.models import (
+    CDWG,
+    Affiliation,
+    ClinVarSubmitterId,
+    Membership,
+)
 
 router = Router()
 
@@ -43,6 +49,17 @@ class AffiliationOut(Schema):
     def resolve_clinvar_submitter_ids(affiliation: Affiliation) -> list[str]:
         """Returns the affiliation's ClinVar submitter IDs as strings."""
         return [item.submitter_id for item in affiliation.clinvar_submitter_ids.all()]  # ty: ignore[unresolved-attribute] (Django adds the reverse relation.)
+
+
+class AffiliationDetail(AffiliationOut):
+    """An affiliation, with its current memberships."""
+
+    current_memberships: list[MembershipOut]
+
+    @staticmethod
+    def resolve_current_memberships(affiliation: Affiliation) -> list[Membership]:
+        """Returns the memberships that haven't ended."""
+        return list(affiliation.memberships.current())  # ty: ignore[unresolved-attribute] (Django adds the reverse relation.)
 
 
 class AffiliationIn(Schema):
@@ -158,7 +175,7 @@ def list_affiliations(
     return affiliations
 
 
-@router.get("/{affiliation_id}", response=AffiliationOut)
+@router.get("/{affiliation_id}", response=AffiliationDetail)
 def get_affiliation(request: HttpRequest, affiliation_id: uuid.UUID) -> Affiliation:  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     """Gets one affiliation, even if it's deleted.
 
@@ -168,7 +185,7 @@ def get_affiliation(request: HttpRequest, affiliation_id: uuid.UUID) -> Affiliat
     return get_object_or_404(_affiliations(), pk=affiliation_id)
 
 
-@router.post("", response={201: AffiliationOut})
+@router.post("", response={201: AffiliationDetail})
 def create_affiliation(
     request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     data: AffiliationIn,
@@ -185,7 +202,7 @@ def create_affiliation(
     return Status(201, get_object_or_404(_affiliations(), pk=affiliation.pk))
 
 
-@router.patch("/{affiliation_id}", response=AffiliationOut)
+@router.patch("/{affiliation_id}", response=AffiliationDetail)
 def update_affiliation(
     request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     affiliation_id: uuid.UUID,
