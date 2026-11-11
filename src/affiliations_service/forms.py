@@ -1,10 +1,13 @@
 """Houses the forms on the AS's pages."""
 
+from typing import Any
+
 from django import forms
 
 from affiliations_service.models import (
     Affiliation,
     ClinVarSubmitterId,
+    Membership,
     Person,
     PersonEmail,
 )
@@ -90,3 +93,46 @@ OtherEmailFormSet = forms.inlineformset_factory(
 OtherEmailFormSet.form = type(
     "OtherEmailForm", (BulmaFormMixin, OtherEmailFormSet.form), {}
 )
+
+
+class MembershipAddForm(BulmaFormMixin, forms.ModelForm):
+    """Gives a person a role in an affiliation.
+
+    The person is picked from search results, so the field is a radio list that the
+    search fills in.
+    """
+
+    person = forms.ModelChoiceField(
+        queryset=Person.objects.all(),
+        widget=forms.RadioSelect,
+        error_messages={"required": "Search for a person, then pick them."},
+    )
+
+    class Meta:
+        """Provides metadata."""
+
+        model = Membership
+        fields = ["person", "role", "start_date"]
+        widgets = {"start_date": forms.DateInput(attrs={"type": "date"})}
+
+    def clean(self) -> dict[str, Any]:
+        """Also checks the constraints that involve the affiliation.
+
+        Django skips constraints on fields that aren't in the form, such as the
+        affiliation, so a person holding the same role twice would otherwise only be
+        caught by the database. `validate_constraints()` raises the error, and the
+        form shows it.
+
+        Returns:
+            The cleaned data.
+        """
+        cleaned_data = super().clean() or {}
+        membership = Membership(
+            affiliation_id=self.instance.affiliation_id,
+            person=cleaned_data.get("person"),
+            role=cleaned_data.get("role"),
+            start_date=cleaned_data.get("start_date"),
+        )
+        if membership.person_id and membership.role:  # ty: ignore[unresolved-attribute] (Django adds person_id.)
+            membership.validate_constraints()
+        return cleaned_data

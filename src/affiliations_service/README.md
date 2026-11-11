@@ -74,8 +74,9 @@ Configures the `affiliations_service` app.
 Defines the forms on the AS's pages: `AffiliationCreateForm`, `AffiliationEditForm`
 (which leaves out the IDs, type, and GPM UUID, so posting them changes nothing), and
 `SubmitterIdFormSet` for an affiliation's ClinVar submitter IDs, `PersonForm`, and
-`OtherEmailFormSet` for a person's other emails. `BulmaFormMixin` gives text inputs
-Bulma's classes.
+`OtherEmailFormSet` for a person's other emails, and `MembershipAddForm`, which also
+checks the membership constraints that Django would skip because the affiliation isn't a
+form field. `BulmaFormMixin` gives text inputs Bulma's classes.
 
 ### `history.py`
 
@@ -170,6 +171,11 @@ delete, and the current memberships in affiliation and person responses.
 Tests the API's person endpoints: search and filters, other emails, duplicate emails,
 ORCID iD checks, 404s, and that people can't be deleted.
 
+### `test_member_pages.py`
+
+Tests adding and ending memberships from an affiliation's page, with and without HTMX,
+and the person search behind the add-member form.
+
 ### `test_memberships.py`
 
 Tests membership roles, constraints, which memberships are current, ending a membership,
@@ -210,9 +216,20 @@ Lists people, with a search box for names and emails that updates the list with 
 
 Renders one form field with its label, help text, and errors in Bulma's style.
 
+### `templates/affiliations_service/partials/members.html`
+
+An affiliation's members section: current members by role, each with an End button, the
+Add a Member form, and past members. HTMX swaps the whole section after adding or ending
+a membership.
+
 ### `templates/affiliations_service/partials/history.html`
 
 A table of the changes in `history`, from `history.describe_history()`.
+
+### `templates/affiliations_service/partials/person_choices.html`
+
+The add-member form's search results, as radio buttons, or a link to add a person when
+no one matches.
 
 ### `templates/affiliations_service/partials/status.html`
 
@@ -233,6 +250,8 @@ Routes the AS's pages under `/as/` (an affiliation's page is
 
 Defines the AS's pages: the affiliation list, an affiliation's page, and the pages that
 create, edit, and delete an affiliation. Deleting marks it deleted. It also has the
-people list, a person's page, and the pages that add and edit a person.
+people list, a person's page, and the pages that add and edit a person. The membership
+views add a member to an affiliation and end a membership, returning the updated members
+section to HTMX requests, and `person_search` finds people for the add-member form.
 `_save_form_and_formset` saves an object and its inline formset together, or neither.
 Each view requires `has_as_permissions`.

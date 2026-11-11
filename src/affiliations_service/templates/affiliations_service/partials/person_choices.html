@@ -1,0 +1,10 @@
+{% if people %}
+    {% for person in people %}
+        <label class="radio is-block mb-1">
+            <input type="radio" name="person" value="{{ person.pk }}" required>
+            {{ person.name }} <span class="has-text-grey">{{ person.email }}</span>
+        </label>
+    {% endfor %}
+{% elif query %}
+    <p>No one matches. <a href="{% url 'as:person-create' %}">Add a person</a>, then come back.</p>
+{% endif %}

@@ -1,0 +1,95 @@
+<section id="members" class="block">
+    <h3 class="title is-5">Current Members</h3>
+    <div class="block table-container">
+        <table class="table">
+            <tbody>
+                {% for role, members in members_by_role %}
+                    <tr>
+                        <td>{{ role }}s</td>
+                        <td>
+                            {% for membership in members %}
+                                <div class="is-flex is-align-items-center mb-1">
+                                    <span class="mr-2">
+                                        <a href="{{ membership.person.get_absolute_url }}">{{ membership.person }}</a>
+                                        <span class="has-text-grey">{{ membership.person.email }}</span>
+                                        {% if membership.end_date %}
+                                            <span class="has-text-grey">(until {{ membership.end_date|date:"Y-m-d" }})</span>
+                                        {% endif %}
+                                    </span>
+                                    <form method="post"
+                                          action="{% url 'as:membership-end' pk=membership.pk %}"
+                                          hx-post="{% url 'as:membership-end' pk=membership.pk %}"
+                                          hx-target="#members"
+                                          hx-swap="outerHTML"
+                                          hx-confirm="End {{ membership.person }}'s time as {{ membership.get_role_display|lower }} today?">
+                                        {% csrf_token %}
+                                        <button type="submit" class="button is-small is-link is-light">End</button>
+                                    </form>
+                                </div>
+                            {% empty %}
+                                <p class="has-text-grey">None</p>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% for error in member_form.non_field_errors %}
+        <div class="notification is-danger is-light">{{ error }}</div>
+    {% endfor %}
+    {% if not affiliation.is_deleted %}
+        <div class="box block">
+            <h4 class="title is-6">Add a Member</h4>
+            <form method="post"
+                  action="{% url 'as:membership-add' pk=affiliation.pk %}"
+                  hx-post="{% url 'as:membership-add' pk=affiliation.pk %}"
+                  hx-target="#members"
+                  hx-swap="outerHTML">
+                {% csrf_token %}
+                <div class="field">
+                    <label class="label" for="member-search">Person</label>
+                    <div class="control">
+                        <input class="input"
+                               id="member-search"
+                               type="search"
+                               name="q"
+                               placeholder="Search by name or email"
+                               hx-get="{% url 'as:person-search' %}"
+                               hx-trigger="input changed delay:300ms"
+                               hx-target="#person-choices">
+                    </div>
+                    <div id="person-choices" class="mt-2"></div>
+                    {% for error in member_form.person.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+                </div>
+                {% include "affiliations_service/partials/field.html" with field=member_form.role %}
+                {% include "affiliations_service/partials/field.html" with field=member_form.start_date %}
+                <button type="submit" class="button is-link">Add Member</button>
+            </form>
+        </div>
+    {% endif %}
+
+    <h3 class="title is-5">Past Members</h3>
+    {% if past_memberships %}
+        <div class="block table-container">
+            <table class="table">
+                <thead>
+                    <tr><th>Name</th><th>Role</th><th>Started</th><th>Ended</th></tr>
+                </thead>
+                <tbody>
+                    {% for membership in past_memberships %}
+                        <tr>
+                            <td><a href="{{ membership.person.get_absolute_url }}">{{ membership.person }}</a></td>
+                            <td>{{ membership.get_role_display }}</td>
+                            <td>{{ membership.start_date|date:"Y-m-d"|default:"Unknown" }}</td>
+                            <td>{{ membership.end_date|date:"Y-m-d" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="block">No one has left this affiliation.</p>
+    {% endif %}
+</section>

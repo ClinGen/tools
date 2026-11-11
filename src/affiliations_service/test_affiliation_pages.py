@@ -125,8 +125,9 @@ class AffiliationDetailPageTest(TestCase):
         page = self._page()
         for obj in [self.affiliation, self.affiliation.cdwg, self.ada]:
             with self.subTest(obj=obj):
-                # Links may hold IDs; the text staff read may not.
-                self.assertNotIn(str(obj.pk), re.sub(r'href="[^"]*"', "", page))
+                # URLs may hold IDs; the text staff read may not.
+                text = re.sub(r'(href|action|hx-[a-z]+|value)="[^"]*"', "", page)
+                self.assertNotIn(str(obj.pk), text)
 
     def test_deleted_affiliation_says_so(self):
         self.affiliation.delete()

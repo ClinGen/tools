@@ -3,12 +3,13 @@
 from django import forms
 from django.db import transaction
 from django.db.models import Q
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 
 from affiliations_service.forms import (
     AffiliationCreateForm,
     AffiliationEditForm,
+    MembershipAddForm,
     OtherEmailFormSet,
     PersonForm,
     SubmitterIdFormSet,
@@ -62,6 +63,52 @@ def index(request: HttpRequest) -> HttpResponse:
     )
 
 
+def _members_context(
+    affiliation: Affiliation, member_form: MembershipAddForm | None = None
+) -> dict:
+    """Returns what the members section of an affiliation's page needs.
+
+    Args:
+        affiliation: The affiliation.
+        member_form: The add-member form, with its errors, or None for a blank one.
+
+    Returns:
+        The current members by role, the past memberships, and the add-member form.
+    """
+    memberships = affiliation.memberships.select_related("person")  # ty: ignore[unresolved-attribute] (Django adds the reverse relation.)
+    current = memberships.current()
+    return {
+        "affiliation": affiliation,
+        "members_by_role": [
+            (label, [m for m in current if m.role == role])
+            for role, label in Membership.Role.choices
+        ],
+        "past_memberships": memberships.exclude(pk__in=current).order_by("-end_date"),
+        "member_form": member_form or MembershipAddForm(),
+    }
+
+
+def _render_affiliation(
+    request: HttpRequest,
+    affiliation: Affiliation,
+    member_form: MembershipAddForm | None = None,
+) -> HttpResponse:
+    """Renders an affiliation's page.
+
+    Returns:
+        The page, with the add-member form's errors if there are any.
+    """
+    return render(
+        request,
+        "affiliations_service/affiliation_detail.html",
+        {
+            "tool": get_tool("as"),
+            "history": describe_history(affiliation, "the affiliation"),
+            **_members_context(affiliation, member_form),
+        },
+    )
+
+
 @tool_permission_required("has_as_permissions")
 def affiliation_detail(request: HttpRequest, pk: str) -> HttpResponse:
     """Shows an affiliation, its members, and its history.
@@ -75,24 +122,88 @@ def affiliation_detail(request: HttpRequest, pk: str) -> HttpResponse:
         ),
         pk=pk,
     )
-    memberships = affiliation.memberships.select_related("person")
-    current = memberships.current()
-    members_by_role = [
-        (label, [m for m in current if m.role == role])
-        for role, label in Membership.Role.choices
-    ]
+    return _render_affiliation(request, affiliation)
+
+
+def _members_response(
+    request: HttpRequest,
+    affiliation: Affiliation,
+    member_form: MembershipAddForm | None = None,
+) -> HttpResponse:
+    """Responds to a change to an affiliation's members.
+
+    HTMX requests get the updated members section. Other requests are redirected to
+    the affiliation's page, or shown it with the form's errors.
+
+    Returns:
+        The members section, the affiliation's page, or a redirect to it.
+    """
+    if request.headers.get("HX-Request"):
+        return render(
+            request,
+            "affiliations_service/partials/members.html",
+            _members_context(affiliation, member_form),
+        )
+    if member_form is not None and member_form.errors:
+        return _render_affiliation(request, affiliation, member_form)
+    return redirect(affiliation)
+
+
+@tool_permission_required("has_as_permissions")
+def membership_add(request: HttpRequest, pk: str) -> HttpResponse:
+    """Gives a person a role in an affiliation.
+
+    Returns:
+        The updated members section, or the affiliation's page.
+    """
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    affiliation = get_object_or_404(Affiliation, pk=pk)
+    form = MembershipAddForm(request.POST, instance=Membership(affiliation=affiliation))
+    if affiliation.is_deleted:
+        form.add_error(None, "This affiliation has been deleted.")
+    elif form.is_valid():
+        form.save()
+        return _members_response(request, affiliation)
+    return _members_response(request, affiliation, form)
+
+
+@tool_permission_required("has_as_permissions")
+def membership_end(request: HttpRequest, pk: str) -> HttpResponse:
+    """Ends a membership today. It's kept, and shown under past members.
+
+    Returns:
+        The updated members section, or a redirect to the affiliation's page.
+    """
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    membership = get_object_or_404(
+        Membership.objects.select_related("affiliation"), pk=pk
+    )
+    membership.end()
+    return _members_response(request, membership.affiliation)
+
+
+@tool_permission_required("has_as_permissions")
+def person_search(request: HttpRequest) -> HttpResponse:
+    """Finds people by name or email for the add-member form.
+
+    Returns:
+        Up to ten matching people, as choices for the form.
+    """
+    query = request.GET.get("q", "").strip()
+    people = Person.objects.none()
+    if query:
+        people = Person.objects.filter(
+            Q(name__icontains=query)
+            | Q(preferred_name__icontains=query)
+            | Q(email__icontains=query)
+            | Q(other_emails__email__icontains=query)
+        ).distinct()[:10]
     return render(
         request,
-        "affiliations_service/affiliation_detail.html",
-        {
-            "tool": get_tool("as"),
-            "affiliation": affiliation,
-            "members_by_role": members_by_role,
-            "past_memberships": memberships.exclude(pk__in=current).order_by(
-                "-end_date"
-            ),
-            "history": describe_history(affiliation, "the affiliation"),
-        },
+        "affiliations_service/partials/person_choices.html",
+        {"people": people, "query": query},
     )
 
 

@@ -23,6 +23,17 @@ urlpatterns = [
         views.affiliation_detail,
         name="affiliation",
     ),
+    path(
+        "affiliations/<uuid:pk>/members/",
+        views.membership_add,
+        name="membership-add",
+    ),
+    path(
+        "memberships/<uuid:pk>/end/",
+        views.membership_end,
+        name="membership-end",
+    ),
+    path("people/search/", views.person_search, name="person-search"),
     path("people/", views.person_list, name="people"),
     path("people/new/", views.person_create, name="person-create"),
     path("people/<uuid:pk>/edit/", views.person_edit, name="person-edit"),

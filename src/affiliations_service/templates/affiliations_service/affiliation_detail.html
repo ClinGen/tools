@@ -41,54 +41,7 @@
             </table>
         </div>
 
-        <h3 class="title is-5">Current Members</h3>
-        <div class="block table-container">
-            <table class="table">
-                <tbody>
-                    {% for role, members in members_by_role %}
-                        <tr>
-                            <td>{{ role }}s</td>
-                            <td>
-                                {% for membership in members %}
-                                    <p>
-                                        <a href="{{ membership.person.get_absolute_url }}">{{ membership.person }}</a>
-                                        <span class="has-text-grey">{{ membership.person.email }}</span>
-                                        {% if membership.end_date %}
-                                            <span class="has-text-grey">(until {{ membership.end_date|date:"Y-m-d" }})</span>
-                                        {% endif %}
-                                    </p>
-                                {% empty %}
-                                    <p class="has-text-grey">None</p>
-                                {% endfor %}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <h3 class="title is-5">Past Members</h3>
-        {% if past_memberships %}
-            <div class="block table-container">
-                <table class="table">
-                    <thead>
-                        <tr><th>Name</th><th>Role</th><th>Started</th><th>Ended</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for membership in past_memberships %}
-                            <tr>
-                                <td><a href="{{ membership.person.get_absolute_url }}">{{ membership.person }}</a></td>
-                                <td>{{ membership.get_role_display }}</td>
-                                <td>{{ membership.start_date|date:"Y-m-d"|default:"Unknown" }}</td>
-                                <td>{{ membership.end_date|date:"Y-m-d" }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <p class="block">No one has left this affiliation.</p>
-        {% endif %}
+        {% include "affiliations_service/partials/members.html" %}
 
         {% include "affiliations_service/partials/history.html" %}
     </div>
