@@ -13,28 +13,7 @@
                 {% include "affiliations_service/partials/field.html" %}
             {% endfor %}
 
-            <fieldset class="block">
-                <legend class="label">Other Emails</legend>
-                {{ formset.management_form }}
-                {% for error in formset.non_form_errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
-                {% for subform in formset %}
-                    <div class="field is-grouped">
-                        {% for hidden in subform.hidden_fields %}{{ hidden }}{% endfor %}
-                        <div class="control">
-                            <label class="is-sr-only" for="{{ subform.email.id_for_label }}">Other Email</label>
-                            {{ subform.email }}
-                            {% for error in subform.email.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
-                            {% for error in subform.non_field_errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
-                        </div>
-                        {% if subform.instance.pk %}
-                            <div class="control">
-                                <label class="checkbox">{{ subform.DELETE }} Remove</label>
-                            </div>
-                        {% endif %}
-                    </div>
-                {% endfor %}
-                <p class="help">To add more than one, save, then edit the person again.</p>
-            </fieldset>
+            {% include "affiliations_service/partials/formset.html" with field_name="email" legend="Other Emails" label="Other Email" %}
 
             <div class="buttons">
                 <button type="submit" class="button is-link">Save</button>

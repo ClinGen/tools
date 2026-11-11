@@ -111,6 +111,11 @@ one by setting its end date instead of deleting it.
 only their SHA-256 hash and first eight characters are stored. `ApiKey.objects.verify()`
 finds the active key for a raw value and records its use.
 
+### `static/affiliations_service/formset.js`
+
+Adds a blank row to a formset when staff click its Add Another button, by copying the
+formset's empty-form `<template>` and bumping its `TOTAL_FORMS`.
+
 ### `templates/affiliations_service/affiliation_delete.html`
 
 Asks staff to confirm deleting an affiliation, and explains that the AS keeps it.
@@ -148,7 +153,8 @@ highlight their tab.
 ### `test_affiliation_forms.py`
 
 Tests creating, editing, and deleting affiliations on the AS's pages, including locked
-fields, submitter IDs, plain-language errors, and permissions.
+fields, submitter IDs, plain-language errors, permissions, and the Add Another button on
+the affiliation and person forms.
 
 ### `test_affiliation_pages.py`
 
@@ -235,6 +241,16 @@ Renders one form field with its label, help text, and errors in Bulma's style.
 An affiliation's members section: current members by role, each with an End button, the
 Add a Member form, and past members. HTMX swaps the whole section after adding or ending
 a membership.
+
+### `templates/affiliations_service/partials/formset.html`
+
+Renders an inline formset of one-field rows, such as ClinVar submitter IDs or other
+emails, with an Add Another button and the blank row it copies.
+
+### `templates/affiliations_service/partials/formset_row.html`
+
+One row of `partials/formset.html`: the field, its errors, and a Remove checkbox for
+saved rows.
 
 ### `templates/affiliations_service/partials/history.html`
 
