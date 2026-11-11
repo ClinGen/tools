@@ -20,6 +20,14 @@ docs at `/as/api/v1/docs`. Every endpoint needs an API key. It adds each resourc
 router and turns a `ValidationError` (a broken business rule) into a 400 whose `detail`
 is the error's plain-language message.
 
+### `api/affiliations.py`
+
+Serves `/affiliations`. The list is paginated, leaves out deleted affiliations unless
+`include_deleted` is true, filters by type, status, CDWG, affiliation ID, and expert
+panel ID, and searches names with `q`. Creating one assigns its IDs, so a request can't
+send them. `PATCH` can't change the IDs, type, or GPM UUID, and sending
+`clinvar_submitter_ids` replaces the list. `DELETE` marks the affiliation deleted.
+
 ### `api/auth.py`
 
 Defines `ApiKeyAuth`, which accepts a request whose `X-Api-Key` header is an active AS
@@ -81,6 +89,11 @@ The AS's home page.
 
 The AS's title, description, and tabs, shared by its pages. Pages pass `active_tab` to
 highlight their tab.
+
+### `test_api_affiliations.py`
+
+Tests the API's affiliation endpoints: filters, deleted affiliations, ID assignment,
+business rules, locked fields, submitter IDs, soft deletion, and 404s.
 
 ### `test_api_cdwgs.py`
 

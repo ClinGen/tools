@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.http import HttpRequest, HttpResponse
 from ninja import NinjaAPI
 
+from affiliations_service.api.affiliations import router as affiliations_router
 from affiliations_service.api.auth import ApiKeyAuth
 from affiliations_service.api.cdwgs import router as cdwgs_router
 
@@ -36,4 +37,5 @@ def validation_error(request: HttpRequest, error: ValidationError) -> HttpRespon
     )
 
 
+api.add_router("/affiliations", affiliations_router, tags=["Affiliations"])
 api.add_router("/cdwgs", cdwgs_router, tags=["CDWGs"])
