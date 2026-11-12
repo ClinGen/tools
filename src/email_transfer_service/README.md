@@ -104,7 +104,7 @@ while the saved transfer keeps them.
 ### `tests/test_views.py`
 
 Tests the ETS's pages: that only users with ETS permissions can open the home page,
-which the landing page links to; the preview page; confirming a transfer, which
+which the landing page links to for them; the preview page; confirming a transfer, which
 re-checks the preconditions and records who ran it; the failed transfer page; that no
 page names Cognito users, DynamoDB records, or attribute names; and that every page has
 the header with the right tab active.

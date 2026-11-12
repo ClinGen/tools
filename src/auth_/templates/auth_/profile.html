@@ -57,29 +57,18 @@
                         </td>
                     </tr>
 
+                    {% if request.user.profile.has_ets_permissions %}
                     <tr>
                         <td>ETS Permissions</td>
                         <td>
-                            {% if request.user.profile.has_ets_permissions %}
-                                <div class="has-text-success">
-                                    {% include "common/icon.html" with icon_name="check-circle-fill" %}
-                                    Granted
-                                </div>
-                            {% else %}
-                                <div class="has-text-danger">
-                                    {% include "common/icon.html" with icon_name="x-circle-fill" %}
-                                    Not Granted
-                                </div>
-                            {% endif %}
+                            <div class="has-text-success">
+                                {% include "common/icon.html" with icon_name="check-circle-fill" %}
+                                Granted
+                            </div>
                         </td>
-                        <td>
-                            {% if request.user.profile.has_ets_permissions %}
-                                You can use the Email Transfer Service.
-                            {% else %}
-                                Ask an administrator to grant you ETS permissions.
-                            {% endif %}
-                        </td>
+                        <td>You can use the Email Transfer Service.</td>
                     </tr>
+                    {% endif %}
 
                 </tbody>
             </table>

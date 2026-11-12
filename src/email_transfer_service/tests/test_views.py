@@ -50,7 +50,8 @@ class IndexViewTest(TestCase):
             "Moves a GCI/VCI user&#x27;s account from an old email to a new one.",
         )
 
-    def test_landing_page_lists_the_ets(self):
+    def test_landing_page_lists_the_ets_for_users_with_ets_permissions(self):
+        self.client.force_login(_make_user("staff@example.com", ets=True))
         response = self.client.get(reverse("home"))
         self.assertContains(response, "Email Transfer Service")
         self.assertContains(response, reverse("ets:index"))

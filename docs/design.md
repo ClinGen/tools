@@ -159,6 +159,8 @@ the HCI's zero-padded integer slugs, such as `T000001`.
 Staff sign in once and can then use every tool they've been granted. Permissions are per
 tool: being able to manage affiliations doesn't mean being able to resend ClinVar
 submissions. Each tool's views check its own permission through the mixins in `auth_`.
+The landing page and the profile page hide the ETS from staff without its permission;
+the AS and the CSS are listed for everyone.
 
 Staff sign in with Clerk, the identity provider every ClinGen app is moving to. `auth_`
 follows the CSS: sign-in uses Clerk's embedded widget, and a custom `ClerkBackend`

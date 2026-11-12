@@ -63,7 +63,7 @@ The sign-in page, which hosts Clerk's sign-in widget.
 ### `templates/auth_/profile.html`
 
 The signed-in user's profile page, which lists each tool permission and whether it's
-granted.
+granted. It leaves out the ETS for users without ETS permissions.
 
 ### `tests/__init__.py`
 

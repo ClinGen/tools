@@ -103,6 +103,12 @@ class ProfileViewTest(TestCase):
         self.assertContains(response, "ETS Permissions")
         self.assertContains(response, "You can use the Email Transfer Service.")
 
+    def test_hides_the_ets_from_users_without_ets_permissions(self):
+        self.client.force_login(make_user("no-ets@example.com"))
+        response = self.client.get(reverse("profile"))
+        self.assertNotContains(response, "ETS Permissions")
+        self.assertNotContains(response, "Email Transfer Service")
+
     def test_shows_whether_the_user_has_css_permissions(self):
         user = make_user("c@example.com")
         user.profile.has_css_permissions = True  # type: ignore
