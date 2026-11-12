@@ -148,7 +148,7 @@ formset's empty-form `<template>` and bumping its `TOTAL_FORMS`.
 ### `tables.py`
 
 Defines the django-tables2 tables for the affiliation, user, and CDWG lists. Like the
-HCI's, they show 25 rows per page and sort by their column headers. The views keep the
+HCI's, they sort by their column headers and show 100 rows per page. The views keep the
 search and filters, so paging and sorting keep them.
 
 ### `templates/affiliations_service/affiliation_delete.html`

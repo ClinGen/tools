@@ -6,8 +6,8 @@ from django.utils.html import format_html
 
 from affiliations_service.models import CDWG, Affiliation, User
 
-# How many rows each list shows per page, as in the HCI.
-PER_PAGE = 25
+# How many rows each list shows per page.
+PER_PAGE = 100
 
 TABLE_ATTRS = {"class": "table is-fullwidth is-hoverable"}
 
