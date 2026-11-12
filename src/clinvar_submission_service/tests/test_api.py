@@ -76,7 +76,7 @@ class CreateRecordTest(ApiTestCase):
             make_record("var-2", recordStatus="update", clinvarAccession="SCV000000002")
         )
         record = Record.objects.get()
-        self.assertEqual(record.local_id, "var-2")
+        self.assertEqual(record.tool_id, "var-2")
         self.assertEqual(record.hgvs, "NC_000017.11:g.43045712T>C")
         self.assertEqual(record.gene_symbol, "BRCA1")
         self.assertEqual(record.condition_id, "MONDO:0011450")
@@ -115,7 +115,7 @@ class CreateRecordTest(ApiTestCase):
             Record.objects.filter(status=Record.Status.WAITING_FOR_BATCH).count(), 1
         )
 
-    def test_the_same_local_id_from_another_affiliation_is_a_new_record(self):
+    def test_the_same_tool_id_from_another_affiliation_is_a_new_record(self):
         self.post_record(make_record("var-1"))
         other = {"id": 10008, "name": "Cardiomyopathy VCEP"}
         response = self.post_body(
@@ -124,7 +124,7 @@ class CreateRecordTest(ApiTestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(Record.objects.count(), 2)
 
-    def test_records_without_a_local_id_are_never_replaced(self):
+    def test_records_without_a_tool_id_are_never_replaced(self):
         record = make_record()
         del record["localID"]
         self.post_record(record)
@@ -192,7 +192,7 @@ class ReadRecordTest(ApiTestCase):
         body = json.loads(response.content)
         self.assertEqual(body["status"], "waiting_for_batch")
         self.assertEqual(body["clinvar_accession"], "SCV000000009")
-        self.assertEqual(body["local_id"], "var-1")
+        self.assertEqual(body["tool_id"], "var-1")
         self.assertEqual(body["record"], make_record("var-1"))
 
     def test_another_clients_record_is_not_found(self):

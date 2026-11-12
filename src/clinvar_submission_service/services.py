@@ -42,7 +42,7 @@ def save_record(
 ) -> tuple[Record, bool]:
     """Saves a record to wait for a batch.
 
-    If the affiliation has a waiting record with the same local ID, that record is
+    If the affiliation has a waiting record with the same tool ID, that record is
     replaced, and its history keeps the old version. Otherwise a new record is made.
 
     Args:
@@ -56,12 +56,12 @@ def save_record(
     fields = fields_of(GermlineRecord.model_validate(payload))
     with transaction.atomic():
         record = None
-        if fields["local_id"]:
+        if fields["tool_id"]:
             record = (
                 Record.objects.select_for_update()
                 .filter(
                     affiliation_id=affiliation.id,
-                    local_id=fields["local_id"],
+                    tool_id=fields["tool_id"],
                     status=Record.Status.WAITING_FOR_BATCH,
                 )
                 .first()
@@ -218,16 +218,16 @@ def build_payload(batch: Batch) -> dict[str, Any]:
 
 
 def report_results(report: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
-    """Returns each record's result in ClinVar's summary report, by its local ID.
+    """Returns each record's result in ClinVar's summary report, by its tool ID.
 
     Returns:
-        The results, by local ID; {} if there's no report yet.
+        The results, by tool ID; {} if there's no report yet.
     """
     results = {}
     for result in (report or {}).get("submissions") or []:
-        local_id = (result.get("identifiers") or {}).get("localID")
-        if local_id:
-            results[local_id] = result
+        tool_id = (result.get("identifiers") or {}).get("localID")
+        if tool_id:
+            results[tool_id] = result
     return results
 
 
@@ -236,20 +236,20 @@ def save_results(batch: Batch) -> None:
 
     A record ClinVar accepted gets its SCV. A record that failed goes back to waiting,
     so it can join a later batch, and its attempt keeps ClinVar's errors. A result
-    whose local ID matches none of the batch's records is logged and skipped.
+    whose tool ID matches none of the batch's records is logged and skipped.
     """
     results = report_results(batch.summary_report)
     with transaction.atomic():
         attempts = batch.batch_records.select_related("record")  # type: ignore
         for attempt in attempts:
-            result = results.pop(attempt.record.local_id, None)
+            result = results.pop(attempt.record.tool_id, None)
             if result is not None:
                 _save_result(attempt, result)
-    for local_id in results:
+    for tool_id in results:
         logger.warning(
             "%s's summary report has a result for %s, which isn't in the batch.",
             batch.slug,
-            local_id,
+            tool_id,
         )
 
 

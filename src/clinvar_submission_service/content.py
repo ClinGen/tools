@@ -82,7 +82,7 @@ class ObservedIn(ClinVarSchema):
 class GermlineRecord(ClinVarSchema):
     record_status: RecordStatus = Field(alias="recordStatus")
     clinvar_accession: str | None = Field(None, alias="clinvarAccession")
-    local_id: str | None = Field(None, alias="localID")
+    tool_id: str | None = Field(None, alias="localID")
     local_key: str | None = Field(None, alias="localKey")
     submitted_assembly: Assembly = Field(alias="submittedAssembly")
     variant_set: VariantSet = Field(alias="variantSet")
@@ -162,7 +162,7 @@ def fields_of(record: GermlineRecord) -> dict[str, Any]:
     return {
         "record_status": record.record_status,
         "clinvar_accession": record.clinvar_accession or "",
-        "local_id": record.local_id or "",
+        "tool_id": record.tool_id or "",
         "local_key": record.local_key or "",
         "submitted_assembly": record.submitted_assembly,
         "hgvs": variant.hgvs,

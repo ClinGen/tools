@@ -50,7 +50,7 @@ class RecordSummary(Schema):
     slug: str
     affiliation: Affiliation | None
     status: str
-    local_id: str
+    tool_id: str
     clinvar_accession: str
     added_at: datetime
     updated_at: datetime

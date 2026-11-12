@@ -37,7 +37,7 @@ class DummyBodyTest(TestCase):
         second = [dummy_body(random.Random())["record"]["localID"] for _ in range(5)]
         self.assertNotEqual(first, second)
 
-    def test_a_resent_record_keeps_its_local_id_and_changes_its_classification(self):
+    def test_a_resent_record_keeps_its_tool_id_and_changes_its_classification(self):
         rng = random.Random(3)
         body = dummy_body(rng)
         again = resent(body, rng)
@@ -79,7 +79,7 @@ class MainTest(TestCase):
         self.assertIn("R1", out)
         self.assertIn("new", out)
 
-    def test_resend_sends_records_again_with_the_same_local_id(self):
+    def test_resend_sends_records_again_with_the_same_tool_id(self):
         with mock.patch("send_dummy_records.requests.post") as post:
             post.side_effect = [
                 _response(201, {"slug": "R1", "status": "waiting_for_batch"}),

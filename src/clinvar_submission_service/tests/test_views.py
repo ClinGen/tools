@@ -397,7 +397,7 @@ class DetailViewTest(CssViewTestCase):
         )
         response = self.client.get(batch.get_absolute_url())
         rows = response.context["rows"]
-        self.assertEqual([row.record.local_id for row in rows], ["var-1", "var-2"])
+        self.assertEqual([row.record.tool_id for row in rows], ["var-1", "var-2"])
         self.assertEqual(rows[0].scv, "SCV000000001")
         self.assertTrue(rows[0].accepted)
         self.assertFalse(rows[1].accepted)
@@ -672,12 +672,12 @@ class AffiliationSettingsViewTest(CssViewTestCase):
 
 
 class RecordListViewTest(CssViewTestCase):
-    def _record(self, local_id: str, **fields: object) -> Record:
-        content = Content.model_validate(make_content(make_record(local_id)))
+    def _record(self, tool_id: str, **fields: object) -> Record:
+        content = Content.model_validate(make_content(make_record(tool_id)))
         defaults = {
             "affiliation_id": 10007,
             "affiliation_name": "Hearing Loss VCEP",
-            "payload": make_record(local_id),
+            "payload": make_record(tool_id),
         }
         return Record.objects.create(**(record_fields(content)[0] | defaults | fields))
 
@@ -724,7 +724,7 @@ class RecordListViewTest(CssViewTestCase):
         response = self.client.get(reverse("css:records"), {"affiliation": "VCEP"})
         self.assertEqual(_listed(response), [])
 
-    def test_searches_by_gene_hgvs_local_id_or_affiliation(self):
+    def test_searches_by_gene_hgvs_tool_id_or_affiliation(self):
         match = self._record("vci-123", gene_symbol="MYH7", hgvs="NM_000257.4:c.1A>G")
         self._record("var-2", affiliation_name="TP53 VCEP")
         for query in ["myh7", "c.1A>G", "vci-123", "Hearing"]:
@@ -766,12 +766,12 @@ class NewBatchViewTest(CssViewTestCase):
         self.first = self._record("var-1")
         self.second = self._record("var-2")
 
-    def _record(self, local_id: str, **fields: object) -> Record:
-        content = Content.model_validate(make_content(make_record(local_id)))
+    def _record(self, tool_id: str, **fields: object) -> Record:
+        content = Content.model_validate(make_content(make_record(tool_id)))
         defaults = {
             "affiliation_id": 10007,
             "affiliation_name": "Hearing Loss VCEP",
-            "payload": make_record(local_id),
+            "payload": make_record(tool_id),
         }
         return Record.objects.create(**(record_fields(content)[0] | defaults | fields))
 
@@ -813,8 +813,8 @@ class NewBatchViewTest(CssViewTestCase):
         )
         self.assertEqual(batch.status, Batch.Status.SUBMITTED_TO_CLINVAR)
         self.assertEqual(len(self.fake.submitted), 1)
-        self.assertContains(response, "var-1")
-        self.assertContains(response, "var-2")
+        self.assertContains(response, self.first.slug)
+        self.assertContains(response, self.second.slug)
         self.assertEqual(batch.made_by, self.user)
 
     def test_refuses_an_empty_or_mixed_selection_with_a_plain_message(self):
@@ -1009,8 +1009,8 @@ class AffiliationSelectTest(CssViewTestCase):
 
 def _sample_record(affiliation_id: int, name: str, status: str) -> Record:
     """Returns a new record from the affiliation, in the status."""
-    local_id = f"var-{Record.objects.count()}"
-    content = Content.model_validate(make_content(make_record(local_id)))
+    tool_id = f"var-{Record.objects.count()}"
+    content = Content.model_validate(make_content(make_record(tool_id)))
     return Record.objects.create(
         **record_fields(content)[0],
         affiliation_id=affiliation_id,
@@ -1302,7 +1302,7 @@ class IndexViewTest(TestCase):
 
 
 class IdLabelTest(CssViewTestCase):
-    """Tests that pages call slugs Record ID and Batch ID, and local IDs Tool ID."""
+    """Tests that pages call slugs Record ID and Batch ID, and tool IDs Tool ID."""
 
     def setUp(self):
         super().setUp()
@@ -1339,6 +1339,11 @@ class IdLabelTest(CssViewTestCase):
     def test_a_batchs_page_says_record_id(self):
         response = self.client.get(self.batch.get_absolute_url())
         self.assertContains(response, "<th>Record ID</th>", html=True)
+        self.assertContains(
+            response,
+            f'<a href="{self.record.get_absolute_url()}">{self.record.slug}</a>',
+            html=True,
+        )
 
     def test_a_send_failed_batch_asks_for_its_batch_id(self):
         self.batch.status = Batch.Status.SEND_TO_CLINVAR_FAILED

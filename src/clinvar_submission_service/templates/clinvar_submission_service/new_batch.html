@@ -40,10 +40,10 @@
                                                 <input type="checkbox"
                                                        name="records"
                                                        value="{{ record.slug }}"
-                                                       aria-label="Pick {{ record.local_id|default:record.slug }}">
+                                                       aria-label="Pick {{ record.tool_id|default:record.slug }}">
                                             {% endif %}
                                         </td>
-                                        <td>{{ record.local_id }}</td>
+                                        <td>{{ record.tool_id }}</td>
                                         <td>
                                             {% if record.gene_symbol %}<strong>{{ record.gene_symbol }}</strong><br>{% endif %}
                                             {{ record.hgvs }}

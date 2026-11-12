@@ -22,15 +22,15 @@ from clinvar_submission_service.simulation import SimulatedClinVarClient
 from clinvar_submission_service.tests.fakes import make_record
 
 
-def _batch(*local_ids: str) -> Batch:
-    """Returns a not-yet-sent batch of new waiting records with the local IDs."""
+def _batch(*tool_ids: str) -> Batch:
+    """Returns a not-yet-sent batch of new waiting records with the tool IDs."""
     records = [
         save_record(
             api_key=None,
             affiliation=Affiliation(id=10007, name="Hearing Loss VCEP"),
-            payload=make_record(local_id),
+            payload=make_record(tool_id),
         )[0]
-        for local_id in local_ids
+        for tool_id in tool_ids
     ]
     return make_batch(records)
 
@@ -79,8 +79,8 @@ class StatusTest(TestCase):
         self.addCleanup(patcher.stop)
         self.client_ = SimulatedClinVarClient()
 
-    def _sent(self, *local_ids: str) -> Batch:
-        return forward_batch(_batch(*local_ids))
+    def _sent(self, *tool_ids: str) -> Batch:
+        return forward_batch(_batch(*tool_ids))
 
     def test_each_poll_moves_the_batch_one_step(self):
         batch = self._sent("var-1", "var-2")
@@ -151,7 +151,7 @@ class StatusTest(TestCase):
         self.assertIsNone(batch.next_poll_at)
         attempts = BatchRecord.objects.filter(batch=batch).select_related("record")
         for attempt in attempts:
-            with self.subTest(attempt.record.local_id):
+            with self.subTest(attempt.record.tool_id):
                 self.assertIn(attempt.result, {"Success", "Error"})
                 expected = (
                     Record.Status.SUCCEEDED_AT_CLINVAR
@@ -257,7 +257,7 @@ class DeleteAllTest(TestCase):
 
     @override_settings(CSS_SIMULATE_CLINVAR=True)
     def test_deleting_batches_puts_their_records_back_to_waiting(self):
-        succeeded = self.batch.records.get(local_id="var-2")
+        succeeded = self.batch.records.get(tool_id="var-2")
         succeeded.status = Record.Status.SUCCEEDED_AT_CLINVAR
         succeeded.save()
         response = self.client.post(reverse("css:delete_batches"), follow=True)
@@ -265,7 +265,7 @@ class DeleteAllTest(TestCase):
         self.assertContains(response, "Deleted 1 batches.")
         self.assertFalse(Batch.objects.exists())
         self.assertFalse(BatchRecord.objects.exists())
-        statuses = dict(Record.objects.values_list("local_id", "status"))
+        statuses = dict(Record.objects.values_list("tool_id", "status"))
         self.assertEqual(
             statuses,
             {
@@ -274,7 +274,7 @@ class DeleteAllTest(TestCase):
                 "var-3": Record.Status.WAITING_FOR_BATCH,
             },
         )
-        record = Record.objects.get(local_id="var-1")
+        record = Record.objects.get(tool_id="var-1")
         self.assertEqual(
             record.history.first().history_change_reason,  # type: ignore
             "Its batch was deleted.",

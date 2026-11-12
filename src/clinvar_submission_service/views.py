@@ -101,7 +101,7 @@ def _record_rows(batch: Batch) -> list[RecordRow]:
     rows = []
     attempts = batch.batch_records.select_related("record")  # type: ignore
     for record in (attempt.record for attempt in attempts):
-        result = results.get(record.local_id)
+        result = results.get(record.tool_id)
         if result is None:
             rows.append(RecordRow(record=record, accepted=None, scv=""))
             continue
@@ -219,7 +219,7 @@ def records(request: HttpRequest) -> HttpResponse:
 
     The status= filter shows only records in one status, and the affiliation= filter
     one affiliation's, by its ID. An unknown status shows every record. The q= search
-    matches a record's gene, HGVS, local ID, or affiliation. The table's sort= and
+    matches a record's gene, HGVS, tool ID, or affiliation. The table's sort= and
     page= parameters sort and page the results.
 
     Returns:
@@ -239,7 +239,7 @@ def records(request: HttpRequest) -> HttpResponse:
         rows = rows.filter(
             Q(gene_symbol__icontains=query)
             | Q(hgvs__icontains=query)
-            | Q(local_id__icontains=query)
+            | Q(tool_id__icontains=query)
             | Q(affiliation_name__icontains=query)
         )
     table = RecordTable(rows, affiliation=affiliation)

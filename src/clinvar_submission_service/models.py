@@ -435,12 +435,15 @@ class Record(SlugModel):
         verbose_name="ClinVar Accession",
         help_text="The record's SCV accession in ClinVar. Blank for a novel record.",
     )
-    local_id = models.CharField(
+    tool_id = models.CharField(
         blank=True,
         default="",
         max_length=255,
         verbose_name="Tool ID",
-        help_text="The client's ID for the variant. ClinVar makes it public.",
+        help_text=(
+            "The ID the tool that sent the record gave it, ClinVar's localID. "
+            "ClinVar makes it public."
+        ),
     )
     local_key = models.CharField(
         blank=True,
@@ -538,7 +541,7 @@ class Record(SlugModel):
         """Provides metadata."""
 
         db_table = "record"
-        ordering = ["local_id"]
+        ordering = ["tool_id"]
         verbose_name = "Record"
         verbose_name_plural = "Records"
 

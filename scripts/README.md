@@ -27,6 +27,6 @@ Tests `env_check.py` against temporary `.env` and `.env.example` files.
 ### `test_send_dummy_records.py`
 
 Tests `send_dummy_records.py`: that its records are valid for the CSS's API, include
-updates, and differ between runs; that a resent record keeps its local ID; and, with
+updates, and differ between runs; that a resent record keeps its tool ID; and, with
 `requests` mocked, that it sends the key, reports new and replaced records, and exits
 with a plain message for a missing key, a rejected key, or a CSS it can't reach.

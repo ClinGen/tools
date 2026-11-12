@@ -12,7 +12,7 @@
                         <tr><td>Status</td><td>{% include "clinvar_submission_service/partials/record_status.html" %}</td></tr>
                         <tr><td>Affiliation</td><td>{{ record.affiliation_name }}</td></tr>
                         <tr><td>Sent By</td><td>{{ record.api_key.name|default:"" }}</td></tr>
-                        <tr><td>Tool ID</td><td>{{ record.local_id }}</td></tr>
+                        <tr><td>Tool ID</td><td>{{ record.tool_id }}</td></tr>
                         <tr>
                             <td>Variant</td>
                             <td>

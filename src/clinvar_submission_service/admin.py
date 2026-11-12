@@ -81,7 +81,7 @@ class BatchAdmin(SimpleHistoryAdmin):
 class RecordAdmin(SimpleHistoryAdmin):
     list_display = [
         "slug",
-        "local_id",
+        "tool_id",
         "affiliation_name",
         "status",
         "hgvs",
@@ -90,7 +90,7 @@ class RecordAdmin(SimpleHistoryAdmin):
     list_filter = ["status", "classification", "affiliation_name"]
     search_fields = [
         "slug",
-        "local_id",
+        "tool_id",
         "clinvar_accession",
         "hgvs",
         "batch_records__batch__slug",

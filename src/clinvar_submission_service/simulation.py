@@ -4,7 +4,7 @@ The web server sends batches and the poller checks on them in separate processes
 the simulator keeps nothing in memory. It reads what it needs from the database: a
 batch by its ClinVar ID, and its records. Each poll moves a batch one step, from
 submitted to processing to processed or error, and each record's result comes from a
-hash of the ClinVar ID and its local ID, so it's the same every time for that batch.
+hash of the ClinVar ID and its tool ID, so it's the same every time for that batch.
 """
 
 import hashlib
@@ -46,7 +46,7 @@ def _digest(*parts: str) -> int:
 
 def _succeeds(clinvar_id: str, record: Record) -> bool:
     """Returns whether ClinVar accepts the record in the simulated batch."""
-    return _digest(clinvar_id, record.local_id) % 100 < SUCCESS_PERCENT
+    return _digest(clinvar_id, record.tool_id) % 100 < SUCCESS_PERCENT
 
 
 class SimulatedClinVarClient:
@@ -124,16 +124,16 @@ def _records(batch: Batch) -> list[Record]:
 
 def _result(clinvar_id: str, record: Record) -> dict[str, Any]:
     """Returns ClinVar's result for one record, in its summary report's shape."""
-    identifiers: dict[str, str] = {"localID": record.local_id}
+    identifiers: dict[str, str] = {"localID": record.tool_id}
     if _succeeds(clinvar_id, record):
         scv = record.clinvar_accession or (
-            f"SCV{_digest(clinvar_id, record.local_id, 'scv') % 10**9:09d}"
+            f"SCV{_digest(clinvar_id, record.tool_id, 'scv') % 10**9:09d}"
         )
         return {
             "identifiers": identifiers | {"clinvarAccession": scv},
             "processingStatus": "Success",
         }
-    message = ERROR_MESSAGES[_digest(clinvar_id, record.local_id) % len(ERROR_MESSAGES)]
+    message = ERROR_MESSAGES[_digest(clinvar_id, record.tool_id) % len(ERROR_MESSAGES)]
     return {
         "identifiers": identifiers,
         "processingStatus": "Error",

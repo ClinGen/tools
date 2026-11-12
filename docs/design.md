@@ -377,7 +377,8 @@ go in a new version beside it. Ninja validates request bodies and serves OpenAPI
   The CSS keeps those once per affiliation instead. The CSS saves the record as sent,
   and returns 201. If the affiliation has a waiting record with the same `localID`, the
   CSS replaces it, keeps the old version in its history, and returns 200.
-- `GET /css/api/v1/records/{slug}`: read a record's affiliation, status, SCV, and JSON.
+- `GET /css/api/v1/records/{slug}`: read a record's affiliation, status, tool ID, SCV,
+  and JSON.
 - `GET /css/api/v1/records`: list the calling client's records, newest first.
 - `POST /css/api/v1/records/{slug}/withdraw`: withdraw a waiting record, so it won't be
   sent to ClinVar. A record in a batch, or one ClinVar accepted, gets a 409.
@@ -413,13 +414,14 @@ exits cleanly on SIGTERM after finishing the batch it's working on.
 A Records page lists every record in the CSS, newest first, with its affiliation, gene
 and HGVS, classification, and status. Like the batch list, it has status pills, an
 affiliation filter, a live search (gene, HGVS, tool ID, or affiliation), and status tags
-that link to their filter. Pages call a record's slug its Record ID, a batch's its Batch
-ID, and a record's local ID, the ID the tool that sent it gave it, its Tool ID. Filtered
-to one affiliation, it links to that affiliation's new batch page, where staff pick
-waiting records, or add every waiting record, review them, and send them to ClinVar as
-one batch. The page explains in plain words why a selection can't be batched. Each
-record's page shows its fields and status, each batch it was in with ClinVar's result
-for it, its history in plain words, and a Withdraw button while it waits.
+that link to their filter. Pages call a record's slug its Record ID and a batch's its
+Batch ID. A record's Tool ID is the ID the tool that sent it gave it, which ClinVar
+calls `localID`. Filtered to one affiliation, it links to that affiliation's new batch
+page, where staff pick waiting records, or add every waiting record, review them, and
+send them to ClinVar as one batch. The page explains in plain words why a selection
+can't be batched. Each record's page shows its fields and status, each batch it was in
+with ClinVar's result for it, its history in plain words, and a Withdraw button while it
+waits.
 
 The CSS's pages list every batch (a submission to ClinVar), newest first, with its
 affiliation and the genes of its records. Pills filter it to one status, or show all of
@@ -454,7 +456,7 @@ running CSS, as the VCI would, and `CSS_SIMULATE_CLINVAR=1`, read only by the de
 settings, swaps in a simulated ClinVar. The simulator reads each batch from the
 database, since the web server and the poller are separate processes. Each poll moves a
 batch one step toward processed or error, and each record's result comes from a hash of
-the ClinVar ID and local ID, so most records succeed and the rest fail with plausible
+the ClinVar ID and tool ID, so most records succeed and the rest fail with plausible
 messages. While simulating, the dev settings shorten the poll delays to seconds, and
 every CSS page shows a banner saying ClinVar is simulated.
 

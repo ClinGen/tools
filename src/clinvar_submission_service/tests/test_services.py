@@ -23,9 +23,9 @@ from clinvar_submission_service.tests.fakes import (
 HEARING_LOSS = Affiliation(id=10007, name="Hearing Loss VCEP")
 
 
-def _waiting(local_id: str, affiliation: Affiliation = HEARING_LOSS) -> Record:
+def _waiting(tool_id: str, affiliation: Affiliation = HEARING_LOSS) -> Record:
     record, _ = save_record(
-        api_key=None, affiliation=affiliation, payload=make_record(local_id)
+        api_key=None, affiliation=affiliation, payload=make_record(tool_id)
     )
     return record
 
@@ -97,7 +97,7 @@ class MakeBatchTest(ServicesTestCase):
                 "Only records waiting for a batch can be added to one.",
             ),
         }
-        Record.objects.filter(local_id="d").update(status=Record.Status.WITHDRAWN)
+        Record.objects.filter(tool_id="d").update(status=Record.Status.WITHDRAWN)
         batches_before = Batch.objects.count()
         for name, (records, message) in cases.items():
             with self.subTest(name):
@@ -105,7 +105,7 @@ class MakeBatchTest(ServicesTestCase):
                     make_batch(records)
                 self.assertEqual(Batch.objects.count(), batches_before)
         self.assertEqual(
-            Record.objects.get(local_id="a").status, Record.Status.WAITING_FOR_BATCH
+            Record.objects.get(tool_id="a").status, Record.Status.WAITING_FOR_BATCH
         )
 
     def test_refuses_more_records_than_clinvar_takes(self):

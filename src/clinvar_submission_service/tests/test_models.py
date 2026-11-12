@@ -142,7 +142,7 @@ class StandaloneRecordTest(TestCase):
         # Same first 8 hex characters as the saved record and as each other.
         prefix = taken.pk.hex[:8]
         records = [
-            Record(id=uuid.UUID(f"{prefix}-0000-4000-8000-{n:012x}"), local_id=f"v{n}")
+            Record(id=uuid.UUID(f"{prefix}-0000-4000-8000-{n:012x}"), tool_id=f"v{n}")
             for n in range(1, 4)
         ]
         Record.set_unique_slugs(records)

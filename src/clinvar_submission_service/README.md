@@ -35,7 +35,7 @@ Serves the CSS's API, version 1, as a Django Ninja `NinjaAPI` at `/css/api/v1/`,
 OpenAPI docs at `/css/api/v1/docs`. Every endpoint needs an API key (see `api/auth.py`),
 and a client sees only its own records. `POST /records` takes the client's affiliation
 and one germline record (`content.RecordRequest`) and saves it to wait for a batch,
-returning 201, or 200 if it replaced a waiting record with the same local ID.
+returning 201, or 200 if it replaced a waiting record with the same tool ID.
 `GET /records` lists the client's records a page at a time, `GET /records/{slug}` reads
 one with its JSON, and `POST /records/{slug}/withdraw` withdraws a waiting one, or
 returns a 409 for any other. A record that doesn't match, or a body with
@@ -131,7 +131,7 @@ sent to Sentry, leaves the status as it was, and doesn't stop the pass.
 ### `services.py`
 
 Saves a record a client sent with `save_record()`, which replaces the affiliation's
-waiting record with the same local ID, if there is one, so its history keeps the old
+waiting record with the same tool ID, if there is one, so its history keeps the old
 version. `withdraw_record()` withdraws a waiting record and notes who did in its
 history, or raises `NotWithdrawableError` for any other. `check_batchable()` checks that
 records can make a batch, and `make_batch()` makes a not-yet-sent batch of one
@@ -140,7 +140,7 @@ affiliation's waiting records, in the order given, copies the affiliation's
 `BatchNotMadeError`, with a message for staff, for no records, more than 10,000, mixed
 affiliations, or records that aren't waiting. `build_payload()` builds a batch's ClinVar
 content from its records' JSON, in order, and the batch's submission-level fields.
-`report_results()` reads each record's result from a summary report by local ID, and
+`report_results()` reads each record's result from a summary report by tool ID, and
 `save_results()` saves them: a record ClinVar accepted gets its SCV, and one that failed
 goes back to waiting, with ClinVar's errors kept on its attempt. Forwards a batch to
 ClinVar once with `forward_batch()`, which sends that built content and which the staff
@@ -175,10 +175,11 @@ naming the affiliation, links to its settings.
 
 A batch's page, in plain language: its status, affiliation, who sent it, its ClinVar ID,
 when it arrived and was last checked, and what its status means. Its records table shows
-each record's variant, condition, classification, inheritance, date last evaluated, and
-whether it's new or an update, with its result and SCV once ClinVar has reported. A
-send_to_clinvar_failed batch's page has a Resend button. It never shows raw JSON or
-ClinVar's error text; developers see those in the Django admin.
+each record's Record ID, linked to its page, variant, condition, classification,
+inheritance, date last evaluated, and whether it's new or an update, with its result and
+SCV once ClinVar has reported. A send_to_clinvar_failed batch's page has a Resend
+button. It never shows raw JSON or ClinVar's error text; developers see those in the
+Django admin.
 
 ### `templates/clinvar_submission_service/record.html`
 
@@ -259,7 +260,7 @@ nothing in memory and reads each batch and its records from the database. Each p
 moves a batch one step: submitted, then processing, then processed or error, with
 ClinVar's error code. Its summary report, in ClinVar's shape, gives each record Success
 with an SCV or Error with a plausible message, about 85% Success, decided by a hash of
-the ClinVar ID and local ID so it's the same on every call. `delete_all_records()`
+the ClinVar ID and tool ID so it's the same on every call. `delete_all_records()`
 deletes every record and batch, and `delete_all_batches()` deletes every batch and puts
 its records back to waiting, so the simulated workflow can start over.
 
@@ -270,10 +271,10 @@ to its page, its affiliation, linked to the list of that affiliation's batches, 
 records' genes, the staff member who made it, its status tag, linked to the list
 filtered to that status (keeping the affiliation filter), its ClinVar ID, and when the
 CSS received it. It sorts by every column but the genes and status. `RecordTable`, on
-the Records page, shows each record's Record ID, linked to its page, Tool ID (its local
-ID), affiliation, linked to the list of its records, gene and HGVS, classification,
-status tag, linked to the list filtered to that status (keeping the affiliation filter),
-and when the CSS received it.
+the Records page, shows each record's Record ID, linked to its page, Tool ID,
+affiliation, linked to the list of its records, gene and HGVS, classification, status
+tag, linked to the list filtered to that status (keeping the affiliation filter), and
+when the CSS received it.
 
 ### `tests/__init__.py`
 
@@ -295,7 +296,7 @@ record's batches, and showing a new key once.
 ### `tests/test_api.py`
 
 Tests each API endpoint: that a posted record waits with its JSON, fields, affiliation,
-and client, that re-posting a waiting record with the same local ID replaces it and
+and client, that re-posting a waiting record with the same tool ID replaces it and
 keeps history, and that a batched record, another affiliation's, or one without a local
 ID makes a new record; that a bad record, a missing or bad affiliation, a
 submission-level field, or a body over the upload limit is rejected and saves nothing;
@@ -345,7 +346,7 @@ retrying a failed report download, backing off on errors and 429s, that one fail
 batch doesn't block the rest, that batches not sent to ClinVar, or whose send failed,
 are never polled, polls per pass, and stopping mid-pass. Also tests that a processed
 batch accepts each record with its SCV, that a partly failed one returns its failures to
-waiting with ClinVar's errors kept, and that a result for an unknown local ID is logged
+waiting with ClinVar's errors kept, and that a result for an unknown tool ID is logged
 and skipped. Also tests the command's `--once` and that SIGTERM stops its loop.
 
 ### `tests/test_services.py`
@@ -382,7 +383,7 @@ pagination that keeps the search and filters, the results-only response to HTMX,
 header; each status's tag color, ClinVar's wording, and tooltip, on the list and the
 detail page, the list's tags linking to their status (and the detail page's not), and an
 Error's tooltip by error code; that no page uses the old wording; the detail page's
-records, with ClinVar's result matched by local ID, an update's SCV, and records ClinVar
+records, with ClinVar's result matched by tool ID, an update's SCV, and records ClinVar
 never got or hasn't reported on; its plain-language error; that only a
 send_to_clinvar_failed batch has a Resend button; that resending sends it again, records
 who did, keeps a failed resend's new error, and rejects other statuses and GET requests;

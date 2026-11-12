@@ -269,9 +269,9 @@ class RecordResultsTest(PollerTestCase):
     def _report(self, *results: dict) -> dict:
         return {"totalCount": len(results), "submissions": list(results)}
 
-    def _attempt(self, local_id: str) -> BatchRecord:
+    def _attempt(self, tool_id: str) -> BatchRecord:
         return BatchRecord.objects.select_related("record").get(
-            batch=self.batch, record__local_id=local_id
+            batch=self.batch, record__tool_id=tool_id
         )
 
     def test_a_processed_batch_accepts_every_record_with_its_scv(self):
@@ -280,9 +280,9 @@ class RecordResultsTest(PollerTestCase):
         )
         self.fake.set_status("SUB000001", "processed", report=report)
         self.poller.run_pass()
-        for local_id, scv in [("var-1", "SCV000000001"), ("var-2", "SCV000000002")]:
-            with self.subTest(local_id):
-                attempt = self._attempt(local_id)
+        for tool_id, scv in [("var-1", "SCV000000001"), ("var-2", "SCV000000002")]:
+            with self.subTest(tool_id):
+                attempt = self._attempt(tool_id)
                 self.assertEqual(attempt.result, BatchRecord.Result.SUCCESS)
                 self.assertEqual(attempt.scv, scv)
                 self.assertEqual(
@@ -310,7 +310,7 @@ class RecordResultsTest(PollerTestCase):
         # The failed record can join a later batch.
         self.assertEqual(make_batch([failed.record]).records.get(), failed.record)
 
-    def test_an_unmatched_local_id_is_logged_and_skipped(self):
+    def test_an_unmatched_tool_id_is_logged_and_skipped(self):
         report = self._report(
             _success("var-1", "SCV000000001"), _success("nobody", "SCV000000009")
         )
@@ -324,17 +324,17 @@ class RecordResultsTest(PollerTestCase):
         self.assertEqual(unreported.record.status, Record.Status.IN_BATCH)
 
 
-def _success(local_id: str, scv: str) -> dict:
+def _success(tool_id: str, scv: str) -> dict:
     return {
-        "identifiers": {"localID": local_id, "clinvarAccession": scv},
+        "identifiers": {"localID": tool_id, "clinvarAccession": scv},
         "processingStatus": "Success",
     }
 
 
-def _waiting(local_id: str) -> Record:
+def _waiting(tool_id: str) -> Record:
     record, _ = save_record(
         api_key=None,
         affiliation=Affiliation(id=10007, name="Hearing Loss VCEP"),
-        payload=make_record(local_id),
+        payload=make_record(tool_id),
     )
     return record

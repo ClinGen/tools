@@ -73,12 +73,12 @@ def dummy_body(rng: random.Random) -> dict[str, Any]:
         The body, as the VCI would send it.
     """
     gene, hgvs, condition = rng.choice(VARIANTS)
-    local_id = f"dummy-{rng.getrandbits(32):08x}"
+    tool_id = f"dummy-{rng.getrandbits(32):08x}"
     evaluated = date(2026, 1, 1) + timedelta(days=rng.randrange(300))
     record: dict[str, Any] = {
         "recordStatus": "novel",
-        "localID": local_id,
-        "localKey": local_id,
+        "localID": tool_id,
+        "localKey": tool_id,
         "submittedAssembly": "GRCh38",
         "variantSet": {"variant": [{"hgvs": hgvs, "gene": [{"symbol": gene}]}]},
         "conditionSet": {"condition": [{"db": "MONDO", "id": condition}]},

@@ -66,7 +66,7 @@ class RecordTable(tables.Table):
     """The records list, one row per record."""
 
     slug = tables.Column(verbose_name="Record ID", linkify=True)
-    local_id = tables.Column(verbose_name="Tool ID")
+    tool_id = tables.Column(verbose_name="Tool ID")
     affiliation_name = tables.Column(verbose_name="Affiliation")
     variant = tables.Column(empty_values=(), orderable=False)
     classification = tables.Column()

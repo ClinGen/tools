@@ -87,11 +87,11 @@ class FakeClinVarClient:
         return self.reports[url]
 
 
-def make_record(local_id: str = "var-1", **fields: object) -> dict[str, Any]:
+def make_record(tool_id: str = "var-1", **fields: object) -> dict[str, Any]:
     """Returns a germline record, likely pathogenic for an example condition.
 
     Args:
-        local_id: The record's localID.
+        tool_id: The record's localID.
         **fields: Fields to set in place of the defaults, by ClinVar's names.
 
     Returns:
@@ -99,8 +99,8 @@ def make_record(local_id: str = "var-1", **fields: object) -> dict[str, Any]:
     """
     record = {
         "recordStatus": "novel",
-        "localID": local_id,
-        "localKey": local_id,
+        "localID": tool_id,
+        "localKey": tool_id,
         "submittedAssembly": "GRCh38",
         "variantSet": {
             "variant": [
@@ -137,12 +137,12 @@ def make_content(*records: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def make_saved_record(batch: Batch | None, local_id: str, **fields: object) -> Record:
+def make_saved_record(batch: Batch | None, tool_id: str, **fields: object) -> Record:
     """Saves and returns a likely pathogenic record.
 
     Args:
         batch: The batch to add the record to, or None for a record in no batch.
-        local_id: The record's local ID.
+        tool_id: The record's tool ID.
         **fields: Fields to set in place of the defaults.
 
     Returns:
@@ -150,7 +150,7 @@ def make_saved_record(batch: Batch | None, local_id: str, **fields: object) -> R
     """
     defaults = {
         "record_status": RecordStatus.NOVEL,
-        "local_id": local_id,
+        "tool_id": tool_id,
         "submitted_assembly": Assembly.GRCH38,
         "hgvs": "NC_000017.11:g.43045712T>C",
         "condition_db": ConditionDb.MONDO,
