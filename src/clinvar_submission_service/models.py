@@ -439,7 +439,7 @@ class Record(SlugModel):
         blank=True,
         default="",
         max_length=255,
-        verbose_name="Local ID",
+        verbose_name="Tool ID",
         help_text="The client's ID for the variant. ClinVar makes it public.",
     )
     local_key = models.CharField(

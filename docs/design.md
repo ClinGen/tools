@@ -412,13 +412,14 @@ exits cleanly on SIGTERM after finishing the batch it's working on.
 
 A Records page lists every record in the CSS, newest first, with its affiliation, gene
 and HGVS, classification, and status. Like the batch list, it has status pills, an
-affiliation filter, a live search (gene, HGVS, local ID, or affiliation), and status
-tags that link to their filter. Filtered to one affiliation, it links to that
-affiliation's new batch page, where staff pick waiting records, or add every waiting
-record, review them, and send them to ClinVar as one batch. The page explains in plain
-words why a selection can't be batched. Each record's page shows its fields and status,
-each batch it was in with ClinVar's result for it, its history in plain words, and a
-Withdraw button while it waits.
+affiliation filter, a live search (gene, HGVS, tool ID, or affiliation), and status tags
+that link to their filter. Pages call a record's slug its Record ID, a batch's its Batch
+ID, and a record's local ID, the ID the tool that sent it gave it, its Tool ID. Filtered
+to one affiliation, it links to that affiliation's new batch page, where staff pick
+waiting records, or add every waiting record, review them, and send them to ClinVar as
+one batch. The page explains in plain words why a selection can't be batched. Each
+record's page shows its fields and status, each batch it was in with ClinVar's result
+for it, its history in plain words, and a Withdraw button while it waits.
 
 The CSS's pages list every batch (a submission to ClinVar), newest first, with its
 affiliation and the genes of its records. Pills filter it to one status, or show all of

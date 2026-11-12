@@ -11,7 +11,7 @@ from clinvar_submission_service.models import Batch, Classification, Record
 class BatchTable(tables.Table):
     """The batches list, one row per batch."""
 
-    slug = tables.Column(verbose_name="ID", linkify=True)
+    slug = tables.Column(verbose_name="Batch ID", linkify=True)
     affiliation_name = tables.Column(verbose_name="Affiliation")
     variants = tables.Column(empty_values=(), orderable=False)
     made_by__email = tables.Column(verbose_name="Made By")
@@ -65,8 +65,8 @@ class BatchTable(tables.Table):
 class RecordTable(tables.Table):
     """The records list, one row per record."""
 
-    slug = tables.Column(verbose_name="ID", linkify=True)
-    local_id = tables.Column(verbose_name="Local ID")
+    slug = tables.Column(verbose_name="Record ID", linkify=True)
+    local_id = tables.Column(verbose_name="Tool ID")
     affiliation_name = tables.Column(verbose_name="Affiliation")
     variant = tables.Column(empty_values=(), orderable=False)
     classification = tables.Column()

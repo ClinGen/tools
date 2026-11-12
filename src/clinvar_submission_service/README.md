@@ -190,7 +190,7 @@ errors.
 ### `templates/clinvar_submission_service/records.html`
 
 The Records page, laid out like the batch list, with the filters from
-`partials/list_filters.html` searching genes, HGVS, local IDs, and affiliations.
+`partials/list_filters.html` searching genes, HGVS, tool IDs, and affiliations.
 
 ### `templates/clinvar_submission_service/new_batch.html`
 
@@ -265,14 +265,15 @@ its records back to waiting, so the simulated workflow can start over.
 
 ### `tables.py`
 
-`BatchTable`, the django-tables2 table on the list page: each batch's ID, linked to its
-page, its affiliation, linked to the list of that affiliation's batches, its records'
-genes, the staff member who made it, its status tag, linked to the list filtered to that
-status (keeping the affiliation filter), its ClinVar ID, and when the CSS received it.
-It sorts by every column but the genes and status. `RecordTable`, on the Records page,
-shows each record's ID, linked to its page, local ID, affiliation, linked to the list of
-its records, gene and HGVS, classification, status tag, linked to the list filtered to
-that status (keeping the affiliation filter), and when the CSS received it.
+`BatchTable`, the django-tables2 table on the list page: each batch's Batch ID, linked
+to its page, its affiliation, linked to the list of that affiliation's batches, its
+records' genes, the staff member who made it, its status tag, linked to the list
+filtered to that status (keeping the affiliation filter), its ClinVar ID, and when the
+CSS received it. It sorts by every column but the genes and status. `RecordTable`, on
+the Records page, shows each record's Record ID, linked to its page, Tool ID (its local
+ID), affiliation, linked to the list of its records, gene and HGVS, classification,
+status tag, linked to the list filtered to that status (keeping the affiliation filter),
+and when the CSS received it.
 
 ### `tests/__init__.py`
 
@@ -405,8 +406,8 @@ order, columns matching each list's pills, links to the filtered lists, and labe
 settings gear; and, on both lists, the affiliation select's options, order, and
 selection, that it keeps the status and search, and that New Batch shows only for one
 affiliation with waiting records. Also tests each page's breadcrumbs, that the navbar
-under the subtitle links to each section in order and bolds the current one, and that no
-page has the old tabs.
+under the subtitle links to each section in order and bolds the current one, that no
+page has the old tabs, and that pages label IDs as Record ID, Batch ID, and Tool ID.
 
 ### `urls.py`
 

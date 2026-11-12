@@ -1299,3 +1299,59 @@ class IndexViewTest(TestCase):
         self.assertContains(response, "ClinVar Submission Service")
         self.assertContains(response, f'href="{reverse("css:records")}"')
         self.assertNotContains(response, f'href="{reverse("css:index")}"')
+
+
+class IdLabelTest(CssViewTestCase):
+    """Tests that pages call slugs Record ID and Batch ID, and local IDs Tool ID."""
+
+    def setUp(self):
+        super().setUp()
+        self.batch = self._make(make_record("var-1"))
+        self.record = self.batch.records.get()
+
+    def _headers(self, response: "Response") -> list[str]:
+        return [column.header for column in response.context["table"].columns]
+
+    def test_the_records_list_says_record_id_and_tool_id(self):
+        response = self.client.get(reverse("css:records"))
+        headers = self._headers(response)
+        self.assertIn("Record ID", headers)
+        self.assertIn("Tool ID", headers)
+        self.assertNotIn("ID", headers)
+        self.assertNotIn("Local ID", headers)
+        self.assertContains(response, "Search by gene, HGVS, tool ID, or affiliation")
+
+    def test_the_batches_list_says_batch_id(self):
+        response = self.client.get(reverse("css:batches"))
+        headers = self._headers(response)
+        self.assertIn("Batch ID", headers)
+        self.assertNotIn("ID", headers)
+        self.assertContains(
+            response, "Search by batch ID, ClinVar ID, affiliation, gene, or HGVS"
+        )
+
+    def test_a_records_page_says_tool_id_and_batch_id(self):
+        response = self.client.get(self.record.get_absolute_url())
+        self.assertContains(response, "<td>Tool ID</td>", html=True)
+        self.assertContains(response, "<th>Batch ID</th>", html=True)
+        self.assertNotContains(response, "Local ID")
+
+    def test_a_batchs_page_says_record_id(self):
+        response = self.client.get(self.batch.get_absolute_url())
+        self.assertContains(response, "<th>Record ID</th>", html=True)
+
+    def test_a_send_failed_batch_asks_for_its_batch_id(self):
+        self.batch.status = Batch.Status.SEND_TO_CLINVAR_FAILED
+        self.batch.save()
+        response = self.client.get(self.batch.get_absolute_url())
+        self.assertContains(response, f"give them its batch ID, {self.batch.slug}")
+
+    def test_the_new_batch_page_says_tool_id(self):
+        Record.objects.filter(pk=self.record.pk).update(
+            status=Record.Status.WAITING_FOR_BATCH,
+            affiliation_id=10007,
+            affiliation_name="Hearing Loss VCEP",
+        )
+        response = self.client.get(_new_batch_url(10007))
+        self.assertContains(response, "<th>Tool ID</th>", html=True)
+        self.assertNotContains(response, "Local ID")

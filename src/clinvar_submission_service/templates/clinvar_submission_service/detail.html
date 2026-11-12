@@ -22,7 +22,7 @@
                 <div class="notification is-danger is-light block">
                     <p class="has-text-weight-bold">ClinVar never got this batch.</p>
                     <p class="block">You can send it again. If it still doesn't go through, ask a
-                        developer for help, and give them its ID, {{ batch.slug }}.</p>
+                        developer for help, and give them its batch ID, {{ batch.slug }}.</p>
                     <form method="post"
                           action="{% url 'css:resend' slug=batch.slug %}"
                           data-confirm="Send {{ batch.slug }} to ClinVar again?">
@@ -50,7 +50,7 @@
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>Record</th>
+                                <th>Record ID</th>
                                 <th>Variant</th>
                                 <th>Condition</th>
                                 <th>Classification</th>
