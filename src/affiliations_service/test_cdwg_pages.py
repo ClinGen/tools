@@ -8,7 +8,7 @@ from affiliations_service.test_models import make_affiliation, make_cdwg
 from affiliations_service.tests import make_staff
 
 
-class CdwgListPageTest(TestCase):
+class CDWGListPageTest(TestCase):
     def setUp(self):
         self.client.force_login(make_staff("as@example.com"))
 
@@ -45,7 +45,7 @@ class CdwgListPageTest(TestCase):
         self.assertContains(self.client.get(reverse("as:index")), reverse("as:cdwgs"))
 
 
-class CdwgFormPageTest(TestCase):
+class CDWGFormPageTest(TestCase):
     def setUp(self):
         self.client.force_login(make_staff("as@example.com"))
 
@@ -79,7 +79,7 @@ class CdwgFormPageTest(TestCase):
         self.assertIn(reverse("as:cdwg-edit", kwargs={"pk": cdwg.pk}), page)
 
 
-class CdwgPermissionTest(TestCase):
+class CDWGPermissionTest(TestCase):
     def test_cdwg_pages_require_the_as_permission(self):
         cdwg = make_cdwg()
         self.client.force_login(make_staff("no-as@example.com", as_=False))

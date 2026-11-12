@@ -11,7 +11,7 @@ from affiliations_service import breadcrumbs as crumbs
 from affiliations_service.forms import (
     AffiliationCreateForm,
     AffiliationEditForm,
-    CdwgForm,
+    CDWGForm,
     MembershipAddForm,
     OtherEmailFormSet,
     SubmitterIdFormSet,
@@ -19,7 +19,7 @@ from affiliations_service.forms import (
 )
 from affiliations_service.history import describe_history
 from affiliations_service.models import CDWG, Affiliation, Membership, User
-from affiliations_service.tables import PER_PAGE, AffiliationTable, CdwgTable, UserTable
+from affiliations_service.tables import PER_PAGE, AffiliationTable, CDWGTable, UserTable
 from auth_.permissions import tool_permission_required
 from core.tools import get_tool
 
@@ -485,7 +485,7 @@ def cdwg_list(request: HttpRequest) -> HttpResponse:
                 crumbs.search("CDWG Search", "as:cdwgs", current=True)
             ),
             "cdwgs": cdwgs,
-            "table": _paginated(request, CdwgTable(cdwgs)),
+            "table": _paginated(request, CDWGTable(cdwgs)),
             "query": query,
         },
     )
@@ -497,7 +497,7 @@ def _cdwg_form(request: HttpRequest, cdwg: CDWG | None) -> HttpResponse:
     Returns:
         The form page, or a redirect to the CDWG list once it's saved.
     """
-    form = CdwgForm(request.POST if request.method == "POST" else None, instance=cdwg)
+    form = CDWGForm(request.POST if request.method == "POST" else None, instance=cdwg)
     if form.is_valid():
         form.save()
         return redirect("as:cdwgs")

@@ -131,3 +131,11 @@ class ApiDocsWordingTest(ApiTestCase):
         for label in ["Get Affiliation By GPM UUID", "Affiliation ID", "List CDWGs"]:
             with self.subTest(label=label):
                 self.assertIn(label, labels)
+
+
+class SchemaNamesTest(ApiTestCase):
+    def test_schema_names_capitalize_cdwg(self):
+        schemas = self.client.get(f"{URL}/openapi.json").json()["components"]["schemas"]
+        self.assertIn("CDWGOut", schemas)
+        self.assertIn("PagedCDWGOut", schemas)
+        self.assertFalse([name for name in schemas if "Cdwg" in name])

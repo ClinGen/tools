@@ -60,7 +60,7 @@ class UserTable(tables.Table):
         attrs = TABLE_ATTRS
 
 
-class CdwgTable(tables.Table):
+class CDWGTable(tables.Table):
     """The CDWG list, with each CDWG's affiliation count and an edit link."""
 
     name = tables.Column(verbose_name="Name")

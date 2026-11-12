@@ -90,7 +90,7 @@ users the new affiliation's coordinators), `AffiliationEditForm` (which leaves o
 IDs, type, and GPM UUID, so posting them changes nothing), and `SubmitterIdFormSet` for
 an affiliation's ClinVar submitter IDs, `UserForm`, and `OtherEmailFormSet` for a user's
 other emails, and `MembershipAddForm`, which also checks the membership constraints that
-Django would skip because the affiliation isn't a form field, and `CdwgForm`.
+Django would skip because the affiliation isn't a form field, and `CDWGForm`.
 `BulmaFormMixin` gives text inputs Bulma's classes.
 
 ### `history.py`

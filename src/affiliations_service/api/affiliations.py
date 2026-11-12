@@ -13,7 +13,7 @@ from ninja.pagination import paginate
 from ninja.params import PathEx
 from pydantic import ConfigDict
 
-from affiliations_service.api.cdwgs import CdwgOut
+from affiliations_service.api.cdwgs import CDWGOut
 from affiliations_service.api.helpers import save_validated
 from affiliations_service.api.memberships import MembershipOut
 from affiliations_service.models import (
@@ -39,7 +39,7 @@ class AffiliationOut(Schema):
     status: Affiliation.Status
     full_name: str
     short_name: str
-    cdwg: CdwgOut
+    cdwg: CDWGOut
     gpm_uuid: uuid.UUID | None
     clinvar_submitter_ids: list[str]
     is_deleted: bool

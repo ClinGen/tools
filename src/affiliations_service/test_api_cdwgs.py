@@ -39,7 +39,7 @@ class ApiTestCase(TestCase):
         return self.client.delete(url, headers=self.headers)
 
 
-class CdwgApiTest(ApiTestCase):
+class CDWGApiTest(ApiTestCase):
     def test_list_is_paginated(self):
         CDWG.objects.create(name="Kidney")
         CDWG.objects.create(name="Cardiovascular")

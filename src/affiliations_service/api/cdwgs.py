@@ -15,7 +15,7 @@ from affiliations_service.models import CDWG
 router = Router()
 
 
-class CdwgOut(Schema):
+class CDWGOut(Schema):
     """A Clinical Domain Working Group."""
 
     id: uuid.UUID
@@ -23,21 +23,21 @@ class CdwgOut(Schema):
     gpm_uuid: uuid.UUID | None
 
 
-class CdwgIn(Schema):
+class CDWGIn(Schema):
     """The fields for a new CDWG."""
 
     name: str
     gpm_uuid: uuid.UUID | None = None
 
 
-class CdwgPatch(Schema):
+class CDWGPatch(Schema):
     """The fields to change on a CDWG. Leave out the ones that don't change."""
 
     name: str | None = None
     gpm_uuid: uuid.UUID | None = None
 
 
-@router.get("", response=list[CdwgOut])
+@router.get("", response=list[CDWGOut])
 @paginate
 def list_cdwgs(request: HttpRequest) -> QuerySet[CDWG]:  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     """Lists the CDWGs by name.
@@ -48,7 +48,7 @@ def list_cdwgs(request: HttpRequest) -> QuerySet[CDWG]:  # ruff: ignore[unused-f
     return CDWG.objects.all()
 
 
-@router.get("/gpm-uuid/{gpm_uuid}", response=CdwgOut)
+@router.get("/gpm-uuid/{gpm_uuid}", response=CDWGOut)
 def get_cdwg_by_gpm_uuid(request: HttpRequest, gpm_uuid: uuid.UUID) -> CDWG:  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     """Gets the CDWG with this GPM UUID.
 
@@ -58,7 +58,7 @@ def get_cdwg_by_gpm_uuid(request: HttpRequest, gpm_uuid: uuid.UUID) -> CDWG:  # 
     return get_object_or_404(CDWG, gpm_uuid=gpm_uuid)
 
 
-@router.get("/{id}", response=CdwgOut)
+@router.get("/{id}", response=CDWGOut)
 def get_cdwg(request: HttpRequest, id_: PathEx[uuid.UUID, P(alias="id")]) -> CDWG:  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     """Gets one CDWG.
 
@@ -68,8 +68,8 @@ def get_cdwg(request: HttpRequest, id_: PathEx[uuid.UUID, P(alias="id")]) -> CDW
     return get_object_or_404(CDWG, pk=id_)
 
 
-@router.post("", response={201: CdwgOut})
-def create_cdwg(request: HttpRequest, data: CdwgIn) -> Status[CDWG]:  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+@router.post("", response={201: CDWGOut})
+def create_cdwg(request: HttpRequest, data: CDWGIn) -> Status[CDWG]:  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     """Creates a CDWG. Its name must differ from every other CDWG's, ignoring case.
 
     Returns:
@@ -80,11 +80,11 @@ def create_cdwg(request: HttpRequest, data: CdwgIn) -> Status[CDWG]:  # ruff: ig
     return Status(201, cdwg)
 
 
-@router.patch("/{id}", response=CdwgOut)
+@router.patch("/{id}", response=CDWGOut)
 def update_cdwg(
     request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     id_: PathEx[uuid.UUID, P(alias="id")],
-    data: CdwgPatch,
+    data: CDWGPatch,
 ) -> CDWG:
     """Changes a CDWG's name or GPM UUID.
 

@@ -66,7 +66,7 @@ class NavbarTest(TestCase):
         self.assertIn(f'href="{reverse("as:cdwgs")}" class="navbar-item"', page)
 
 
-class CdwgSearchTest(TestCase):
+class CDWGSearchTest(TestCase):
     def test_q_narrows_the_cdwg_list(self):
         make_cdwg("Cardiovascular")
         make_cdwg("Kidney")

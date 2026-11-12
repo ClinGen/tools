@@ -174,7 +174,7 @@ class MembershipAddForm(BulmaFormMixin, forms.ModelForm):
         return cleaned_data
 
 
-class CdwgForm(BulmaFormMixin, forms.ModelForm):
+class CDWGForm(BulmaFormMixin, forms.ModelForm):
     """The fields staff fill in for a CDWG."""
 
     class Meta:
