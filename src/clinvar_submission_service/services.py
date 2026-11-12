@@ -170,9 +170,12 @@ def make_batch(records: Iterable[Record], *, made_by: User | None = None) -> Bat
             ],
             BatchRecord,
         )
+        # A bulk update skips auto_now, so set updated_at here; clients poll for it.
+        now = timezone.now()
         for record in chosen:
             record.status = Record.Status.IN_BATCH
-        bulk_update_with_history(chosen, Record, ["status"])
+            record.updated_at = now
+        bulk_update_with_history(chosen, Record, ["status", "updated_at"])
     return batch
 
 

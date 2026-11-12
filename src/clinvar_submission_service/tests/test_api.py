@@ -1,13 +1,16 @@
 import json
 from unittest import mock
+from urllib.parse import quote
 
 from django.db import connection
 from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 
 from clinvar_submission_service.api.auth import API_KEY_HEADER
 from clinvar_submission_service.models import ApiKey, Batch, BatchRecord, Record
+from clinvar_submission_service.services import make_batch, save_results
 from clinvar_submission_service.tests.fakes import (
     FakeClinVarClient,
     make_content,
@@ -493,3 +496,107 @@ class BatchesTest(ApiTestCase):
         paths = self.client.get("/css/api/v1/openapi.json").json()["paths"]
         self.assertIn("/css/api/v1/batches", paths)
         self.assertIn("/css/api/v1/batches/{slug}", paths)
+
+
+class FilterRecordsTest(ApiTestCase):
+    """Tests the record list's filters, which let client tools poll for changes."""
+
+    def _post(self, tool_id: str, **affiliation: object) -> Record:
+        body = {
+            "affiliation": AFFILIATION | affiliation,
+            "record": make_record(tool_id),
+        }
+        slug = self.post_body(body).json()["slug"]
+        return Record.objects.get(slug=slug)
+
+    def _listed(self, query: str) -> list[str]:
+        return [
+            item["slug"] for item in self.get(f"{RECORDS_URL}?{query}").json()["items"]
+        ]
+
+    def test_filters_by_status(self):
+        waiting = self._post("var-1")
+        Record.objects.filter(pk=self._post("var-2").pk).update(
+            status=Record.Status.WITHDRAWN
+        )
+        self.assertEqual(self._listed("status=waiting_for_batch"), [waiting.slug])
+
+    def test_an_unknown_status_is_a_422(self):
+        response = self.get(f"{RECORDS_URL}?status=nope")
+        self.assertEqual(response.status_code, 422)
+
+    def test_filters_by_affiliation(self):
+        self._post("var-1")
+        theirs = self._post("var-2", id=10008, name="Other VCEP")
+        self.assertEqual(self._listed("affiliation=10008"), [theirs.slug])
+
+    def test_filters_by_update_time(self):
+        old = self._post("var-1")
+        since = timezone.now()
+        new = self._post("var-2")
+        self.assertEqual(
+            self._listed(f"updated_since={quote(since.isoformat())}"), [new.slug]
+        )
+        self.assertNotIn(
+            old.slug, self._listed(f"updated_since={quote(since.isoformat())}")
+        )
+
+    def test_filters_combine(self):
+        self._post("var-1")
+        theirs = self._post("var-2", id=10008, name="Other VCEP")
+        Record.objects.filter(pk=theirs.pk).update(status=Record.Status.WITHDRAWN)
+        self.assertEqual(self._listed("affiliation=10008&status=waiting_for_batch"), [])
+        self.assertEqual(
+            self._listed("affiliation=10008&status=withdrawn"), [theirs.slug]
+        )
+
+    def test_a_record_counts_as_updated_when_it_joins_a_batch(self):
+        record = self._post("var-1")
+        since = timezone.now()
+        make_batch([record])
+        self.assertEqual(
+            self._listed(f"updated_since={quote(since.isoformat())}"), [record.slug]
+        )
+
+    def test_a_record_counts_as_updated_when_its_batch_changes(self):
+        record = self._post("var-1")
+        batch = make_batch([record])
+        since = timezone.now()
+        self.assertEqual(self._listed(f"updated_since={quote(since.isoformat())}"), [])
+        batch.status = Batch.Status.PROCESSING_AT_CLINVAR
+        batch.save()
+        self.assertEqual(
+            self._listed(f"updated_since={quote(since.isoformat())}"), [record.slug]
+        )
+
+    def test_a_record_counts_as_updated_when_its_result_arrives(self):
+        record = self._post("var-1")
+        batch = make_batch([record])
+        since = timezone.now()
+        batch.summary_report = {
+            "submissions": [
+                {
+                    "identifiers": {"localID": "var-1", "clinvarAccession": "SCV1"},
+                    "processingStatus": "Success",
+                }
+            ]
+        }
+        save_results(batch)
+        self.assertEqual(
+            self._listed(f"updated_since={quote(since.isoformat())}"), [record.slug]
+        )
+
+    def test_a_record_in_several_changed_batches_is_listed_once(self):
+        record = self._post("var-1")
+        first = make_batch([record])
+        Record.objects.filter(pk=record.pk).update(
+            status=Record.Status.WAITING_FOR_BATCH
+        )
+        record.refresh_from_db()
+        second = make_batch([record])
+        since = timezone.now()
+        for batch in (first, second):
+            batch.save()
+        self.assertEqual(
+            self._listed(f"updated_since={quote(since.isoformat())}"), [record.slug]
+        )

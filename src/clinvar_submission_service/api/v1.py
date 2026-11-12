@@ -145,13 +145,33 @@ def create_record(request: HttpRequest, body: RecordRequest) -> Status[Record]:
 
 @api.get("/records", response=list[RecordSummary])
 @paginate
-def list_records(request: HttpRequest) -> QuerySet[Record]:
+def list_records(
+    request: HttpRequest,
+    status: Record.Status | None = None,
+    affiliation: int | None = None,
+    updated_since: datetime | None = None,
+) -> QuerySet[Record]:
     """Lists the calling client's records, newest first.
+
+    Filter by status, such as waiting_for_batch, or by affiliation, by its AS ID. To
+    poll for changes, pass updated_since, the time of the last poll: it matches a
+    record that changed at or after that time, or whose batch did, such as when
+    ClinVar's status for the batch changed.
 
     Returns:
         The client's records, a page at a time.
     """
-    return Record.objects.filter(api_key=request.auth).order_by("-added_at")  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
+    records = Record.objects.filter(api_key=request.auth)  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
+    if status:
+        records = records.filter(status=status)
+    if affiliation is not None:
+        records = records.filter(affiliation_id=affiliation)
+    if updated_since is not None:
+        changed = Q(updated_at__gte=updated_since) | Q(
+            batch_records__batch__updated_at__gte=updated_since
+        )
+        records = records.filter(changed).distinct()
+    return records.order_by("-added_at")
 
 
 @api.get("/records/{slug}", response=RecordDetail)

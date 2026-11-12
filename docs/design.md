@@ -381,7 +381,10 @@ go in a new version beside it. Ninja validates request bodies and serves OpenAPI
   and JSON, and its attempts: each batch it was sent in, oldest first, with the batch's
   ID, status, ClinVar ID, and ClinVar's error code, and ClinVar's result, SCV, and
   errors for the record. It also names the batch the record is in now, if any.
-- `GET /css/api/v1/records`: list the calling client's records, newest first.
+- `GET /css/api/v1/records`: list the calling client's records, newest first. It can
+  filter by status and affiliation, and by `updated_since`, which matches records that
+  changed, or whose batch changed, at or after a time, so a client can poll for what's
+  new since its last poll.
 - `POST /css/api/v1/records/{slug}/withdraw`: withdraw a waiting record, so it won't be
   sent to ClinVar. A record in a batch, or one ClinVar accepted, gets a 409.
 - `GET /css/api/v1/batches`: list the batches that hold the calling client's records,
@@ -397,8 +400,8 @@ records, and in a batch, only its own records, since two clients could send reco
 one affiliation. Unlike the staff pages, the API returns ClinVar's errors as ClinVar
 sent them, so each client tool can decide how to show them, and every status comes with
 the label and description the CSS's pages use. It never says who made a batch. There are
-no webhooks: clients poll a record's GET endpoint to learn when its status changes. The
-API doesn't use Clerk sessions or CSRF protection.
+no webhooks: clients poll the record list with `updated_since` to learn what changed.
+The API doesn't use Clerk sessions or CSRF protection.
 
 #### Poller
 

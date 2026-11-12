@@ -36,17 +36,18 @@ OpenAPI docs at `/css/api/v1/docs`. Every endpoint needs an API key (see `api/au
 and a client sees only its own records and the batches that hold them. `POST /records`
 takes the client's affiliation and one germline record (`content.RecordRequest`) and
 saves it to wait for a batch, returning 201, or 200 if it replaced a waiting record with
-the same tool ID. `GET /records` lists the client's records a page at a time, `GET
-/records/{slug}` reads one with its JSON and its attempts (`RecordDetail`): each batch
-it was sent in, oldest first, with the batch's status and ClinVar's result, SCV, and
-errors for the record, plus the batch it's in now, if any. `POST
-/records/{slug}/withdraw` withdraws a waiting one, or returns a 409 for any other. `GET
-/batches` lists, newest first and filterable by status and affiliation, the batches
-holding the client's records, and `GET /batches/{slug}` reads one; both count and list
-only the client's records in a batch (`_client_batches()`), so a client never sees
-another client's records. Every status comes with the label and description the CSS's
-pages use. A record that doesn't match, or a body with submission-level fields, gets a
-422. Clients never see who made a batch or any API key.
+the same tool ID. `GET /records` lists the client's records a page at a time, filtered
+by status, affiliation, or `updated_since` (records that changed, or whose batch
+changed, since a client's last poll), `GET /records/{slug}` reads one with its JSON and
+its attempts (`RecordDetail`): each batch it was sent in, oldest first, with the batch's
+status and ClinVar's result, SCV, and errors for the record, plus the batch it's in now,
+if any. `POST /records/{slug}/withdraw` withdraws a waiting one, or returns a 409 for
+any other. `GET /batches` lists, newest first and filterable by status and affiliation,
+the batches holding the client's records, and `GET /batches/{slug}` reads one; both
+count and list only the client's records in a batch (`_client_batches()`), so a client
+never sees another client's records. Every status comes with the label and description
+the CSS's pages use. A record that doesn't match, or a body with submission-level
+fields, gets a 422. Clients never see who made a batch or any API key.
 
 ### `apps.py`
 
@@ -143,18 +144,18 @@ version. `withdraw_record()` withdraws a waiting record and notes who did in its
 history, or raises `NotWithdrawableError` for any other. `check_batchable()` checks that
 records can make a batch, and `make_batch()` makes a not-yet-sent batch of one
 affiliation's waiting records, in the order given, copies the affiliation's
-`AffiliationSettings` onto it, and marks the records as in a batch; it raises
-`BatchNotMadeError`, with a message for staff, for no records, more than 10,000, mixed
-affiliations, or records that aren't waiting. `build_payload()` builds a batch's ClinVar
-content from its records' JSON, in order, and the batch's submission-level fields.
-`report_results()` reads each record's result from a summary report by tool ID, and
-`save_results()` saves them: a record ClinVar accepted gets its SCV, and one that failed
-goes back to waiting, with ClinVar's errors kept on its attempt. Forwards a batch to
-ClinVar once with `forward_batch()`, which sends that built content and which the staff
-Resend button uses. If ClinVar accepts it, the batch is submitted, with its ClinVar ID
-and a first poll `CSS_FIRST_POLL_DELAY` out; if ClinVar rejects it, can't be reached, or
-the CSS has no ClinVar key, it's send_to_clinvar_failed, with the error, and its records
-stay in it. It never retries.
+`AffiliationSettings` onto it, and marks the records as in a batch, updating each one's
+`updated_at`; it raises `BatchNotMadeError`, with a message for staff, for no records,
+more than 10,000, mixed affiliations, or records that aren't waiting. `build_payload()`
+builds a batch's ClinVar content from its records' JSON, in order, and the batch's
+submission-level fields. `report_results()` reads each record's result from a summary
+report by tool ID, and `save_results()` saves them: a record ClinVar accepted gets its
+SCV, and one that failed goes back to waiting, with ClinVar's errors kept on its
+attempt. Forwards a batch to ClinVar once with `forward_batch()`, which sends that built
+content and which the staff Resend button uses. If ClinVar accepts it, the batch is
+submitted, with its ClinVar ID and a first poll `CSS_FIRST_POLL_DELAY` out; if ClinVar
+rejects it, can't be reached, or the CSS has no ClinVar key, it's
+send_to_clinvar_failed, with the error, and its records stay in it. It never retries.
 
 ### `templatetags/__init__.py`
 
@@ -314,8 +315,10 @@ in order, with each batch's status and ClinVar's result, SCV, and errors, and it
 current batch, never names who made a batch, and takes the same number of queries for
 any number of attempts; that a client lists and reads only batches holding its records,
 each once, with only its own records, filters them by status and affiliation, and never
-sees who made one; the OpenAPI docs and endpoints; and that the old batch endpoints are
-gone.
+sees who made one; that the record list filters by status, affiliation, and update time,
+alone or together, and counts a record as updated when it joins a batch, its batch
+changes, or its result arrives; the OpenAPI docs and endpoints; and that the old batch
+endpoints are gone.
 
 ### `tests/test_api_keys.py`
 
