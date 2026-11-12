@@ -187,7 +187,9 @@ unique, ignoring case. An affiliation also has a full name, a short name, and a 
 ClinVar submitter IDs.
 
 **IDs.** Affiliations keep the old ID scheme, because GCI and VCI curation records
-already use these IDs, even though the AS starts without the old data:
+already use these IDs. Outside the AS, an affiliation's affiliation ID and expert panel
+ID are its canonical IDs. Inside, every record also has a UUID primary key, the AS ID,
+which the API calls `id`; we never call it an affiliation ID.
 
 - Each new affiliation gets the next affiliation ID, counting up from 10000. IDs never
   reach 20000.
@@ -229,10 +231,16 @@ affiliation twice at once.
 **API.** Other ClinGen tools use the AS's REST API, a Django Ninja API at `/as/api/v1/`,
 with OpenAPI docs at `/as/api/v1/docs`. The version is in the path, so a breaking change
 can live at `/as/api/v2/` while clients move. The API has four resources: affiliations,
-users, memberships, and CDWGs. Each is addressed by its UUID. Lists are paginated, and
-updates use `PATCH`. A request that fails validation gets a 422, and one that breaks a
-rule above gets a 400 with a `detail` message. Deleting an affiliation through the API
-marks it as deleted; users and memberships have no delete endpoint.
+users, memberships, and CDWGs. Each is addressed by its AS ID, as `/{resource}/{id}`.
+Read-only lookups find affiliations by their canonical IDs:
+`/affiliations/affiliation-id/{affiliation_id}` returns every affiliation with that ID
+(a VCEP and a GCEP can share one), and `/affiliations/expert-panel-id/{expert_panel_id}`
+returns one. Affiliations, CDWGs, and users can also be looked up by GPM UUID, as
+`/{resource}/gpm-uuid/{gpm_uuid}`, and creating one with a GPM UUID that's in use is
+refused. Lists are paginated, and updates use `PATCH`. A request that fails validation
+gets a 422, and one that breaks a rule above gets a 400 with a `detail` message.
+Deleting an affiliation through the API marks it as deleted; users and memberships have
+no delete endpoint.
 
 Clients send an API key in the `X-Api-Key` header. Any active AS key can read and change
 everything in the AS; there are no read-only keys. Staff create and revoke keys in the

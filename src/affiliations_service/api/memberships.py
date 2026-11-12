@@ -7,8 +7,9 @@ from django.core.exceptions import ValidationError
 from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
-from ninja import Query, Router, Schema, Status
+from ninja import P, Query, Router, Schema, Status
 from ninja.pagination import paginate
+from ninja.params import PathEx
 from pydantic import ConfigDict
 
 from affiliations_service.api.helpers import save_validated
@@ -113,14 +114,17 @@ def list_memberships(
     )
 
 
-@router.get("/{membership_id}", response=MembershipOut)
-def get_membership(request: HttpRequest, membership_id: uuid.UUID) -> Membership:  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+@router.get("/{id}", response=MembershipOut)
+def get_membership(
+    request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    id_: PathEx[uuid.UUID, P(alias="id")],
+) -> Membership:
     """Gets one membership.
 
     Returns:
         The membership.
     """
-    return get_object_or_404(Membership, pk=membership_id)
+    return get_object_or_404(Membership, pk=id_)
 
 
 @router.post("", response={201: MembershipOut})
@@ -151,10 +155,10 @@ def create_membership(
     return Status(201, membership)
 
 
-@router.patch("/{membership_id}", response=MembershipOut)
+@router.patch("/{id}", response=MembershipOut)
 def update_membership(
     request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
-    membership_id: uuid.UUID,
+    id_: PathEx[uuid.UUID, P(alias="id")],
     data: MembershipPatch,
 ) -> Membership:
     """Changes a membership's dates. Setting end_date ends it; it isn't deleted.
@@ -162,6 +166,6 @@ def update_membership(
     Returns:
         The changed membership.
     """
-    membership = get_object_or_404(Membership, pk=membership_id)
+    membership = get_object_or_404(Membership, pk=id_)
     save_validated(membership, data.dict(exclude_unset=True))
     return membership

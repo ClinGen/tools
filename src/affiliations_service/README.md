@@ -30,6 +30,9 @@ Serves `/affiliations`. The list is paginated, leaves out deleted affiliations u
 panel ID, and searches names with `q`. Creating one assigns its IDs, so a request can't
 send them. `PATCH` can't change the IDs, type, or GPM UUID, and sending
 `clinvar_submitter_ids` replaces the list. `DELETE` marks the affiliation deleted.
+Read-only lookups find affiliations by affiliation ID
+(`/affiliation-id/{affiliation_id}`, which returns every affiliation sharing it), expert
+panel ID (`/expert-panel-id/{expert_panel_id}`), and GPM UUID (`/gpm-uuid/{gpm_uuid}`).
 Responses for one affiliation include its current memberships.
 
 ### `api/auth.py`
@@ -39,7 +42,8 @@ API key.
 
 ### `api/cdwgs.py`
 
-Serves `/cdwgs`: list (paginated), get, create, and update (`PATCH`) CDWGs.
+Serves `/cdwgs`: list (paginated), get, create, and update (`PATCH`) CDWGs, and look one
+up by GPM UUID (`/gpm-uuid/{gpm_uuid}`).
 
 ### `api/helpers.py`
 
@@ -56,8 +60,9 @@ membership; there's no delete. A deleted affiliation can't get new members.
 
 Serves `/users`: list (paginated, with `q` searching names and every email, and exact
 filters for `email`, `orcid`, and `gpm_uuid`), get, create, and update (`PATCH`).
-Sending `other_emails` replaces the list. There's no delete, since users stay on record.
-Responses for one user include their current memberships.
+Sending `other_emails` replaces the list. A read-only lookup finds a user by GPM UUID
+(`/gpm-uuid/{gpm_uuid}`). There's no delete, since users stay on record. Responses for
+one user include their current memberships.
 
 ### `api/v1.py`
 
@@ -272,6 +277,11 @@ key; the other API tests extend it.
 
 Tests API keys: hashing, verification, the 401 for a missing, unknown, or inactive key,
 the public docs, and showing a new key once in the admin.
+
+### `test_api_lookups.py`
+
+Tests the read-only lookups by affiliation ID, expert panel ID, and GPM UUID, and that
+creating a record with a GPM UUID in use is refused.
 
 ### `test_api_memberships.py`
 

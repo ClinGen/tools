@@ -7,8 +7,9 @@ from django.db import transaction
 from django.db.models import Q, QuerySet
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
-from ninja import Query, Router, Schema, Status
+from ninja import P, Query, Router, Schema, Status
 from ninja.pagination import paginate
+from ninja.params import PathEx
 from pydantic import ConfigDict
 
 from affiliations_service.api.helpers import save_validated
@@ -141,14 +142,24 @@ def list_users(
     return users.distinct()
 
 
-@router.get("/{user_id}", response=UserDetail)
-def get_user(request: HttpRequest, user_id: uuid.UUID) -> User:  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+@router.get("/gpm-uuid/{gpm_uuid}", response=UserDetail)
+def get_user_by_gpm_uuid(request: HttpRequest, gpm_uuid: uuid.UUID) -> User:  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    """Gets the user with this GPM UUID.
+
+    Returns:
+        The user.
+    """
+    return get_object_or_404(_users(), gpm_uuid=gpm_uuid)
+
+
+@router.get("/{id}", response=UserDetail)
+def get_user(request: HttpRequest, id_: PathEx[uuid.UUID, P(alias="id")]) -> User:  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     """Gets one user.
 
     Returns:
         The user.
     """
-    return get_object_or_404(_users(), pk=user_id)
+    return get_object_or_404(_users(), pk=id_)
 
 
 @router.post("", response={201: UserDetail})
@@ -168,10 +179,10 @@ def create_user(
     return Status(201, get_object_or_404(_users(), pk=user.pk))
 
 
-@router.patch("/{user_id}", response=UserDetail)
+@router.patch("/{id}", response=UserDetail)
 def update_user(
     request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
-    user_id: uuid.UUID,
+    id_: PathEx[uuid.UUID, P(alias="id")],
     data: UserPatch,
 ) -> User:
     """Changes a user. Sending other_emails replaces the list.
@@ -179,7 +190,7 @@ def update_user(
     Returns:
         The changed user.
     """
-    user = get_object_or_404(User, pk=user_id)
+    user = get_object_or_404(User, pk=id_)
     changes = data.dict(exclude_unset=True)
     other_emails = changes.pop("other_emails", None)
     _save(user, changes, other_emails)

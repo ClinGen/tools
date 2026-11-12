@@ -6,10 +6,11 @@ from datetime import datetime
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q, QuerySet
-from django.http import HttpRequest
+from django.http import Http404, HttpRequest
 from django.shortcuts import get_object_or_404
-from ninja import Query, Router, Schema, Status
+from ninja import P, Query, Router, Schema, Status
 from ninja.pagination import paginate
+from ninja.params import PathEx
 from pydantic import ConfigDict
 
 from affiliations_service.api.cdwgs import CdwgOut
@@ -175,14 +176,66 @@ def list_affiliations(
     return affiliations
 
 
-@router.get("/{affiliation_id}", response=AffiliationDetail)
-def get_affiliation(request: HttpRequest, affiliation_id: uuid.UUID) -> Affiliation:  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+@router.get("/affiliation-id/{affiliation_id}", response=list[AffiliationDetail])
+def get_affiliations_by_affiliation_id(
+    request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    affiliation_id: int,
+) -> list[Affiliation]:
+    """Gets every affiliation with this affiliation ID, even deleted ones.
+
+    The affiliation ID is the 10,000-range ID that other systems use. A VCEP and a
+    GCEP that are one group share it, so this can return two affiliations.
+
+    Returns:
+        The affiliations with the affiliation ID.
+
+    Raises:
+        Http404: If no affiliation has it.
+    """
+    affiliations = list(_affiliations().filter(affiliation_id=affiliation_id))
+    if not affiliations:
+        error_message = "No affiliation has that affiliation ID."
+        raise Http404(error_message)
+    return affiliations
+
+
+@router.get("/expert-panel-id/{expert_panel_id}", response=AffiliationDetail)
+def get_affiliation_by_expert_panel_id(
+    request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    expert_panel_id: int,
+) -> Affiliation:
+    """Gets the affiliation with this expert panel ID, even if it's deleted.
+
+    Returns:
+        The affiliation.
+    """
+    return get_object_or_404(_affiliations(), expert_panel_id=expert_panel_id)
+
+
+@router.get("/gpm-uuid/{gpm_uuid}", response=AffiliationDetail)
+def get_affiliation_by_gpm_uuid(
+    request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    gpm_uuid: uuid.UUID,
+) -> Affiliation:
+    """Gets the affiliation with this GPM UUID, even if it's deleted.
+
+    Returns:
+        The affiliation.
+    """
+    return get_object_or_404(_affiliations(), gpm_uuid=gpm_uuid)
+
+
+@router.get("/{id}", response=AffiliationDetail)
+def get_affiliation(
+    request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    id_: PathEx[uuid.UUID, P(alias="id")],
+) -> Affiliation:
     """Gets one affiliation, even if it's deleted.
 
     Returns:
         The affiliation.
     """
-    return get_object_or_404(_affiliations(), pk=affiliation_id)
+    return get_object_or_404(_affiliations(), pk=id_)
 
 
 @router.post("", response={201: AffiliationDetail})
@@ -202,10 +255,10 @@ def create_affiliation(
     return Status(201, get_object_or_404(_affiliations(), pk=affiliation.pk))
 
 
-@router.patch("/{affiliation_id}", response=AffiliationDetail)
+@router.patch("/{id}", response=AffiliationDetail)
 def update_affiliation(
     request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
-    affiliation_id: uuid.UUID,
+    id_: PathEx[uuid.UUID, P(alias="id")],
     data: AffiliationPatch,
 ) -> Affiliation:
     """Changes an affiliation. Sending clinvar_submitter_ids replaces the list.
@@ -217,7 +270,7 @@ def update_affiliation(
         ValidationError: If the request changes a locked field, so the API returns a
             400.
     """
-    affiliation = get_object_or_404(Affiliation, pk=affiliation_id)
+    affiliation = get_object_or_404(Affiliation, pk=id_)
     changes = data.dict(exclude_unset=True)
     for field in LOCKED_FIELDS:
         if field in changes and changes.pop(field) != getattr(affiliation, field):
@@ -228,12 +281,15 @@ def update_affiliation(
     return get_object_or_404(_affiliations(), pk=affiliation.pk)
 
 
-@router.delete("/{affiliation_id}", response={204: None})
-def delete_affiliation(request: HttpRequest, affiliation_id: uuid.UUID) -> Status[None]:  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+@router.delete("/{id}", response={204: None})
+def delete_affiliation(
+    request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    id_: PathEx[uuid.UUID, P(alias="id")],
+) -> Status[None]:
     """Marks an affiliation deleted. It's kept, but left out of lists.
 
     Returns:
         204.
     """
-    get_object_or_404(Affiliation, pk=affiliation_id).delete()
+    get_object_or_404(Affiliation, pk=id_).delete()
     return Status(204, None)
