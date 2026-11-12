@@ -7,7 +7,8 @@ from django.urls import reverse
 from auth_.models import UserProfile
 
 FLAVOR_TEXT = (
-    "The source of truth for users and groups inside and outside of ClinGen apps."
+    "The source of truth for ClinGen and non-ClinGen users and groups working in "
+    "ClinGen apps."
 )
 
 
