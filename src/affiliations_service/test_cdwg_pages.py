@@ -27,6 +27,20 @@ class CdwgListPageTest(TestCase):
             [("Cardiovascular", 2), ("Kidney", 0)],
         )
 
+    def test_rows_link_to_their_edit_page_with_a_pencil(self):
+        cdwg = make_cdwg("Kidney")
+        page = self.client.get(reverse("as:cdwgs")).content.decode()
+        self.assertIn("<th>Edit</th>", page)
+        url = reverse("as:cdwg-edit", kwargs={"pk": cdwg.pk})
+        link = page[
+            page.index(f'href="{url}"') : page.index(
+                "</a>", page.index(f'href="{url}"')
+            )
+        ]
+        self.assertIn('aria-label="Edit Kidney"', link)
+        self.assertIn("bi-pencil-square", link)
+        self.assertNotIn(">Edit<", link)
+
     def test_the_tabs_link_to_the_cdwg_list(self):
         self.assertContains(self.client.get(reverse("as:index")), reverse("as:cdwgs"))
 

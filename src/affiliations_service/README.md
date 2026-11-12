@@ -170,8 +170,8 @@ The form for adding or editing a CDWG.
 ### `templates/affiliations_service/cdwg_list.html`
 
 Lists the CDWGs, with a search box, and how many affiliations each has, linking to the
-affiliation list filtered by that CDWG. CDWGs aren't deleted from the UI, since
-affiliations need them.
+affiliation list filtered by that CDWG, and a pencil icon in the Edit column to edit
+each one. CDWGs aren't deleted from the UI, since affiliations need them.
 
 ### `templates/affiliations_service/index.html`
 

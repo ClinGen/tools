@@ -32,14 +32,18 @@
             <div class="block table-container">
                 <table class="table is-hoverable">
                     <thead>
-                        <tr><th>Name</th><th>Affiliations</th><th></th></tr>
+                        <tr><th>Name</th><th>Affiliations</th><th>Edit</th></tr>
                     </thead>
                     <tbody>
                         {% for cdwg in cdwgs %}
                             <tr>
                                 <td>{{ cdwg.name }}</td>
                                 <td><a href="{% url 'as:index' %}?cdwg={{ cdwg.pk }}">{{ cdwg.affiliation_count }}</a></td>
-                                <td><a href="{% url 'as:cdwg-edit' pk=cdwg.pk %}">Edit</a></td>
+                                <td>
+                                    <a href="{% url 'as:cdwg-edit' pk=cdwg.pk %}" aria-label="Edit {{ cdwg.name }}" title="Edit {{ cdwg.name }}">
+                                        <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                    </a>
+                                </td>
                             </tr>
                         {% endfor %}
                     </tbody>
