@@ -267,12 +267,13 @@ a membership.
 ### `templates/affiliations_service/partials/formset.html`
 
 Renders an inline formset of one-field rows, such as ClinVar submitter IDs or other
-emails, with an Add Another button and the blank row it copies.
+emails, with an Add Another button and the blank row it copies. The rows have a bottom
+margin, so the button doesn't touch the last one.
 
 ### `templates/affiliations_service/partials/formset_row.html`
 
 One row of `partials/formset.html`: the field, its errors, and a Remove checkbox for
-saved rows.
+saved rows. The rows have a bottom margin so the button doesn't touch them.
 
 ### `templates/affiliations_service/partials/history.html`
 

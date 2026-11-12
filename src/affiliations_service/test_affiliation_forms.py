@@ -216,5 +216,7 @@ class AddAnotherRowTest(TestCase):
                 page = self.client.get(url).content.decode()
                 self.assertIn(f'data-formset-add="{prefix}"', page)
                 self.assertIn(f'id="{prefix}-empty-form"', page)
+                # Space between the last row and the Add Another button.
+                self.assertIn(f'id="{prefix}-rows" class="mb-4"', page)
                 self.assertIn("affiliations_service/formset.js", page)
                 self.assertNotIn("save, then edit", page)
