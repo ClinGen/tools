@@ -1,4 +1,5 @@
 {% extends "layouts/base.html" %}
+{% load django_tables2 %}
 {% block title %}Affiliations{% endblock %}
 {% block description %}Find ClinGen affiliations and the users in them.{% endblock %}
 {% block main %}
@@ -66,34 +67,14 @@
                 Add Affiliation
             </a>
         </div>
-        <div id="affiliation-results" class="block">
-            {% if affiliations %}
-                <div class="table-container">
-                    <table class="table is-hoverable is-fullwidth">
-                        <thead>
-                            <tr>
-                                <th>Affiliation ID</th>
-                                <th>Expert Panel ID</th>
-                                <th>Name</th>
-                                <th>Type</th>
-                                <th>Status</th>
-                                <th>CDWG</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for affiliation in affiliations %}
-                                <tr>
-                                    <td>{{ affiliation.affiliation_id }}</td>
-                                    <td>{{ affiliation.expert_panel_id|default:"" }}</td>
-                                    <td><a href="{{ affiliation.get_absolute_url }}">{{ affiliation.full_name }}</a></td>
-                                    <td>{{ affiliation.get_type_display }}</td>
-                                    <td>{% include "affiliations_service/partials/status.html" %}</td>
-                                    <td>{{ affiliation.cdwg.name }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+        <div id="affiliation-results"
+             class="block"
+             hx-boost="true"
+             hx-target="#affiliation-results"
+             hx-select="#affiliation-results"
+             hx-swap="outerHTML">
+            {% if table.paginator.count %}
+                {% render_table table %}
             {% else %}
                 <p>No affiliations match.</p>
             {% endif %}

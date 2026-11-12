@@ -5,6 +5,7 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
+from django_tables2 import RequestConfig, Table
 
 from affiliations_service import breadcrumbs as crumbs
 from affiliations_service.forms import (
@@ -18,6 +19,7 @@ from affiliations_service.forms import (
 )
 from affiliations_service.history import describe_history
 from affiliations_service.models import CDWG, Affiliation, Membership, User
+from affiliations_service.tables import PER_PAGE, AffiliationTable, CdwgTable, UserTable
 from auth_.permissions import tool_permission_required
 from core.tools import get_tool
 
@@ -58,7 +60,7 @@ def index(request: HttpRequest) -> HttpResponse:
             "breadcrumbs": crumbs.trail(
                 crumbs.search("Affiliation Search", "as:index", current=True)
             ),
-            "affiliations": affiliations,
+            "table": _paginated(request, AffiliationTable(affiliations)),
             "query": query,
             "filters": filters,
             "types": Affiliation.Type.choices,
@@ -66,6 +68,16 @@ def index(request: HttpRequest) -> HttpResponse:
             "cdwgs": CDWG.objects.all(),
         },
     )
+
+
+def _paginated(request: HttpRequest, table: Table) -> Table:
+    """Sorts and pages a table from the request's sort and page parameters.
+
+    Returns:
+        The table, showing one page of `PER_PAGE` rows.
+    """
+    RequestConfig(request, paginate={"per_page": PER_PAGE}).configure(table)
+    return table
 
 
 def _members_context(
@@ -361,7 +373,7 @@ def user_list(request: HttpRequest) -> HttpResponse:
             "breadcrumbs": crumbs.trail(
                 crumbs.search("User Search", "as:users", current=True)
             ),
-            "as_users": users,
+            "table": _paginated(request, UserTable(users)),
             "query": query,
         },
     )
@@ -473,6 +485,7 @@ def cdwg_list(request: HttpRequest) -> HttpResponse:
                 crumbs.search("CDWG Search", "as:cdwgs", current=True)
             ),
             "cdwgs": cdwgs,
+            "table": _paginated(request, CdwgTable(cdwgs)),
             "query": query,
         },
     )

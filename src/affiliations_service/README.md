@@ -145,6 +145,12 @@ that break the AS's rules are imported anyway, with a warning.
 Adds a blank row to a formset when staff click its Add Another button, by copying the
 formset's empty-form `<template>` and bumping its `TOTAL_FORMS`.
 
+### `tables.py`
+
+Defines the django-tables2 tables for the affiliation, user, and CDWG lists. Like the
+HCI's, they show 25 rows per page and sort by their column headers. The views keep the
+search and filters, so paging and sorting keep them.
+
 ### `templates/affiliations_service/affiliation_delete.html`
 
 Asks staff to confirm deleting an affiliation, and explains that the AS keeps it. The
@@ -305,6 +311,11 @@ link is bold, the CDWG list's search, and the breadcrumb trails.
 
 Tests the old AS import with a fake fetch: what it imports, how it matches users, that
 reruns change nothing, dry runs, and rule warnings.
+
+### `test_pagination.py`
+
+Tests paging and sorting the affiliation list, that paging keeps the search and filters,
+and that the user and CDWG lists page too.
 
 ### `test_rules.py`
 

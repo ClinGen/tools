@@ -30,7 +30,7 @@ class CdwgListPageTest(TestCase):
     def test_rows_link_to_their_edit_page_with_a_pencil(self):
         cdwg = make_cdwg("Kidney")
         page = self.client.get(reverse("as:cdwgs")).content.decode()
-        self.assertIn("<th>Edit</th>", page)
+        self.assertRegex(page, r"<th[^>]*>\s*Edit\s*</th>")
         url = reverse("as:cdwg-edit", kwargs={"pk": cdwg.pk})
         link = page[
             page.index(f'href="{url}"') : page.index(

@@ -1,4 +1,5 @@
 {% extends "layouts/base.html" %}
+{% load django_tables2 %}
 {% block title %}CDWGs{% endblock %}
 {% block description %}See the Clinical Domain Working Groups that affiliations belong to.{% endblock %}
 {% block main %}
@@ -27,33 +28,17 @@
                 Add CDWG
             </a>
         </div>
-        <div id="cdwg-results" class="block">
-        {% if cdwgs %}
-            <div class="block table-container">
-                <table class="table is-hoverable">
-                    <thead>
-                        <tr><th>Name</th><th>Affiliations</th><th>Edit</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for cdwg in cdwgs %}
-                            <tr>
-                                <td>{{ cdwg.name }}</td>
-                                <td><a href="{% url 'as:index' %}?cdwg={{ cdwg.pk }}">{{ cdwg.affiliation_count }}</a></td>
-                                <td>
-                                    <a href="{% url 'as:cdwg-edit' pk=cdwg.pk %}" aria-label="Edit {{ cdwg.name }}" title="Edit {{ cdwg.name }}">
-                                        <i class="bi bi-pencil-square" aria-hidden="true"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% elif query %}
-            <p>No CDWGs match.</p>
-        {% else %}
-            <p>There are no CDWGs yet.</p>
-        {% endif %}
+        <div id="cdwg-results"
+             class="block"
+             hx-boost="true"
+             hx-target="#cdwg-results"
+             hx-select="#cdwg-results"
+             hx-swap="outerHTML">
+            {% if table.paginator.count %}
+                {% render_table table %}
+            {% else %}
+                {% if query %}<p>No CDWGs match.</p>{% else %}<p>There are no CDWGs yet.</p>{% endif %}
+            {% endif %}
         </div>
     </div>
 {% endblock %}
