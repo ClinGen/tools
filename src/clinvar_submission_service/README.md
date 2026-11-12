@@ -35,11 +35,14 @@ Serves the CSS's API, version 1, as a Django Ninja `NinjaAPI` at `/css/api/v1/`,
 OpenAPI docs at `/css/api/v1/docs`. Every endpoint needs an API key (see `api/auth.py`),
 and a client sees only its own records. `POST /records` takes the client's affiliation
 and one germline record (`content.RecordRequest`) and saves it to wait for a batch,
-returning 201, or 200 if it replaced a waiting record with the same tool ID.
-`GET /records` lists the client's records a page at a time, `GET /records/{slug}` reads
-one with its JSON, and `POST /records/{slug}/withdraw` withdraws a waiting one, or
+returning 201, or 200 if it replaced a waiting record with the same tool ID. `GET
+/records` lists the client's records a page at a time, `GET /records/{slug}` reads one
+with its JSON and its attempts (`RecordDetail`): each batch it was sent in, oldest
+first, with the batch's status and ClinVar's result, SCV, and errors for the record,
+plus the batch it's in now, if any. Every status comes with the label and description
+the CSS's pages use, and `POST /records/{slug}/withdraw` withdraws a waiting one, or
 returns a 409 for any other. A record that doesn't match, or a body with
-submission-level fields, gets a 422. Clients don't see batches, which staff make.
+submission-level fields, gets a 422. Clients never see who made a batch or any API key.
 
 ### `apps.py`
 
@@ -296,14 +299,17 @@ record's batches, and showing a new key once.
 ### `tests/test_api.py`
 
 Tests each API endpoint: that a posted record waits with its JSON, fields, affiliation,
-and client, that re-posting a waiting record with the same tool ID replaces it and
-keeps history, and that a batched record, another affiliation's, or one without a local
-ID makes a new record; that a bad record, a missing or bad affiliation, a
-submission-level field, or a body over the upload limit is rejected and saves nothing;
-that a client can withdraw a waiting record, with who did in its history, and gets a 409
-for any other; 401s for missing, unknown, and inactive keys; that a client can't read,
-list, or withdraw another client's records; pagination; the OpenAPI docs and endpoints;
-and that the old batch endpoints are gone.
+and client, that re-posting a waiting record with the same tool ID replaces it and keeps
+history, and that a batched record, another affiliation's, or one without a tool ID
+makes a new record; that a bad record, a missing or bad affiliation, a submission-level
+field, or a body over the upload limit is rejected and saves nothing; that a client can
+withdraw a waiting record, with who did in its history, and gets a 409 for any other;
+401s for missing, unknown, and inactive keys; that a client can't read, list, or
+withdraw another client's records; pagination; that a record's detail lists its attempts
+in order, with each batch's status and ClinVar's result, SCV, and errors, and its
+current batch, never names who made a batch, and takes the same number of queries for
+any number of attempts; the OpenAPI docs and endpoints; and that the old batch endpoints
+are gone.
 
 ### `tests/test_api_keys.py`
 
@@ -392,7 +398,7 @@ batched or accepted one, and only with a POST; that the affiliation settings pag
 saves, and updates an affiliation's settings, records who saved them, names an
 affiliation known only from its records, rejects bad values with plain messages, 404s
 for an unknown affiliation, and is linked from the affiliations page; and the Records
-page's order, status pills and filter, affiliation filter, search by gene, HGVS, local
+page's order, status pills and filter, affiliation filter, search by gene, HGVS, tool
 ID, or affiliation, status tags linking to their filter, results-only HTMX response, and
 that it shows no raw JSON; and that the new batch page lists an affiliation's waiting
 records, reviews the picked records or every waiting one, makes and sends the batch and

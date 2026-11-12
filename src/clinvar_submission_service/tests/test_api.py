@@ -1,11 +1,13 @@
 import json
 from unittest import mock
 
+from django.db import connection
 from django.test import TestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from clinvar_submission_service.api.auth import API_KEY_HEADER
-from clinvar_submission_service.models import ApiKey, Batch, Record
+from clinvar_submission_service.models import ApiKey, Batch, BatchRecord, Record
 from clinvar_submission_service.tests.fakes import (
     FakeClinVarClient,
     make_content,
@@ -306,3 +308,84 @@ class WithdrawRecordTest(ApiTestCase):
         ]
         self.assertEqual(self.withdraw(slug).status_code, 404)
         self.assertEqual(Record.objects.get().status, Record.Status.WAITING_FOR_BATCH)
+
+
+class RecordAttemptsTest(ApiTestCase):
+    """Tests that a record's detail shows each batch it was sent in."""
+
+    def setUp(self):
+        super().setUp()
+        self.post_record(make_record("var-1"))
+        self.record = Record.objects.get()
+        self.url = f"{RECORDS_URL}/{self.record.slug}"
+
+    def _batch(self, **fields: object) -> Batch:
+        defaults = {"affiliation_id": 10007, "affiliation_name": "Hearing Loss VCEP"}
+        return Batch.objects.create(**(defaults | fields))
+
+    def _attempt(self, batch: Batch, **fields: object) -> BatchRecord:
+        return BatchRecord.objects.create(
+            batch=batch, record=self.record, position=0, **fields
+        )
+
+    def test_a_waiting_record_has_no_attempts_or_batch(self):
+        body = self.get(self.url).json()
+        self.assertEqual(body["attempts"], [])
+        self.assertIsNone(body["current_batch"])
+        self.assertEqual(body["status_label"], "Waiting")
+        self.assertEqual(
+            body["status_description"],
+            Record.STATUS_HELP[Record.Status.WAITING_FOR_BATCH],
+        )
+
+    def test_a_batched_record_shows_its_batch(self):
+        batch = self._batch(
+            status=Batch.Status.SUBMITTED_TO_CLINVAR, clinvar_submission_id="SUB1"
+        )
+        self._attempt(batch)
+        Record.objects.filter(pk=self.record.pk).update(status=Record.Status.IN_BATCH)
+        body = self.get(self.url).json()
+        self.assertEqual(body["current_batch"], batch.slug)
+        [attempt] = body["attempts"]
+        self.assertEqual(attempt["batch"]["slug"], batch.slug)
+        self.assertEqual(attempt["batch"]["status"], "submitted_to_clinvar")
+        self.assertEqual(attempt["batch"]["status_label"], "Submitted")
+        self.assertEqual(
+            attempt["batch"]["status_description"],
+            Batch.STATUS_HELP[Batch.Status.SUBMITTED_TO_CLINVAR],
+        )
+        self.assertEqual(attempt["batch"]["clinvar_submission_id"], "SUB1")
+        self.assertEqual(attempt["result"], "")
+        self.assertIsNone(attempt["errors"])
+
+    def test_shows_a_failed_attempt_then_a_successful_one_in_order(self):
+        errors = [{"output": {"errors": [{"userMessage": "Bad HGVS."}]}}]
+        failed = self._batch(status=Batch.Status.ERROR_AT_CLINVAR, clinvar_error_code=2)
+        self._attempt(failed, result=BatchRecord.Result.ERROR, errors=errors)
+        succeeded = self._batch(status=Batch.Status.PROCESSED_BY_CLINVAR)
+        self._attempt(succeeded, result=BatchRecord.Result.SUCCESS, scv="SCV000000001")
+        body = self.get(self.url).json()
+        first, second = body["attempts"]
+        self.assertEqual(first["batch"]["slug"], failed.slug)
+        self.assertEqual(first["result"], "Error")
+        self.assertEqual(first["errors"], errors)
+        self.assertEqual(first["batch"]["clinvar_error_code"], 2)
+        self.assertEqual(first["batch"]["status_description"], Batch.ERROR_CODE_HELP[2])
+        self.assertEqual(second["batch"]["slug"], succeeded.slug)
+        self.assertEqual(second["result"], "Success")
+        self.assertEqual(second["scv"], "SCV000000001")
+
+    def test_never_shows_who_made_a_batch_or_any_api_key(self):
+        self._attempt(self._batch())
+        text = self.get(self.url).content.decode()
+        for name in ("made_by", "api_key", "staff"):
+            self.assertNotIn(name, text)
+
+    def test_reading_a_record_takes_the_same_queries_for_any_number_of_attempts(self):
+        self._attempt(self._batch())
+        with CaptureQueriesContext(connection) as one:
+            self.get(self.url)
+        for _ in range(3):
+            self._attempt(self._batch())
+        with self.assertNumQueries(len(one)):
+            self.get(self.url)

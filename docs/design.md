@@ -378,16 +378,20 @@ go in a new version beside it. Ninja validates request bodies and serves OpenAPI
   and returns 201. If the affiliation has a waiting record with the same `localID`, the
   CSS replaces it, keeps the old version in its history, and returns 200.
 - `GET /css/api/v1/records/{slug}`: read a record's affiliation, status, tool ID, SCV,
-  and JSON.
+  and JSON, and its attempts: each batch it was sent in, oldest first, with the batch's
+  ID, status, ClinVar ID, and ClinVar's error code, and ClinVar's result, SCV, and
+  errors for the record. It also names the batch the record is in now, if any.
 - `GET /css/api/v1/records`: list the calling client's records, newest first.
 - `POST /css/api/v1/records/{slug}/withdraw`: withdraw a waiting record, so it won't be
   sent to ClinVar. A record in a batch, or one ClinVar accepted, gets a 409.
 
 Each client system has its own API key, which it sends in the `X-API-Key` header. The
 Django admin shows a new key once and stores only its hash. A client sees only its own
-records; batches are the staff's. There are no webhooks: clients poll a record's GET
-endpoint to learn when its status changes. The API doesn't use Clerk sessions or CSRF
-protection.
+records. Unlike the staff pages, the API returns ClinVar's errors as ClinVar sent them,
+so each client tool can decide how to show them, and every status comes with the label
+and description the CSS's pages use. It never says who made a batch. There are no
+webhooks: clients poll a record's GET endpoint to learn when its status changes. The API
+doesn't use Clerk sessions or CSRF protection.
 
 #### Poller
 
@@ -401,7 +405,7 @@ The poller is the `poll_clinvar` management command (see Processes). Each pass, 
 - waits at least as long as ClinVar's `Retry-After` header says when ClinVar returns 429
 - reports errors it catches to Sentry, so a failing batch doesn't go unnoticed, and
   moves on to the next batch
-- saves each record's result from a finished batch's summary report, matched by local
+- saves each record's result from a finished batch's summary report, matched by tool
   ID: a record ClinVar accepted gets its SCV, and one that failed goes back to waiting,
   so it can join a later batch, with ClinVar's errors kept on that attempt
 

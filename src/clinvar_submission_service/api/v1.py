@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 from typing import Any
 
-from django.db.models import QuerySet
+from django.db.models import Prefetch, QuerySet
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from ninja import Field, NinjaAPI, Schema, Status
@@ -17,7 +17,7 @@ from ninja.pagination import paginate
 
 from clinvar_submission_service.api.auth import ApiKeyAuth
 from clinvar_submission_service.content import Affiliation, RecordRequest
-from clinvar_submission_service.models import Record
+from clinvar_submission_service.models import BatchRecord, Record
 from clinvar_submission_service.services import (
     NotWithdrawableError,
     save_record,
@@ -44,12 +44,42 @@ def _affiliation_of(record: Record) -> Affiliation | None:
     return Affiliation(id=record.affiliation_id, name=record.affiliation_name)
 
 
+class BatchSummary(Schema):
+    """A batch's status at ClinVar and when it changed.
+
+    `status_label` and `status_description` are the words the CSS's pages use, so
+    client tools can describe a status the same way.
+    """
+
+    slug: str
+    status: str
+    status_label: str = Field(alias="get_status_display")
+    status_description: str = Field(alias="status_help")
+    clinvar_submission_id: str
+    clinvar_error_code: int | None
+    made_at: datetime = Field(alias="added_at")
+    clinvar_updated_at: datetime | None
+    last_checked_at: datetime | None = Field(alias="last_polled_at")
+
+
+class Attempt(Schema):
+    """One try at sending a record to ClinVar, in one batch, and ClinVar's result."""
+
+    batch: BatchSummary
+    result: str
+    scv: str
+    errors: Any = Field(description="ClinVar's errors for the record, as it sent them.")
+    added_at: datetime
+
+
 class RecordSummary(Schema):
     """A record's status and the fields that identify it."""
 
     slug: str
     affiliation: Affiliation | None
     status: str
+    status_label: str = Field(alias="get_status_display")
+    status_description: str = Field(alias="status_help")
     tool_id: str
     clinvar_accession: str
     added_at: datetime
@@ -62,9 +92,34 @@ class RecordSummary(Schema):
 
 
 class RecordDetail(RecordSummary):
-    """A record's status and its ClinVar JSON as the client sent it."""
+    """A record's status, its batches, and its ClinVar JSON as the client sent it."""
 
+    current_batch: str | None = Field(
+        description="The slug of the batch the record is in, or null if it's in none."
+    )
+    attempts: list[Attempt] = Field(
+        description="Each batch the record was sent in, oldest first."
+    )
     record: dict[str, Any] = Field(alias="payload")
+
+    @staticmethod
+    def resolve_attempts(record: Record) -> list[BatchRecord]:
+        """Returns the record's attempts, oldest first."""
+        return list(record.batch_records.all())  # type: ignore
+
+    @staticmethod
+    def resolve_current_batch(record: Record) -> str | None:
+        """Returns the slug of the record's batch, if it's in one."""
+        if record.status != Record.Status.IN_BATCH:
+            return None
+        attempts = list(record.batch_records.all())  # type: ignore
+        return attempts[-1].batch.slug if attempts else None
+
+
+def _with_attempts(records: QuerySet[Record]) -> QuerySet[Record]:
+    """Returns the records with their attempts and batches, oldest attempt first."""
+    attempts = BatchRecord.objects.select_related("batch").order_by("added_at")
+    return records.prefetch_related(Prefetch("batch_records", queryset=attempts))
 
 
 @api.post("/records", response={200: RecordDetail, 201: RecordDetail})
@@ -106,7 +161,11 @@ def read_record(request: HttpRequest, slug: str) -> Record:
     Returns:
         The record, or 404 if the client has none with that slug.
     """
-    return get_object_or_404(Record, slug=slug, api_key=request.auth)  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
+    return get_object_or_404(
+        _with_attempts(Record.objects.all()),
+        slug=slug,
+        api_key=request.auth,  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
+    )
 
 
 class Error(Schema):
