@@ -137,3 +137,17 @@ class TooltipTest(TestCase):
         ):
             with self.subTest(asset=asset):
                 self.assertIn(static(asset), html)
+
+
+class ConfirmModalTest(TestCase):
+    def test_every_page_has_the_modal_and_its_script(self):
+        response = self.client.get(reverse("home"))
+        self.assertTemplateUsed(response, "common/confirm_modal.html")
+        self.assertContains(response, 'id="confirm-modal"')
+        self.assertContains(response, static("tools/js/confirm-modal.js"))
+
+    def test_no_template_asks_with_window_confirm(self):
+        templates = settings.BASE_DIR.glob("**/templates/**/*.html")
+        for template in templates:
+            with self.subTest(str(template.relative_to(settings.BASE_DIR))):
+                self.assertNotIn("confirm(", template.read_text())

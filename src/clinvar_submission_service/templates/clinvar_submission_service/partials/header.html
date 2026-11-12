@@ -7,11 +7,11 @@
         Nothing is sent to ClinVar. Batches move through ClinVar's statuses each time the
         CSS checks on them, and each record gets a made-up result.
         <div class="buttons mt-3">
-            <form method="post" action="{% url 'css:delete_records' %}" onsubmit="return confirm('Delete every record and batch?')">
+            <form method="post" action="{% url 'css:delete_records' %}" data-confirm="Delete every record and batch?">
                 {% csrf_token %}
                 <button type="submit" class="button is-danger is-light is-small">{% include "common/icon.html" with icon_name="trash" %}Flush Records</button>
             </form>
-            <form method="post" action="{% url 'css:delete_batches' %}" class="ml-2" onsubmit="return confirm('Delete every batch? Their records will wait again.')">
+            <form method="post" action="{% url 'css:delete_batches' %}" class="ml-2" data-confirm="Delete every batch? Their records will wait again.">
                 {% csrf_token %}
                 <button type="submit" class="button is-danger is-light is-small">{% include "common/icon.html" with icon_name="trash" %}Flush Batches</button>
             </form>

@@ -19,9 +19,10 @@ request context, so it must not depend on context processors.
 
 ### `layouts/base.html`
 
-The base layout. Loads Bulma, Bootstrap Icons, HTMX, Tippy.js, and our `custom.css`,
-sends the CSRF token with every HTMX request, and lays out the header, messages, main
-content, and footer.
+The base layout. Loads Bulma, Bootstrap Icons, HTMX, Tippy.js, our `custom.css`, and
+the confirmation modal's script, sends the CSRF token with every HTMX request, and lays
+out the header, messages, main content, and footer, then the confirmation modal from
+`common/confirm_modal.html`.
 
 ### `tables.html`
 

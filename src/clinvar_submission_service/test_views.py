@@ -470,6 +470,9 @@ class DetailViewTest(CssViewTestCase):
                 resend_url = reverse("css:resend", kwargs={"slug": batch.slug})
                 if status == Batch.Status.SEND_TO_CLINVAR_FAILED:
                     self.assertContains(response, resend_url)
+                    self.assertContains(
+                        response, f'data-confirm="Send {batch.slug} to ClinVar again?"'
+                    )
                 else:
                     self.assertNotContains(response, resend_url)
 
@@ -929,6 +932,9 @@ class RecordDetailViewTest(CssViewTestCase):
                 withdraw_url = reverse("css:withdraw", kwargs={"slug": record.slug})
                 if shown:
                     self.assertContains(response, withdraw_url)
+                    self.assertContains(
+                        response, f'data-confirm="Withdraw {record.slug}?'
+                    )
                 else:
                     self.assertNotContains(response, withdraw_url)
 

@@ -38,7 +38,7 @@
                 <form method="post"
                       action="{% url 'css:withdraw' slug=record.slug %}"
                       class="block"
-                      onsubmit="return confirm('Withdraw {{ record.slug }}? It won&#x27;t be sent to ClinVar.');">
+                      data-confirm="Withdraw {{ record.slug }}? It won't be sent to ClinVar.">
                     {% csrf_token %}
                     <button type="submit" class="button is-danger is-light">Withdraw</button>
                 </form>

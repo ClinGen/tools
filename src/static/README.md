@@ -3,8 +3,8 @@
 This directory holds the static files Django serves. The files under `tools/` are
 vendored from `node_modules` or bundled from `src/auth_/js/` by `build.js`
 (`just js-build`); don't edit them by hand. To upgrade one, update `package.json` and
-rerun `just js-build`. The exceptions are `tools/css/custom.css` and
-`tools/js/tooltips.js`, which we wrote.
+rerun `just js-build`. The exceptions are `tools/css/custom.css`,
+`tools/js/confirm-modal.js`, and `tools/js/tooltips.js`, which we wrote.
 
 ### `tools/css/bootstrap-icons.css`
 
@@ -36,6 +36,13 @@ The Bootstrap Icons font, in WOFF2 format.
 
 The bundled Clerk token-exchange script for the sign-in callback page, built from
 `src/auth_/js/callback.jsx`.
+
+### `tools/js/confirm-modal.js`
+
+Asks for confirmation before any form with a `data-confirm` attribute is submitted. It
+shows the attribute's text in the modal from `common/confirm_modal.html` and submits the
+form only on Confirm; Cancel, the background, and Escape close the modal. Its listeners
+are on the document, so they keep working after HTMX swaps.
 
 ### `tools/js/htmx.js`
 

@@ -310,6 +310,7 @@ class DeleteAllTest(TestCase):
         self.assertContains(response, reverse("css:delete_batches"))
         self.assertContains(response, "Flush Records")
         self.assertContains(response, "Flush Batches")
+        self.assertContains(response, 'data-confirm="Delete every record and batch?"')
         response = self.client.get(url)
         self.assertNotContains(response, reverse("css:delete_records"))
         self.assertNotContains(response, reverse("css:delete_batches"))

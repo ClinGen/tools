@@ -25,7 +25,7 @@
                         developer for help, and give them its ID, {{ batch.slug }}.</p>
                     <form method="post"
                           action="{% url 'css:resend' slug=batch.slug %}"
-                          onsubmit="return confirm('Send {{ batch.slug }} to ClinVar again?');">
+                          data-confirm="Send {{ batch.slug }} to ClinVar again?">
                         {% csrf_token %}
                         <button type="submit" class="button is-link">Resend</button>
                     </form>

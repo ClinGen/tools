@@ -406,7 +406,8 @@ class TabsTest(TestCase):
                 html = response.content.decode()
                 active_link = html.split('aria-current="page"')[1].split("</a>")[0]
                 self.assertIn(active, active_link)
-                self.assertNotContains(response, 'class="button is-link is-light"')
+                main = html.split("<main>")[1].split("</main>")[0]
+                self.assertNotIn('class="button is-link is-light"', main)
 
     def test_only_the_detail_page_has_a_transfer_tab(self):
         _sign_in(self.client)

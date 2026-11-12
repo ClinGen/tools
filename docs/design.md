@@ -446,6 +446,23 @@ submissions table, shows its solid color on hover or focus (dark grey for a grey
 from `static/tools/css/custom.css`. Don't use `is-primary`. The base layout sets
 `data-theme="light"`, so there is no dark theme to check.
 
+### Confirmations
+
+Before an action that's hard to undo, such as withdrawing a record or resending a batch,
+a page asks staff to confirm in a custom modal, not with `window.confirm`. The browser's
+dialog can't be styled, looks different in each browser, and some browsers let people
+turn it off for a site, which would skip the question. To ask, give the form a
+`data-confirm` attribute whose value is the question, in plain words:
+
+```html
+<form method="post" action="..." data-confirm="Withdraw this record?">
+```
+
+`static/tools/js/confirm-modal.js` shows the question in the Bulma modal from
+`common/confirm_modal.html`, which the base layout includes on every page, and submits
+the form only if staff click Confirm. Don't use `window.confirm`, `onsubmit`, or
+`onclick` to ask.
+
 ### Flash Messages
 
 Views queue flash messages only for warnings and errors. A successful action already

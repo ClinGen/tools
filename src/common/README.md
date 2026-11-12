@@ -19,6 +19,11 @@ Defines `ToolTagMiddleware`, which tags each Sentry event with the tool that han
 request (`as`, `css`, or `ets`), taken from the resolved URL's namespace. Requests
 outside a tool, such as the landing page and sign-in, get no tag.
 
+### `templates/common/confirm_modal.html`
+
+The Bulma modal card that `tools/js/confirm-modal.js` shows before submitting a form
+with a `data-confirm` attribute. `layouts/base.html` includes it once on every page.
+
 ### `templates/common/icon.html`
 
 Renders a Bootstrap Icons icon. Pass the icon's name as `icon_name`.
@@ -46,6 +51,7 @@ is taken, `SlugModel` gives it a new UUID. `make_slug()` builds the slug, and
 Tests that `ToolTagMiddleware` tags tool requests and leaves other requests untagged
 (through a test URLconf, defined in this file, that adds a fake ETS to the project's
 URLconf), that backups go to a local directory and are named with the subdomain, that
-`make_slug()` builds a slug, that `UserProfile` and its history rows have UUID IDs, and
+`make_slug()` builds a slug, that `UserProfile` and its history rows have UUID IDs,
 that the tooltip template puts its text in a focusable tooltip, on an icon or a label,
-and the base layout loads Tippy.js.
+and the base layout loads Tippy.js, and that every page has the confirmation modal and
+no template asks with `window.confirm`.
