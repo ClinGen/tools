@@ -1,4 +1,4 @@
-{# The top of every CSS page: a banner while ClinVar is simulated, its name, description, and a navbar to each section, bold for the current section. Takes section: affiliations, records, or batches. #}
+{# The top of every CSS page: a banner while ClinVar is simulated, with buttons that delete every record or batch, its name, description, and a navbar to each section, bold for the current section. Takes section: affiliations, records, or batches. #}
 {% load css_tags %}
 {% simulating_clinvar as simulating %}
 {% if simulating %}
@@ -6,6 +6,16 @@
         <span class="has-text-weight-bold">ClinVar is simulated.</span>
         Nothing is sent to ClinVar. Batches move through ClinVar's statuses each time the
         CSS checks on them, and each record gets a made-up result.
+        <div class="buttons mt-3">
+            <form method="post" action="{% url 'css:delete_records' %}" onsubmit="return confirm('Delete every record and batch?')">
+                {% csrf_token %}
+                <button type="submit" class="button is-danger is-light is-small">{% include "common/icon.html" with icon_name="trash" %}Flush Records</button>
+            </form>
+            <form method="post" action="{% url 'css:delete_batches' %}" class="ml-2" onsubmit="return confirm('Delete every batch? Their records will wait again.')">
+                {% csrf_token %}
+                <button type="submit" class="button is-danger is-light is-small">{% include "common/icon.html" with icon_name="trash" %}Flush Batches</button>
+            </form>
+        </div>
     </div>
 {% endif %}
 <h1 class="title">{{ tool.name }}</h1>

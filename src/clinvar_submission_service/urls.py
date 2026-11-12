@@ -14,6 +14,8 @@ urlpatterns = [
         name="index",
     ),
     path("batches/", views.batches, name="batches"),
+    path("batches/delete-all/", views.delete_batches, name="delete_batches"),
+    path("records/delete-all/", views.delete_records, name="delete_records"),
     path("records/", views.records, name="records"),
     path("records/<slug:slug>/", views.record_detail, name="record"),
     path("affiliations/", views.affiliations, name="affiliations"),

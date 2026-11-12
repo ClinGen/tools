@@ -265,7 +265,8 @@ Records / R3f2a9c1e Details or Records / New Batch.
 ### `templates/clinvar_submission_service/partials/header.html`
 
 The top of every CSS page: a banner saying ClinVar is simulated while
-`CSS_SIMULATE_CLINVAR` is on, the CSS's name and description from `core.tools`, then a
+`CSS_SIMULATE_CLINVAR` is on, with buttons that delete every record or every batch after
+asking to confirm, the CSS's name and description from `core.tools`, then a
 navbar linking to the Records, Batches, and Affiliations sections, with the current
 section in bold.
 
@@ -292,7 +293,9 @@ nothing in memory and reads each batch and its records from the database. Each p
 moves a batch one step: submitted, then processing, then processed or error, with
 ClinVar's error code. Its summary report, in ClinVar's shape, gives each record Success
 with an SCV or Error with a plausible message, about 85% Success, decided by a hash of
-the ClinVar ID and local ID so it's the same on every call.
+the ClinVar ID and local ID so it's the same on every call. `delete_all_records()`
+deletes every record and batch, and `delete_all_batches()` deletes every batch and puts
+its records back to waiting, so the simulated workflow can start over.
 
 ### `tables.py`
 
@@ -377,6 +380,8 @@ ClinVar's shape and is the same on every call; and that the poller and `save_res
 work against it end to end. Also tests that a sent batch's first poll waits
 `CSS_FIRST_POLL_DELAY`, that every CSS page shows the simulation banner only while the
 flag is on, and that the dev settings shorten the poll delays only while simulating.
+Also tests that the banner's delete buttons delete what they say, only while
+simulating, only on a POST, and only for staff with CSS permissions.
 
 ### `test_views.py`
 
@@ -434,8 +439,9 @@ list at `records/`, since staff mostly work from records. Each record is at
 `records/<slug>/` and its withdraw at `records/<slug>/withdraw/`. The batch list is at
 `batches/`, each batch at `batches/<slug>/`, and its resend at
 `batches/<slug>/resend/`. The affiliations page is at `affiliations/` and an
-affiliation's new batch at `affiliations/<id>/new-batch/`. The API is at `api/v1/`
-under `css:api-1`.
+affiliation's new batch at `affiliations/<id>/new-batch/`. While ClinVar is simulated,
+`records/delete-all/` and `batches/delete-all/` delete every record or batch. The API is
+at `api/v1/` under `css:api-1`.
 
 ### `views.py`
 
@@ -453,4 +459,7 @@ pairs each `Record` with its result in ClinVar's summary report. The resend view
 takes only POSTs, forwards a send_to_clinvar_failed batch again through
 `services.forward_batch()` and shows a plain error message if ClinVar still didn't get
 it. The withdraw view, also POST-only, withdraws a waiting record through
-`services.withdraw_record()` and returns to the batch list with a plain message.
+`services.withdraw_record()` and returns to the record's page with a plain message. While
+ClinVar is simulated, the POST-only delete views delete every record or every batch
+through `simulation.py` and return to that list with a message; otherwise they're 404,
+so real data can't be deleted.

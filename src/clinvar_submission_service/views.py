@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from urllib.parse import urlencode
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.db.models import Count, Q, QuerySet
@@ -22,6 +23,10 @@ from clinvar_submission_service.services import (
     make_batch,
     report_results,
     withdraw_record,
+)
+from clinvar_submission_service.simulation import (
+    delete_all_batches,
+    delete_all_records,
 )
 from clinvar_submission_service.tables import BatchTable, RecordTable
 from core.tools import get_tool
@@ -432,6 +437,49 @@ def withdraw(request: HttpRequest, slug: str) -> HttpResponse:
     else:
         messages.success(request, WITHDRAWN_MESSAGE)
     return redirect(record)
+
+
+def _check_simulated_post(request: HttpRequest) -> HttpResponse | None:
+    """Returns 405 unless the request is a POST.
+
+    Raises:
+        Http404: Unless ClinVar is simulated, so real data can't be deleted.
+    """
+    if not settings.CSS_SIMULATE_CLINVAR:
+        raise Http404
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    return None
+
+
+@tool_permission_required("has_css_permissions")
+def delete_records(request: HttpRequest) -> HttpResponse:
+    """Deletes every record and batch while ClinVar is simulated.
+
+    Returns:
+        A redirect to the records list, or 405 if the request isn't a POST.
+    """
+    if refused := _check_simulated_post(request):
+        return refused
+    count = delete_all_records()
+    messages.success(request, f"Deleted {count} records and every batch.")
+    return redirect("css:records")
+
+
+@tool_permission_required("has_css_permissions")
+def delete_batches(request: HttpRequest) -> HttpResponse:
+    """Deletes every batch while ClinVar is simulated, so their records wait again.
+
+    Returns:
+        A redirect to the batches list, or 405 if the request isn't a POST.
+    """
+    if refused := _check_simulated_post(request):
+        return refused
+    count = delete_all_batches()
+    messages.success(
+        request, f"Deleted {count} batches. Their records are waiting again."
+    )
+    return redirect("css:batches")
 
 
 def _affiliation_name(affiliation_id: int) -> str:

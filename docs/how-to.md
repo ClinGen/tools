@@ -259,5 +259,8 @@ ClinVar accept and process the batches you send, so nothing reaches the VCI or C
 - About one send in ten fails on purpose, so the batch shows Send Failed. Click
   **Resend** on its page to try again.
 - To stop simulating, empty `CSS_SIMULATE_CLINVAR` in `.env` and restart the server and
-  the poller. To clear the records and batches, run `just django-loaddata-test`, which
-  replaces them with the sample fixture.
+  the poller.
+- To start over, click **Flush Records** in the banner, which deletes every record and
+  batch, or **Flush Batches**, which deletes every batch and puts its records back to
+  waiting. Affiliation settings and API keys stay. To replace everything with
+  the sample fixture instead, run `just django-loaddata-test`.

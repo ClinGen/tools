@@ -11,10 +11,12 @@ import hashlib
 import random
 from typing import Any
 
+from django.db import transaction
 from django.utils import timezone
+from simple_history.utils import bulk_update_with_history
 
 from clinvar_submission_service.clients import ClinVarError, ClinVarStatus
-from clinvar_submission_service.models import Batch, Record
+from clinvar_submission_service.models import Batch, BatchRecord, Record
 
 # How often sending a batch fails, so staff can try Resend.
 SEND_FAILURE_RATE = 0.1
@@ -137,3 +139,39 @@ def _result(clinvar_id: str, record: Record) -> dict[str, Any]:
         "processingStatus": "Error",
         "errors": [{"output": {"errors": [{"userMessage": message}]}}],
     }
+
+
+@transaction.atomic
+def delete_all_batches() -> int:
+    """Deletes every batch, so the simulated workflow can start over.
+
+    Records that were in a batch go back to waiting. Succeeded and withdrawn records
+    stay as they are.
+
+    Returns:
+        How many batches were deleted.
+    """
+    count = Batch.objects.count()
+    BatchRecord.objects.all().delete()
+    Batch.objects.all().delete()
+    in_batch = list(Record.objects.filter(status=Record.Status.IN_BATCH))
+    for record in in_batch:
+        record.status = Record.Status.WAITING_FOR_BATCH
+    bulk_update_with_history(
+        in_batch, Record, ["status"], default_change_reason="Its batch was deleted."
+    )
+    return count
+
+
+@transaction.atomic
+def delete_all_records() -> int:
+    """Deletes every record and, since a batch is made of records, every batch.
+
+    Returns:
+        How many records were deleted.
+    """
+    count = Record.objects.count()
+    BatchRecord.objects.all().delete()
+    Batch.objects.all().delete()
+    Record.objects.all().delete()
+    return count

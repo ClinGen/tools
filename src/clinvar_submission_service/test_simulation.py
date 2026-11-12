@@ -232,3 +232,84 @@ class DevSettingsTest(TestCase):
         self.assertFalse(dev.CSS_SIMULATE_CLINVAR)
         self.assertEqual(dev.CSS_FIRST_POLL_DELAY, timedelta(minutes=5))
         self.assertEqual(dev.CSS_POLL_MIN_DELAY, timedelta(minutes=5))
+
+
+class DeleteAllTest(TestCase):
+    def setUp(self):
+        user = User.objects.create_user(username="staff@example.com")
+        UserProfile.objects.create(user=user, has_css_permissions=True)
+        self.client.force_login(user)
+        self.batch = _batch("var-1", "var-2")
+        self.waiting = save_record(
+            api_key=None,
+            affiliation=Affiliation(id=10007, name="Hearing Loss VCEP"),
+            payload=make_record("var-3"),
+        )[0]
+
+    @override_settings(CSS_SIMULATE_CLINVAR=True)
+    def test_deleting_records_deletes_every_record_and_batch(self):
+        response = self.client.post(reverse("css:delete_records"), follow=True)
+        self.assertRedirects(response, reverse("css:records"))
+        self.assertContains(response, "Deleted 3 records and every batch.")
+        self.assertFalse(Record.objects.exists())
+        self.assertFalse(Batch.objects.exists())
+        self.assertFalse(BatchRecord.objects.exists())
+
+    @override_settings(CSS_SIMULATE_CLINVAR=True)
+    def test_deleting_batches_puts_their_records_back_to_waiting(self):
+        succeeded = self.batch.records.get(local_id="var-2")
+        succeeded.status = Record.Status.SUCCEEDED_AT_CLINVAR
+        succeeded.save()
+        response = self.client.post(reverse("css:delete_batches"), follow=True)
+        self.assertRedirects(response, reverse("css:batches"))
+        self.assertContains(response, "Deleted 1 batches.")
+        self.assertFalse(Batch.objects.exists())
+        self.assertFalse(BatchRecord.objects.exists())
+        statuses = dict(Record.objects.values_list("local_id", "status"))
+        self.assertEqual(
+            statuses,
+            {
+                "var-1": Record.Status.WAITING_FOR_BATCH,
+                "var-2": Record.Status.SUCCEEDED_AT_CLINVAR,
+                "var-3": Record.Status.WAITING_FOR_BATCH,
+            },
+        )
+        record = Record.objects.get(local_id="var-1")
+        self.assertEqual(
+            record.history.first().history_change_reason,  # type: ignore
+            "Its batch was deleted.",
+        )
+
+    def test_both_are_404_unless_simulating(self):
+        for name in ["css:delete_records", "css:delete_batches"]:
+            with self.subTest(name):
+                self.assertEqual(self.client.post(reverse(name)).status_code, 404)
+        self.assertEqual(Record.objects.count(), 3)
+        self.assertTrue(Batch.objects.exists())
+
+    @override_settings(CSS_SIMULATE_CLINVAR=True)
+    def test_both_need_a_post(self):
+        for name in ["css:delete_records", "css:delete_batches"]:
+            with self.subTest(name):
+                self.assertEqual(self.client.get(reverse(name)).status_code, 405)
+        self.assertEqual(Record.objects.count(), 3)
+
+    @override_settings(CSS_SIMULATE_CLINVAR=True)
+    def test_both_need_css_permissions(self):
+        self.client.force_login(User.objects.create_user(username="other@example.com"))
+        for name in ["css:delete_records", "css:delete_batches"]:
+            with self.subTest(name):
+                self.assertEqual(self.client.post(reverse(name)).status_code, 403)
+        self.assertEqual(Record.objects.count(), 3)
+
+    def test_the_banner_shows_the_buttons_only_while_simulating(self):
+        url = reverse("css:records")
+        with override_settings(CSS_SIMULATE_CLINVAR=True):
+            response = self.client.get(url)
+        self.assertContains(response, reverse("css:delete_records"))
+        self.assertContains(response, reverse("css:delete_batches"))
+        self.assertContains(response, "Flush Records")
+        self.assertContains(response, "Flush Batches")
+        response = self.client.get(url)
+        self.assertNotContains(response, reverse("css:delete_records"))
+        self.assertNotContains(response, reverse("css:delete_batches"))

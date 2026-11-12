@@ -50,7 +50,9 @@ console and a rotating file in `logs/` (5 MB, 5 backups).
 Extends `dev.py` for test runs. Turns Sentry off, uses a file-backed test database so
 tests run in WAL mode like the real database, uses plain static file storage so tests
 don't need `collectstatic`, never gives the CSS a real ClinVar key or the production
-endpoint, and silences logging so pytest shows logs only for failing tests.
+endpoint, turns the simulated ClinVar off and keeps `base.py`'s poll delays even if
+`.env` turns simulating on, and silences logging so pytest shows logs only for failing
+tests.
 
 ### `tests.py`
 
