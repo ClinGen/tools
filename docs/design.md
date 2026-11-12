@@ -241,12 +241,13 @@ users, memberships, and CDWGs. Each is addressed by its AS ID, as `/{resource}/{
 Read-only lookups find affiliations by their canonical IDs:
 `/affiliations/affiliation-id/{affiliation_id}` returns every affiliation with that ID
 (a VCEP and a GCEP can share one), and `/affiliations/expert-panel-id/{expert_panel_id}`
-returns one. Affiliations, CDWGs, and users can also be looked up by GPM UUID, as
-`/{resource}/gpm-uuid/{gpm_uuid}`, and creating one with a GPM UUID that's in use is
-refused. Lists are paginated, and updates use `PATCH`. A request that fails validation
-gets a 422, and one that breaks a rule above gets a 400 with a `detail` message. Every
-resource has a `DELETE`, which marks the record as deleted; lists leave deleted records
-out unless they're asked for with `include_deleted=true`.
+returns one. The GPM can work with affiliations, CDWGs, and users entirely by their GPM
+UUIDs: it creates them with `POST` and a `gpm_uuid`, which is refused if the GPM UUID is
+in use, and gets, changes, and deletes them at `/{resource}/gpm-uuid/{gpm_uuid}`, which
+behaves like `/{resource}/{id}`. Lists are paginated, and updates use `PATCH`. A request
+that fails validation gets a 422, and one that breaks a rule above gets a 400 with a
+`detail` message. Every resource has a `DELETE`, which marks the record as deleted;
+lists leave deleted records out unless they're asked for with `include_deleted=true`.
 
 Clients send an API key in the `X-Api-Key` header. Any active AS key can read and change
 everything in the AS; there are no read-only keys. Staff create and revoke keys in the

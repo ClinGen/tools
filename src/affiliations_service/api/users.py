@@ -192,7 +192,15 @@ def update_user(
     Returns:
         The changed user.
     """
-    user = get_object_or_404(User, pk=id_)
+    return _update_user(get_object_or_404(User, pk=id_), data)
+
+
+def _update_user(user: User, data: UserPatch) -> User:
+    """Applies a PATCH to a user.
+
+    Returns:
+        The changed user.
+    """
     changes = data.dict(exclude_unset=True)
     other_emails = changes.pop("other_emails", None)
     _save(user, changes, other_emails)
@@ -204,10 +212,42 @@ def delete_user(
     request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     id_: PathEx[uuid.UUID, P(alias="id")],
 ) -> Status[None]:
-    """Marks a user deleted. It's kept, but left out of lists.
+    """Marks a user deleted.
+
+    It's kept, but left out of lists.
 
     Returns:
         204.
     """
     get_object_or_404(User, pk=id_).delete()
+    return Status(204, None)
+
+
+@router.patch("/gpm-uuid/{gpm_uuid}", response=UserDetail)
+def update_user_by_gpm_uuid(
+    request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    gpm_uuid: uuid.UUID,
+    data: UserPatch,
+) -> User:
+    """Changes the user with this GPM UUID, as `PATCH /users/{{id}}` does.
+
+    Returns:
+        The changed user.
+    """
+    return _update_user(get_object_or_404(User, gpm_uuid=gpm_uuid), data)
+
+
+@router.delete("/gpm-uuid/{gpm_uuid}", response={204: None})
+def delete_user_by_gpm_uuid(
+    request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    gpm_uuid: uuid.UUID,
+) -> Status[None]:
+    """Marks the user with this GPM UUID deleted.
+
+    It's kept, but left out of lists.
+
+    Returns:
+        204.
+    """
+    get_object_or_404(User, gpm_uuid=gpm_uuid).delete()
     return Status(204, None)

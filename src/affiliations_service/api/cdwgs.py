@@ -95,7 +95,15 @@ def update_cdwg(
     Returns:
         The changed CDWG.
     """
-    cdwg = get_object_or_404(CDWG, pk=id_)
+    return _update_cdwg(get_object_or_404(CDWG, pk=id_), data)
+
+
+def _update_cdwg(cdwg: CDWG, data: CDWGPatch) -> CDWG:
+    """Applies a PATCH to a CDWG.
+
+    Returns:
+        The changed CDWG.
+    """
     save_validated(cdwg, data.dict(exclude_unset=True))
     return cdwg
 
@@ -105,10 +113,42 @@ def delete_cdwg(
     request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     id_: PathEx[uuid.UUID, P(alias="id")],
 ) -> Status[None]:
-    """Marks a CDWG deleted. It's kept, but left out of lists.
+    """Marks a CDWG deleted.
+
+    It's kept, but left out of lists.
 
     Returns:
         204.
     """
     get_object_or_404(CDWG, pk=id_).delete()
+    return Status(204, None)
+
+
+@router.patch("/gpm-uuid/{gpm_uuid}", response=CDWGOut)
+def update_cdwg_by_gpm_uuid(
+    request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    gpm_uuid: uuid.UUID,
+    data: CDWGPatch,
+) -> CDWG:
+    """Changes the CDWG with this GPM UUID, as `PATCH /cdwgs/{{id}}` does.
+
+    Returns:
+        The changed CDWG.
+    """
+    return _update_cdwg(get_object_or_404(CDWG, gpm_uuid=gpm_uuid), data)
+
+
+@router.delete("/gpm-uuid/{gpm_uuid}", response={204: None})
+def delete_cdwg_by_gpm_uuid(
+    request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    gpm_uuid: uuid.UUID,
+) -> Status[None]:
+    """Marks the CDWG with this GPM UUID deleted.
+
+    It's kept, but left out of lists.
+
+    Returns:
+        204.
+    """
+    get_object_or_404(CDWG, gpm_uuid=gpm_uuid).delete()
     return Status(204, None)

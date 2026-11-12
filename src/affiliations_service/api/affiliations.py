@@ -263,6 +263,19 @@ def update_affiliation(
 ) -> Affiliation:
     """Changes an affiliation. Sending clinvar_submitter_ids replaces the list.
 
+    The IDs, type, and GPM UUID can't change.
+
+    Returns:
+        The changed affiliation.
+    """
+    return _update_affiliation(get_object_or_404(Affiliation, pk=id_), data)
+
+
+def _update_affiliation(
+    affiliation: Affiliation, data: AffiliationPatch
+) -> Affiliation:
+    """Applies a PATCH to an affiliation.
+
     Returns:
         The changed affiliation.
 
@@ -270,7 +283,6 @@ def update_affiliation(
         ValidationError: If the request changes a locked field, so the API returns a
             400.
     """
-    affiliation = get_object_or_404(Affiliation, pk=id_)
     changes = data.dict(exclude_unset=True)
     for field in LOCKED_FIELDS:
         if field in changes and changes.pop(field) != getattr(affiliation, field):
@@ -286,10 +298,42 @@ def delete_affiliation(
     request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     id_: PathEx[uuid.UUID, P(alias="id")],
 ) -> Status[None]:
-    """Marks an affiliation deleted. It's kept, but left out of lists.
+    """Marks an affiliation deleted.
+
+    It's kept, but left out of lists.
 
     Returns:
         204.
     """
     get_object_or_404(Affiliation, pk=id_).delete()
+    return Status(204, None)
+
+
+@router.patch("/gpm-uuid/{gpm_uuid}", response=AffiliationDetail)
+def update_affiliation_by_gpm_uuid(
+    request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    gpm_uuid: uuid.UUID,
+    data: AffiliationPatch,
+) -> Affiliation:
+    """Changes the affiliation with this GPM UUID, as `PATCH /affiliations/{{id}}` does.
+
+    Returns:
+        The changed affiliation.
+    """
+    return _update_affiliation(get_object_or_404(Affiliation, gpm_uuid=gpm_uuid), data)
+
+
+@router.delete("/gpm-uuid/{gpm_uuid}", response={204: None})
+def delete_affiliation_by_gpm_uuid(
+    request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    gpm_uuid: uuid.UUID,
+) -> Status[None]:
+    """Marks the affiliation with this GPM UUID deleted.
+
+    It's kept, but left out of lists.
+
+    Returns:
+        204.
+    """
+    get_object_or_404(Affiliation, gpm_uuid=gpm_uuid).delete()
     return Status(204, None)

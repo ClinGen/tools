@@ -31,9 +31,10 @@ panel ID, and searches names with `q`. Creating one assigns its IDs, so a reques
 send them. `PATCH` can't change the IDs, type, or GPM UUID, and sending
 `clinvar_submitter_ids` replaces the list. `DELETE` marks the affiliation deleted.
 Read-only lookups find affiliations by affiliation ID
-(`/affiliation-id/{affiliation_id}`, which returns every affiliation sharing it), expert
-panel ID (`/expert-panel-id/{expert_panel_id}`), and GPM UUID (`/gpm-uuid/{gpm_uuid}`).
-Responses for one affiliation include its current memberships.
+(`/affiliation-id/{affiliation_id}`, which returns every affiliation sharing it) and
+expert panel ID (`/expert-panel-id/{expert_panel_id}`). An affiliation can also be
+found, changed, and deleted by GPM UUID (`/gpm-uuid/{gpm_uuid}`). Responses for one
+affiliation include its current memberships.
 
 ### `api/auth.py`
 
@@ -43,8 +44,8 @@ API key.
 ### `api/cdwgs.py`
 
 Serves `/cdwgs`: list (paginated, without deleted CDWGs unless `include_deleted` is
-true), get, create, update (`PATCH`), and soft-delete CDWGs, and look one up by GPM UUID
-(`/gpm-uuid/{gpm_uuid}`).
+true), get, create, update (`PATCH`), and soft-delete CDWGs, and find, change, and
+delete one by GPM UUID (`/gpm-uuid/{gpm_uuid}`).
 
 ### `api/helpers.py`
 
@@ -62,10 +63,10 @@ affiliation or user can't get new members.
 
 Serves `/users`: list (paginated, with `q` searching names and every email, and exact
 filters for `email`, `orcid`, and `gpm_uuid`), get, create, and update (`PATCH`).
-Sending `other_emails` replaces the list. A read-only lookup finds a user by GPM UUID
-(`/gpm-uuid/{gpm_uuid}`). `DELETE` marks a user deleted, and lists leave deleted users
-out unless `include_deleted` is true. Responses for one user include their current
-memberships.
+Sending `other_emails` replaces the list. A user can also be found, changed, and deleted
+by GPM UUID (`/gpm-uuid/{gpm_uuid}`). `DELETE` marks a user deleted, and lists leave
+deleted users out unless `include_deleted` is true. Responses for one user include their
+current memberships.
 
 ### `api/v1.py`
 
@@ -288,9 +289,9 @@ the public docs, and showing a new key once in the admin.
 
 ### `test_api_lookups.py`
 
-Tests the read-only lookups by affiliation ID, expert panel ID, and GPM UUID, and that
-creating a record with a GPM UUID in use is refused, the path names in the docs, and
-that the docs capitalize acronyms.
+Tests the lookups by affiliation ID, expert panel ID, and GPM UUID, and that creating a
+record with a GPM UUID in use is refused, changing and deleting records by GPM UUID, the
+path names in the docs, and that the docs capitalize acronyms.
 
 ### `test_api_memberships.py`
 
