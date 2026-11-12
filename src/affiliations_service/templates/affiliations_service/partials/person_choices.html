@@ -1,9 +1,16 @@
 {% if people %}
     {% for person in people %}
-        <label class="radio is-block mb-1">
-            <input type="radio" name="person" value="{{ person.pk }}" required>
-            {{ person.name }} <span class="has-text-grey">{{ person.email }}</span>
-        </label>
+        {% if input_name == "coordinators" %}
+            <label class="checkbox is-block mb-1">
+                <input type="checkbox" name="coordinators" value="{{ person.pk }}">
+                {{ person.name }} <span class="has-text-grey">{{ person.email }}</span>
+            </label>
+        {% else %}
+            <label class="radio is-block mb-1">
+                <input type="radio" name="person" value="{{ person.pk }}" required>
+                {{ person.name }} <span class="has-text-grey">{{ person.email }}</span>
+            </label>
+        {% endif %}
     {% endfor %}
 {% elif query %}
     <p>No one matches. <a href="{% url 'as:person-create' %}">Add a person</a>, then come back.</p>

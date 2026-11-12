@@ -30,7 +30,36 @@
                 </div>
             {% endif %}
             {% for field in form %}
-                {% include "affiliations_service/partials/field.html" %}
+                {% if field.name == "coordinators" %}
+                    <div class="field">
+                        <label class="label" for="coordinator-search">{{ field.label }}</label>
+                        <p class="help mb-2">{{ field.help_text }}</p>
+                        <div id="coordinators-picked">
+                            {% for person in form.picked_coordinators %}
+                                <label class="checkbox is-block mb-1">
+                                    <input type="checkbox" name="coordinators" value="{{ person.pk }}" checked>
+                                    {{ person.name }} <span class="has-text-grey">{{ person.email }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        <div class="control">
+                            <input class="input"
+                                   id="coordinator-search"
+                                   type="search"
+                                   name="q"
+                                   placeholder="Search by name or email"
+                                   hx-get="{% url 'as:person-search' %}"
+                                   hx-vals='{"input": "coordinators"}'
+                                   onkeydown="return event.key !== 'Enter'"
+                                   hx-trigger="input changed delay:300ms"
+                                   hx-target="#coordinator-choices">
+                        </div>
+                        <div id="coordinator-choices" class="mt-2"></div>
+                        {% for error in field.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+                    </div>
+                {% else %}
+                    {% include "affiliations_service/partials/field.html" %}
+                {% endif %}
             {% endfor %}
 
             {% include "affiliations_service/partials/formset.html" with field_name="submitter_id" legend="ClinVar Submitter IDs" label="ClinVar Submitter ID" %}

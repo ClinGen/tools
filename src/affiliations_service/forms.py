@@ -31,13 +31,48 @@ class BulmaFormMixin:
 
 
 class AffiliationCreateForm(BulmaFormMixin, forms.ModelForm):
-    """The fields staff fill in for a new affiliation. The AS assigns its IDs."""
+    """The fields staff fill in for a new affiliation. The AS assigns its IDs.
+
+    Staff can also pick the affiliation's coordinators, who get coordinator
+    memberships when it's saved. Other members are added from the affiliation's page.
+    """
+
+    coordinators = forms.ModelMultipleChoiceField(
+        queryset=Person.objects.all(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Coordinators",
+        help_text="Search for people by name or email, and check each coordinator.",
+    )
 
     class Meta:
         """Provides metadata."""
 
         model = Affiliation
         fields = ["type", "full_name", "short_name", "status", "cdwg", "gpm_uuid"]
+
+    def picked_coordinators(self) -> list[Person]:
+        """Returns the coordinators staff picked, so a re-rendered form keeps them."""
+        cleaned_data = getattr(self, "cleaned_data", {})
+        return list(cleaned_data.get("coordinators") or [])
+
+    def save(self, commit: bool = True) -> Affiliation:  # ruff: ignore[boolean-type-hint-positional-argument, boolean-default-value-positional-argument] (Django's signature.)
+        """Saves the affiliation and makes each picked person a coordinator.
+
+        Returns:
+            The saved affiliation.
+        """
+        affiliation = super().save(commit=commit)
+        if commit:
+            Membership.objects.bulk_create(
+                Membership(
+                    person=person,
+                    affiliation=affiliation,
+                    role=Membership.Role.COORDINATOR,
+                )
+                for person in self.cleaned_data["coordinators"]
+            )
+        return affiliation
 
 
 class AffiliationEditForm(BulmaFormMixin, forms.ModelForm):

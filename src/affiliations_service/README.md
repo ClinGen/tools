@@ -77,12 +77,13 @@ links home. Each view passes its trail to its template as `breadcrumbs`.
 
 ### `forms.py`
 
-Defines the forms on the AS's pages: `AffiliationCreateForm`, `AffiliationEditForm`
-(which leaves out the IDs, type, and GPM UUID, so posting them changes nothing), and
-`SubmitterIdFormSet` for an affiliation's ClinVar submitter IDs, `PersonForm`, and
-`OtherEmailFormSet` for a person's other emails, and `MembershipAddForm`, which also
-checks the membership constraints that Django would skip because the affiliation isn't a
-form field, and `CdwgForm`. `BulmaFormMixin` gives text inputs Bulma's classes.
+Defines the forms on the AS's pages: `AffiliationCreateForm` (which can also make picked
+people the new affiliation's coordinators), `AffiliationEditForm` (which leaves out the
+IDs, type, and GPM UUID, so posting them changes nothing), and `SubmitterIdFormSet` for
+an affiliation's ClinVar submitter IDs, `PersonForm`, and `OtherEmailFormSet` for a
+person's other emails, and `MembershipAddForm`, which also checks the membership
+constraints that Django would skip because the affiliation isn't a form field, and
+`CdwgForm`. `BulmaFormMixin` gives text inputs Bulma's classes.
 
 ### `history.py`
 
@@ -135,6 +136,7 @@ deleted.
 ### `templates/affiliations_service/affiliation_form.html`
 
 The form for creating or editing an affiliation, with its ClinVar submitter IDs. When
+creating, staff can search for people and check the affiliation's coordinators. When
 editing, it shows the IDs, type, and whether it's linked to the GPM as read-only.
 
 ### `templates/affiliations_service/cdwg_form.html`
@@ -162,7 +164,7 @@ screens, then the page's breadcrumbs. Every AS page includes it.
 
 Tests creating, editing, and deleting affiliations on the AS's pages, including locked
 fields, submitter IDs, plain-language errors, permissions, and the Add Another button on
-the affiliation and person forms.
+the affiliation and person forms, and picking coordinators on the new-affiliation form.
 
 ### `test_affiliation_pages.py`
 
@@ -281,8 +283,8 @@ A table of the changes in `history`, from `history.describe_history()`.
 
 ### `templates/affiliations_service/partials/person_choices.html`
 
-The add-member form's search results, as radio buttons, or a link to add a person when
-no one matches.
+The person search's results: radio buttons for the add-member form, checkboxes for the
+new-affiliation form's coordinators, or a link to add a person when no one matches.
 
 ### `templates/affiliations_service/partials/status.html`
 

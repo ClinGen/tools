@@ -195,7 +195,10 @@ def membership_end(request: HttpRequest, pk: str) -> HttpResponse:
 
 @tool_permission_required("has_as_permissions")
 def person_search(request: HttpRequest) -> HttpResponse:
-    """Finds people by name or email for the add-member form.
+    """Finds people by name or email for the add-member and new-affiliation forms.
+
+    `input=coordinators` returns checkboxes for the new-affiliation form's coordinators;
+    otherwise it returns radio buttons for the add-member form's person.
 
     Returns:
         Up to ten matching people, as choices for the form.
@@ -209,10 +212,14 @@ def person_search(request: HttpRequest) -> HttpResponse:
             | Q(email__icontains=query)
             | Q(other_emails__email__icontains=query)
         ).distinct()[:10]
+    # The add-member form picks one person; the new-affiliation form picks coordinators.
+    input_name = (
+        "coordinators" if request.GET.get("input") == "coordinators" else "person"
+    )
     return render(
         request,
         "affiliations_service/partials/person_choices.html",
-        {"people": people, "query": query},
+        {"people": people, "query": query, "input_name": input_name},
     )
 
 

@@ -57,6 +57,7 @@
                                name="q"
                                placeholder="Search by name or email"
                                hx-get="{% url 'as:person-search' %}"
+                               onkeydown="return event.key !== 'Enter'"
                                hx-trigger="input changed delay:300ms"
                                hx-target="#person-choices">
                     </div>
