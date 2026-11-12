@@ -241,7 +241,7 @@ ClinVar accept and process the batches you send, so nothing reaches the VCI or C
 - In a third terminal, send some dummy records:
 
   ```
-  just css-send-dummy-records --count 10
+  just django-send-dummy-records --count 10
   ```
 
   Add `--resend` to send about half of them again with a new classification, which
