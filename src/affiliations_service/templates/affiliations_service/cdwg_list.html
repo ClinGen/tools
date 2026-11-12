@@ -3,11 +3,31 @@
 {% block description %}See the Clinical Domain Working Groups that affiliations belong to.{% endblock %}
 {% block main %}
     <div class="block mt-6 mb-6">
-        {% include "affiliations_service/partials/header.html" with active_tab="cdwgs" %}
+        {% include "affiliations_service/partials/header.html" %}
         <p class="block">Each affiliation belongs to one Clinical Domain Working Group (CDWG).</p>
+        <form method="get"
+              class="block"
+              hx-get="{% url 'as:cdwgs' %}"
+              hx-trigger="input changed delay:300ms from:#cdwg-search, submit"
+              hx-target="#cdwg-results"
+              hx-select="#cdwg-results"
+              hx-swap="outerHTML"
+              hx-push-url="true">
+            <div class="field">
+                <label class="label" for="cdwg-search">Search</label>
+                <div class="control">
+                    <input class="input" id="cdwg-search" name="q" type="search" placeholder="Name" value="{{ query }}">
+                </div>
+            </div>
+            <noscript><button type="submit" class="button is-link">Search</button></noscript>
+        </form>
         <div class="buttons">
-            <a class="button is-link" href="{% url 'as:cdwg-create' %}">Add CDWG</a>
+            <a href="{% url 'as:cdwg-create' %}" class="button is-link">
+                {% include "common/icon.html" with icon_name="plus-circle" %}
+                Add CDWG
+            </a>
         </div>
+        <div id="cdwg-results" class="block">
         {% if cdwgs %}
             <div class="block table-container">
                 <table class="table is-hoverable">
@@ -25,8 +45,11 @@
                     </tbody>
                 </table>
             </div>
+        {% elif query %}
+            <p>No CDWGs match.</p>
         {% else %}
             <p>There are no CDWGs yet.</p>
         {% endif %}
+        </div>
     </div>
 {% endblock %}

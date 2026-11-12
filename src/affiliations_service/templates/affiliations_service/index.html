@@ -3,7 +3,7 @@
 {% block description %}Find ClinGen affiliations and the people in them.{% endblock %}
 {% block main %}
     <div class="block mt-6 mb-6">
-        {% include "affiliations_service/partials/header.html" with active_tab="affiliations" %}
+        {% include "affiliations_service/partials/header.html" %}
         <form method="get"
               class="block"
               hx-get="{% url 'as:index' %}"
@@ -60,6 +60,12 @@
             </div>
             <noscript><button type="submit" class="button is-link">Search</button></noscript>
         </form>
+        <div class="buttons">
+            <a href="{% url 'as:affiliation-create' %}" class="button is-link">
+                {% include "common/icon.html" with icon_name="plus-circle" %}
+                Add Affiliation
+            </a>
+        </div>
         <div id="affiliation-results" class="block">
             {% if affiliations %}
                 <div class="table-container">

@@ -3,11 +3,10 @@
 {% block description %}{% if affiliation %}Change {{ affiliation.full_name }}'s details.{% else %}Add an affiliation to the AS.{% endif %}{% endblock %}
 {% block main %}
     <div class="block mt-6 mb-6">
+        {% include "affiliations_service/partials/header.html" %}
         {% if affiliation %}
-            {% include "affiliations_service/partials/header.html" with active_tab="affiliation" %}
             <h2 class="title is-4">Edit {{ affiliation.full_name }}</h2>
         {% else %}
-            {% include "affiliations_service/partials/header.html" with active_tab="new-affiliation" %}
             <h2 class="title is-4">New Affiliation</h2>
             <p class="block">The AS gives the affiliation its affiliation ID and expert panel ID
                 when you save it.</p>

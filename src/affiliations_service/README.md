@@ -137,8 +137,9 @@ The form for adding or editing a CDWG.
 
 ### `templates/affiliations_service/cdwg_list.html`
 
-Lists the CDWGs with how many affiliations each has, linking to the affiliation list
-filtered by that CDWG. CDWGs aren't deleted from the UI, since affiliations need them.
+Lists the CDWGs, with a search box, and how many affiliations each has, linking to the
+affiliation list filtered by that CDWG. CDWGs aren't deleted from the UI, since
+affiliations need them.
 
 ### `templates/affiliations_service/index.html`
 
@@ -147,8 +148,9 @@ with HTMX as staff type, and work as a plain form without JavaScript.
 
 ### `templates/affiliations_service/partials/header.html`
 
-The AS's title, description, and tabs, shared by its pages. Pages pass `active_tab` to
-highlight their tab.
+The AS's title and subtitle, then its navbar, copied from the HCI's: Affiliations,
+People, and CDWGs dropdowns, each with Search and Add links, and a burger menu on narrow
+screens. Every AS page includes it.
 
 ### `test_affiliation_forms.py`
 
@@ -205,6 +207,11 @@ history, and the admin inlines.
 
 Tests ID assignment, soft deletion, uniqueness constraints, and history.
 
+### `test_navigation.py`
+
+Tests that every AS page has the navbar's Search and Add links, that the current page's
+link is bold, and the CDWG list's search.
+
 ### `test_people.py`
 
 Tests people's email uniqueness, ORCID iD checks, GPM UUIDs, history, and admin search.
@@ -235,6 +242,10 @@ Lists people, with a search box for names and emails that updates the list with 
 ### `templates/affiliations_service/partials/field.html`
 
 Renders one form field with its label, help text, and errors in Bulma's style.
+
+### `templates/affiliations_service/partials/navbar_link.html`
+
+One navbar link, in bold when it's the current page. Pass `url` (a URL name) and `text`.
 
 ### `templates/affiliations_service/partials/members.html`
 

@@ -3,7 +3,7 @@
 {% block description %}See {{ affiliation.full_name }}'s details, members, and history.{% endblock %}
 {% block main %}
     <div class="block mt-6 mb-6">
-        {% include "affiliations_service/partials/header.html" with active_tab="affiliation" %}
+        {% include "affiliations_service/partials/header.html" %}
         <h2 class="title is-4">{{ affiliation.full_name }}</h2>
         <div class="buttons">
             <a class="button is-link" href="{% url 'as:affiliation-edit' pk=affiliation.pk %}">Edit</a>

@@ -3,7 +3,7 @@
 {% block description %}See {{ person.name }}'s details, affiliations, and history.{% endblock %}
 {% block main %}
     <div class="block mt-6 mb-6">
-        {% include "affiliations_service/partials/header.html" with active_tab="person" %}
+        {% include "affiliations_service/partials/header.html" %}
         <h2 class="title is-4">{{ person.name }}</h2>
         <div class="buttons">
             <a class="button is-link" href="{% url 'as:person-edit' pk=person.pk %}">Edit</a>

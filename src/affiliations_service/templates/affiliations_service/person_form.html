@@ -3,7 +3,7 @@
 {% block description %}{% if person %}Change {{ person.name }}'s details.{% else %}Add a person to the AS.{% endif %}{% endblock %}
 {% block main %}
     <div class="block mt-6 mb-6">
-        {% include "affiliations_service/partials/header.html" with active_tab="person" %}
+        {% include "affiliations_service/partials/header.html" %}
         <h2 class="title is-4">{% if person %}Edit {{ person.name }}{% else %}New Person{% endif %}</h2>
         <form method="post" class="block">{% csrf_token %}
             {% for error in form.non_field_errors %}

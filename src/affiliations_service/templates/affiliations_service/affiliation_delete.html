@@ -3,7 +3,7 @@
 {% block description %}Confirm that you want to delete {{ affiliation.full_name }}.{% endblock %}
 {% block main %}
     <div class="block mt-6 mb-6">
-        {% include "affiliations_service/partials/header.html" with active_tab="affiliation" %}
+        {% include "affiliations_service/partials/header.html" %}
         <h2 class="title is-4">Delete {{ affiliation.full_name }}?</h2>
         <p class="block">The affiliation will be left out of lists, but the AS keeps it, its
             members, and its history, since other systems' curation records refer to it.</p>

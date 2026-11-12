@@ -1,46 +1,47 @@
 <h1 class="title">{{ tool.name }}</h1>
 <h2 class="subtitle">{{ tool.description }}</h2>
-<div class="tabs is-boxed">
-    <ul>
-        <li{% if active_tab == "affiliations" %} class="is-active"{% endif %}>
-            <a href="{% url 'as:index' %}"{% if active_tab == "affiliations" %} aria-current="page"{% endif %}>
-                {% include "common/icon.html" with icon_name="people" %}
-                <span>Affiliations</span>
-            </a>
-        </li>
-        <li{% if active_tab == "new-affiliation" %} class="is-active"{% endif %}>
-            <a href="{% url 'as:affiliation-create' %}"{% if active_tab == "new-affiliation" %} aria-current="page"{% endif %}>
-                {% include "common/icon.html" with icon_name="plus-circle" %}
-                <span>New Affiliation</span>
-            </a>
-        </li>
-        <li{% if active_tab == "people" %} class="is-active"{% endif %}>
-            <a href="{% url 'as:people' %}"{% if active_tab == "people" %} aria-current="page"{% endif %}>
-                {% include "common/icon.html" with icon_name="person-vcard" %}
-                <span>People</span>
-            </a>
-        </li>
-        <li{% if active_tab == "cdwgs" %} class="is-active"{% endif %}>
-            <a href="{% url 'as:cdwgs' %}"{% if active_tab == "cdwgs" %} aria-current="page"{% endif %}>
-                {% include "common/icon.html" with icon_name="diagram-3" %}
-                <span>CDWGs</span>
-            </a>
-        </li>
-        {% if active_tab == "affiliation" %}
-            <li class="is-active">
-                <a href="{{ affiliation.get_absolute_url }}" aria-current="page">
-                    {% include "common/icon.html" with icon_name="journal-text" %}
-                    <span>{{ affiliation.short_name|default:affiliation.full_name|truncatechars:40 }}</span>
-                </a>
-            </li>
-        {% endif %}
-        {% if active_tab == "person" %}
-            <li class="is-active">
-                <a href="{% if person %}{{ person.get_absolute_url }}{% else %}{% url 'as:person-create' %}{% endif %}" aria-current="page">
-                    {% include "common/icon.html" with icon_name="person" %}
-                    <span>{% if person %}{{ person|truncatechars:40 }}{% else %}New Person{% endif %}</span>
-                </a>
-            </li>
-        {% endif %}
-    </ul>
-</div>
+<nav id="as-navbar" class="navbar block" role="navigation" aria-label="Affiliations Service navigation">
+    <div class="navbar-brand">
+        <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="as-navbar-menu">
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+        </a>
+    </div>
+    <div id="as-navbar-menu" class="navbar-menu">
+        <div class="navbar-start">
+            <div class="navbar-item has-dropdown is-hoverable">
+                <a class="navbar-link">Affiliations</a>
+                <div class="navbar-dropdown">
+                    {% include "affiliations_service/partials/navbar_link.html" with url="as:index" text="Search" %}
+                    {% include "affiliations_service/partials/navbar_link.html" with url="as:affiliation-create" text="Add" %}
+                </div>
+            </div>
+            <div class="navbar-item has-dropdown is-hoverable">
+                <a class="navbar-link">People</a>
+                <div class="navbar-dropdown">
+                    {% include "affiliations_service/partials/navbar_link.html" with url="as:people" text="Search" %}
+                    {% include "affiliations_service/partials/navbar_link.html" with url="as:person-create" text="Add" %}
+                </div>
+            </div>
+            <div class="navbar-item has-dropdown is-hoverable">
+                <a class="navbar-link">CDWGs</a>
+                <div class="navbar-dropdown">
+                    {% include "affiliations_service/partials/navbar_link.html" with url="as:cdwgs" text="Search" %}
+                    {% include "affiliations_service/partials/navbar_link.html" with url="as:cdwg-create" text="Add" %}
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+<script>
+    // Opens and closes the navbar on narrow screens. Copied from the Bulma docs, as in
+    // the HCI.
+    document.querySelectorAll(".navbar-burger").forEach((burger) => {
+        burger.addEventListener("click", () => {
+            burger.classList.toggle("is-active");
+            document.getElementById(burger.dataset.target).classList.toggle("is-active");
+        });
+    });
+</script>

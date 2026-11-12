@@ -396,7 +396,7 @@ def person_edit(request: HttpRequest, pk: str) -> HttpResponse:
 def cdwg_list(request: HttpRequest) -> HttpResponse:
     """Lists the CDWGs, with how many affiliations each one has.
 
-    Deleted affiliations aren't counted.
+    `q` searches names. Deleted affiliations aren't counted.
 
     Returns:
         The CDWG list.
@@ -406,10 +406,13 @@ def cdwg_list(request: HttpRequest) -> HttpResponse:
             "affiliations", filter=Q(affiliations__is_deleted=False)
         )
     ).order_by("name")
+    query = request.GET.get("q", "").strip()
+    if query:
+        cdwgs = cdwgs.filter(name__icontains=query)
     return render(
         request,
         "affiliations_service/cdwg_list.html",
-        {"tool": get_tool("as"), "cdwgs": cdwgs},
+        {"tool": get_tool("as"), "cdwgs": cdwgs, "query": query},
     )
 
 
