@@ -8,8 +8,8 @@ from django.urls import reverse
 from affiliations_service.models import Affiliation, ClinVarSubmitterId, Membership
 from affiliations_service.test_memberships import YESTERDAY, make_membership
 from affiliations_service.test_models import make_affiliation, make_cdwg
-from affiliations_service.test_people import make_person
-from affiliations_service.tests import make_user
+from affiliations_service.test_users import make_user
+from affiliations_service.tests import make_staff
 
 
 class AffiliationListPageTest(TestCase):
@@ -29,7 +29,7 @@ class AffiliationListPageTest(TestCase):
         make_affiliation(cdwg=cls.cardio, full_name="Gone VCEP").delete()
 
     def setUp(self):
-        self.client.force_login(make_user("as@example.com"))
+        self.client.force_login(make_staff("as@example.com"))
 
     def _page(self, **params: str | int) -> str:
         return self.client.get(reverse("as:index"), params).content.decode()
@@ -83,15 +83,15 @@ class AffiliationDetailPageTest(TestCase):
         ClinVarSubmitterId.objects.create(
             affiliation=cls.affiliation, submitter_id="500123"
         )
-        cls.ada = make_person("ada@example.org", name="Ada Lovelace")
-        cls.grace = make_person("grace@example.org", name="Grace Hopper")
+        cls.ada = make_user("ada@example.org", name="Ada Lovelace")
+        cls.grace = make_user("grace@example.org", name="Grace Hopper")
         make_membership(cls.ada, cls.affiliation, Membership.Role.COORDINATOR)
         make_membership(
             cls.grace, cls.affiliation, Membership.Role.CURATOR, end_date=YESTERDAY
         )
 
     def setUp(self):
-        self.user = make_user("as@example.com")
+        self.user = make_staff("as@example.com")
         self.client.force_login(self.user)
 
     def _page(self) -> str:
@@ -141,7 +141,7 @@ class PagePermissionTest(TestCase):
         for url in urls:
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 302)
-        self.client.force_login(make_user("no-as@example.com", as_=False))
+        self.client.force_login(make_staff("no-as@example.com", as_=False))
         for url in urls:
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 403)

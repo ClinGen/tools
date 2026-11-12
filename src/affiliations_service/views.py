@@ -13,11 +13,11 @@ from affiliations_service.forms import (
     CdwgForm,
     MembershipAddForm,
     OtherEmailFormSet,
-    PersonForm,
     SubmitterIdFormSet,
+    UserForm,
 )
 from affiliations_service.history import describe_history
-from affiliations_service.models import CDWG, Affiliation, Membership, Person
+from affiliations_service.models import CDWG, Affiliation, Membership, User
 from auth_.permissions import tool_permission_required
 from core.tools import get_tool
 
@@ -80,7 +80,7 @@ def _members_context(
     Returns:
         The current members by role, the past memberships, and the add-member form.
     """
-    memberships = affiliation.memberships.select_related("person")  # ty: ignore[unresolved-attribute] (Django adds the reverse relation.)
+    memberships = affiliation.memberships.select_related("user")  # ty: ignore[unresolved-attribute] (Django adds the reverse relation.)
     current = memberships.current()
     return {
         "affiliation": affiliation,
@@ -160,7 +160,7 @@ def _members_response(
 
 @tool_permission_required("has_as_permissions")
 def membership_add(request: HttpRequest, pk: str) -> HttpResponse:
-    """Gives a person a role in an affiliation.
+    """Gives a user a role in an affiliation.
 
     Returns:
         The updated members section, or the affiliation's page.
@@ -194,32 +194,32 @@ def membership_end(request: HttpRequest, pk: str) -> HttpResponse:
 
 
 @tool_permission_required("has_as_permissions")
-def person_search(request: HttpRequest) -> HttpResponse:
-    """Finds people by name or email for the add-member and new-affiliation forms.
+def user_search(request: HttpRequest) -> HttpResponse:
+    """Finds users by name or email for the add-member and new-affiliation forms.
 
     `input=coordinators` returns checkboxes for the new-affiliation form's coordinators;
-    otherwise it returns radio buttons for the add-member form's person.
+    otherwise it returns radio buttons for the add-member form's user.
 
     Returns:
-        Up to ten matching people, as choices for the form.
+        Up to ten matching users, as choices for the form.
     """
     query = request.GET.get("q", "").strip()
-    people = Person.objects.none()
+    users = User.objects.none()
     if query:
-        people = Person.objects.filter(
+        users = User.objects.filter(
             Q(name__icontains=query)
             | Q(preferred_name__icontains=query)
             | Q(email__icontains=query)
             | Q(other_emails__email__icontains=query)
         ).distinct()[:10]
-    # The add-member form picks one person; the new-affiliation form picks coordinators.
+    # The add-member form picks one user; the new-affiliation form picks coordinators.
     input_name = (
-        "coordinators" if request.GET.get("input") == "coordinators" else "person"
+        "coordinators" if request.GET.get("input") == "coordinators" else "user"
     )
     return render(
         request,
-        "affiliations_service/partials/person_choices.html",
-        {"people": people, "query": query, "input_name": input_name},
+        "affiliations_service/partials/user_choices.html",
+        {"as_users": users, "query": query, "input_name": input_name},
     )
 
 
@@ -338,16 +338,16 @@ def affiliation_delete(request: HttpRequest, pk: str) -> HttpResponse:
 
 
 @tool_permission_required("has_as_permissions")
-def person_list(request: HttpRequest) -> HttpResponse:
-    """Lists people, with a search box for names and emails.
+def user_list(request: HttpRequest) -> HttpResponse:
+    """Lists users, with a search box for names and emails.
 
     Returns:
-        The people list.
+        The users list.
     """
-    people = Person.objects.all()
+    users = User.objects.all()
     query = request.GET.get("q", "").strip()
     if query:
-        people = people.filter(
+        users = users.filter(
             Q(name__icontains=query)
             | Q(preferred_name__icontains=query)
             | Q(email__icontains=query)
@@ -355,96 +355,96 @@ def person_list(request: HttpRequest) -> HttpResponse:
         ).distinct()
     return render(
         request,
-        "affiliations_service/person_list.html",
+        "affiliations_service/user_list.html",
         {
             "tool": get_tool("as"),
             "breadcrumbs": crumbs.trail(
-                crumbs.search("People Search", "as:people", current=True)
+                crumbs.search("User Search", "as:users", current=True)
             ),
-            "people": people,
+            "as_users": users,
             "query": query,
         },
     )
 
 
 @tool_permission_required("has_as_permissions")
-def person_detail(request: HttpRequest, pk: str) -> HttpResponse:
-    """Shows a person, their affiliations, and their history.
+def user_detail(request: HttpRequest, pk: str) -> HttpResponse:
+    """Shows a user, their affiliations, and their history.
 
     Returns:
-        The person's page.
+        The user's page.
     """
-    person = get_object_or_404(Person.objects.prefetch_related("other_emails"), pk=pk)
-    memberships = person.memberships.select_related("affiliation")  # ty: ignore[unresolved-attribute] (Django adds the reverse relation.)
+    user = get_object_or_404(User.objects.prefetch_related("other_emails"), pk=pk)
+    memberships = user.memberships.select_related("affiliation")  # ty: ignore[unresolved-attribute] (Django adds the reverse relation.)
     current = memberships.current()
     return render(
         request,
-        "affiliations_service/person_detail.html",
+        "affiliations_service/user_detail.html",
         {
             "tool": get_tool("as"),
             "breadcrumbs": crumbs.trail(
-                crumbs.search("People Search", "as:people"),
-                crumbs.detail(person, current=True),
+                crumbs.search("User Search", "as:users"),
+                crumbs.detail(user, current=True),
             ),
-            "person": person,
+            "as_user": user,
             "current_memberships": current,
             "past_memberships": memberships.exclude(pk__in=current).order_by(
                 "-end_date"
             ),
-            "history": describe_history(person, "the person"),
+            "history": describe_history(user, "the user"),
         },
     )
 
 
-def _person_form(request: HttpRequest, person: Person | None) -> HttpResponse:
-    """Shows the person form, and saves the person when the form is valid.
+def _user_form(request: HttpRequest, user: User | None) -> HttpResponse:
+    """Shows the user form, and saves the user when the form is valid.
 
     Returns:
-        The form page, or a redirect to the person's page once they're saved.
+        The form page, or a redirect to the user's page once they're saved.
     """
     data = request.POST if request.method == "POST" else None
-    form = PersonForm(data, instance=person)
-    formset = OtherEmailFormSet(data, instance=person)
+    form = UserForm(data, instance=user)
+    formset = OtherEmailFormSet(data, instance=user)
     if data is not None and (url := _save_form_and_formset(form, formset)):
         return redirect(url)
     return render(
         request,
-        "affiliations_service/person_form.html",
+        "affiliations_service/user_form.html",
         {
             "tool": get_tool("as"),
             "breadcrumbs": crumbs.trail(
-                crumbs.search("People Search", "as:people"),
+                crumbs.search("User Search", "as:users"),
                 *(
-                    [crumbs.detail(person), crumbs.action("Edit", "pencil-square")]
-                    if person
-                    else [crumbs.action("New Person", "plus-circle")]
+                    [crumbs.detail(user), crumbs.action("Edit", "pencil-square")]
+                    if user
+                    else [crumbs.action("New User", "plus-circle")]
                 ),
             ),
             "form": form,
             "formset": formset,
-            "person": person,
+            "as_user": user,
         },
     )
 
 
 @tool_permission_required("has_as_permissions")
-def person_create(request: HttpRequest) -> HttpResponse:
-    """Adds a person.
+def user_create(request: HttpRequest) -> HttpResponse:
+    """Adds a user.
 
     Returns:
-        The form, or a redirect to the new person's page.
+        The form, or a redirect to the new user's page.
     """
-    return _person_form(request, None)
+    return _user_form(request, None)
 
 
 @tool_permission_required("has_as_permissions")
-def person_edit(request: HttpRequest, pk: str) -> HttpResponse:
-    """Changes a person.
+def user_edit(request: HttpRequest, pk: str) -> HttpResponse:
+    """Changes a user.
 
     Returns:
-        The form, or a redirect to the person's page.
+        The form, or a redirect to the user's page.
     """
-    return _person_form(request, get_object_or_404(Person, pk=pk))
+    return _user_form(request, get_object_or_404(User, pk=pk))
 
 
 @tool_permission_required("has_as_permissions")

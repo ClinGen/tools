@@ -1,4 +1,4 @@
-"""Imports CDWGs, affiliations, and people from the old AS.
+"""Imports CDWGs, affiliations, and users from the old AS.
 
 Run it with `uv run src/manage.py import_old_as`. It reads the old AS's API with the key
 in AS_API_KEY. Add --dry-run to see what it would do without saving anything.
@@ -11,7 +11,7 @@ from affiliations_service.old_as_import import import_old_as, make_fetch
 
 
 class Command(BaseCommand):
-    help = "Imports CDWGs, affiliations, and people from the old AS's API."
+    help = "Imports CDWGs, affiliations, and users from the old AS's API."
 
     def add_arguments(self, parser: CommandParser) -> None:
         """Adds --dry-run."""
@@ -34,7 +34,7 @@ class Command(BaseCommand):
         result = import_old_as(fetch, dry_run=bool(options["dry_run"]))
         for warning in result.warnings:
             self.stderr.write(self.style.WARNING(warning))
-        for kind in ["cdwgs", "affiliations", "people", "memberships"]:
+        for kind in ["cdwgs", "affiliations", "users", "memberships"]:
             self.stdout.write(
                 f"{kind}: {result.created[kind]} created, "
                 f"{result.updated[kind]} updated"

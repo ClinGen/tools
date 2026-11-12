@@ -10,8 +10,8 @@
                             {% for membership in members %}
                                 <div class="is-flex is-align-items-center mb-1">
                                     <span class="mr-2">
-                                        <a href="{{ membership.person.get_absolute_url }}">{{ membership.person }}</a>
-                                        <span class="has-text-grey">{{ membership.person.email }}</span>
+                                        <a href="{{ membership.user.get_absolute_url }}">{{ membership.user }}</a>
+                                        <span class="has-text-grey">{{ membership.user.email }}</span>
                                         {% if membership.end_date %}
                                             <span class="has-text-grey">(until {{ membership.end_date|date:"Y-m-d" }})</span>
                                         {% endif %}
@@ -21,7 +21,7 @@
                                           hx-post="{% url 'as:membership-end' pk=membership.pk %}"
                                           hx-target="#members"
                                           hx-swap="outerHTML"
-                                          data-confirm="End {{ membership.person }}'s time as {{ membership.get_role_display|lower }} today?">
+                                          data-confirm="End {{ membership.user }}'s time as {{ membership.get_role_display|lower }} today?">
                                         {% csrf_token %}
                                         <button type="submit" class="button is-small is-link is-light">End</button>
                                     </form>
@@ -49,20 +49,20 @@
                   hx-swap="outerHTML">
                 {% csrf_token %}
                 <div class="field">
-                    <label class="label" for="member-search">Person</label>
+                    <label class="label" for="member-search">User</label>
                     <div class="control">
                         <input class="input"
                                id="member-search"
                                type="search"
                                name="q"
                                placeholder="Search by name or email"
-                               hx-get="{% url 'as:person-search' %}"
+                               hx-get="{% url 'as:user-search' %}"
                                onkeydown="return event.key !== 'Enter'"
                                hx-trigger="input changed delay:300ms"
-                               hx-target="#person-choices">
+                               hx-target="#user-choices">
                     </div>
-                    <div id="person-choices" class="mt-2"></div>
-                    {% for error in member_form.person.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+                    <div id="user-choices" class="mt-2"></div>
+                    {% for error in member_form.user.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
                 </div>
                 {% include "affiliations_service/partials/field.html" with field=member_form.role %}
                 {% include "affiliations_service/partials/field.html" with field=member_form.start_date %}
@@ -81,7 +81,7 @@
                 <tbody>
                     {% for membership in past_memberships %}
                         <tr>
-                            <td><a href="{{ membership.person.get_absolute_url }}">{{ membership.person }}</a></td>
+                            <td><a href="{{ membership.user.get_absolute_url }}">{{ membership.user }}</a></td>
                             <td>{{ membership.get_role_display }}</td>
                             <td>{{ membership.start_date|date:"Y-m-d"|default:"Unknown" }}</td>
                             <td>{{ membership.end_date|date:"Y-m-d" }}</td>

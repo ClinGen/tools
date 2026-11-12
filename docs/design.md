@@ -58,8 +58,8 @@ records, and keeps every other path at Django's 2.5 MB default.
 Each tool keeps the external integrations it had as a standalone service:
 
 - **AS**: other ClinGen tools (the GCI, the VCI, and others) read and write
-  affiliations, the people in them, and their memberships through its REST API.
-  Affiliations, CDWGs, and people can carry the UUID that the Group and Personnel
+  affiliations, the users in them, and their memberships through its REST API.
+  Affiliations, CDWGs, and users can carry the UUID that the Group and Personnel
   Management (GPM) system at UNC gives them.
 - **CSS**: ClinGen clients send records through its API, and staff send them in batches
   to the NCBI ClinVar Submission API.
@@ -172,7 +172,7 @@ them in the Django admin.
 ### The Affiliations Service
 
 The AS is the source of truth for users and groups inside and outside of ClinGen apps:
-the people in ClinGen's affiliations and the affiliations themselves. It replaces the
+the users in ClinGen's affiliations and the affiliations themselves. It replaces the
 standalone `affiliations-service`, but it isn't a port: it starts with an empty
 database, its own data model, and a new API. It doesn't keep the old service's URLs,
 response formats, legacy JSON format, or API keys. Moving the old service's clients and
@@ -209,35 +209,37 @@ belongs to the CDWG named None and has no GPM UUID. Affiliations are never delet
 since curation records in other systems refer to them. Deleting one marks it as deleted,
 and it drops out of lists.
 
-**People and memberships.** The AS tracks each person in ClinGen's affiliations, not
-just their names. A person has a name, an optional preferred name, a primary email,
-other emails, an institution, an ORCID iD, credentials (such as "PhD, CGC"), and an
-optional GPM UUID. No two people share an email, ignoring case, whether it's their
-primary email or another one. A person's primary email is optional, since some people,
-such as approvers in the old AS, are known only by name. People are never deleted. These
-fields are a starting point, and we expect to add more.
+**Users and memberships.** The AS tracks each user in ClinGen's affiliations, not just
+their names. An AS user is a record of someone in ClinGen's groups; it isn't a sign-in
+account for ClinGen Tools, which Django's own users and `UserProfile` handle. A user has
+a name, an optional preferred name, a primary email, other emails, an institution, an
+ORCID iD, credentials (such as "PhD, CGC"), and an optional GPM UUID. No two users share
+an email, ignoring case, whether it's their primary email or another one. A user's
+primary email is optional, since some users, such as approvers in the old AS, are known
+only by name. Users are never deleted. These fields are a starting point, and we expect
+to add more.
 
-A membership says that a person holds a role in an affiliation. The roles are
-coordinator, approver, and curator. A person who holds two roles in an affiliation has
-two memberships, one per role. A membership may have a start date and an end date. It
-stops being current on its end date. Ending a membership sets its end date instead of
-deleting it, so the AS remembers who was in a group and when. A person can't hold the
-same role in the same affiliation twice at once.
+A membership says that a user holds a role in an affiliation. The roles are coordinator,
+approver, and curator. A user who holds two roles in an affiliation has two memberships,
+one per role. A membership may have a start date and an end date. It stops being current
+on its end date. Ending a membership sets its end date instead of deleting it, so the AS
+remembers who was in a group and when. A user can't hold the same role in the same
+affiliation twice at once.
 
 **API.** Other ClinGen tools use the AS's REST API, a Django Ninja API at `/as/api/v1/`,
 with OpenAPI docs at `/as/api/v1/docs`. The version is in the path, so a breaking change
 can live at `/as/api/v2/` while clients move. The API has four resources: affiliations,
-people, memberships, and CDWGs. Each is addressed by its UUID. Lists are paginated, and
+users, memberships, and CDWGs. Each is addressed by its UUID. Lists are paginated, and
 updates use `PATCH`. A request that fails validation gets a 422, and one that breaks a
 rule above gets a 400 with a `detail` message. Deleting an affiliation through the API
-marks it as deleted; people and memberships have no delete endpoint.
+marks it as deleted; users and memberships have no delete endpoint.
 
 Clients send an API key in the `X-Api-Key` header. Any active AS key can read and change
 everything in the AS; there are no read-only keys. Staff create and revoke keys in the
 Django admin, which shows a new key once. The AS stores only a hash of each key.
 
 **Staff UI.** Staff with the AS permission (`has_as_permissions`) manage affiliations,
-people, memberships, and CDWGs on the AS's pages. Like the ETS's pages, they're written
+users, memberships, and CDWGs on the AS's pages. Like the ETS's pages, they're written
 for non-technical staff and never show UUIDs.
 
 ### The ClinVar Submission Service

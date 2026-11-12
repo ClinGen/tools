@@ -1,6 +1,6 @@
 """Houses tests for the AS's pages."""
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User as StaffUser
 from django.test import TestCase
 from django.urls import reverse
 
@@ -11,7 +11,7 @@ FLAVOR_TEXT = (
 )
 
 
-def make_user(username: str, *, as_: bool = True) -> User:
+def make_staff(username: str, *, as_: bool = True) -> StaffUser:
     """Returns a user whose profile has or lacks the AS permission.
 
     Args:
@@ -21,7 +21,7 @@ def make_user(username: str, *, as_: bool = True) -> User:
     Returns:
         The new user.
     """
-    user = User.objects.create_user(username=username, email=username)
+    user = StaffUser.objects.create_user(username=username, email=username)
     UserProfile.objects.create(user=user, has_as_permissions=as_)
     return user
 
@@ -35,16 +35,16 @@ class IndexViewTest(TestCase):
         )
 
     def test_user_without_the_flag_gets_403(self):
-        self.client.force_login(make_user("no-as@example.com", as_=False))
+        self.client.force_login(make_staff("no-as@example.com", as_=False))
         self.assertEqual(self.client.get(reverse("as:index")).status_code, 403)
 
     def test_user_with_the_flag_sees_the_as(self):
-        self.client.force_login(make_user("as@example.com"))
+        self.client.force_login(make_staff("as@example.com"))
         response = self.client.get(reverse("as:index"))
         self.assertContains(response, "Affiliations Service")
 
     def test_the_header_shows_the_as_description(self):
-        self.client.force_login(make_user("desc@example.com"))
+        self.client.force_login(make_staff("desc@example.com"))
         response = self.client.get(reverse("as:index"))
         self.assertContains(response, FLAVOR_TEXT)
 

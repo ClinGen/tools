@@ -5,12 +5,12 @@ from django.urls import reverse
 
 from affiliations_service.models import CDWG
 from affiliations_service.test_models import make_affiliation, make_cdwg
-from affiliations_service.tests import make_user
+from affiliations_service.tests import make_staff
 
 
 class CdwgListPageTest(TestCase):
     def setUp(self):
-        self.client.force_login(make_user("as@example.com"))
+        self.client.force_login(make_staff("as@example.com"))
 
     def test_lists_cdwgs_with_affiliation_counts_and_filtered_links(self):
         cardio = make_cdwg("Cardiovascular")
@@ -47,7 +47,7 @@ class CdwgListPageTest(TestCase):
 
 class CdwgFormPageTest(TestCase):
     def setUp(self):
-        self.client.force_login(make_user("as@example.com"))
+        self.client.force_login(make_staff("as@example.com"))
 
     def test_create(self):
         response = self.client.post(
@@ -82,7 +82,7 @@ class CdwgFormPageTest(TestCase):
 class CdwgPermissionTest(TestCase):
     def test_cdwg_pages_require_the_as_permission(self):
         cdwg = make_cdwg()
-        self.client.force_login(make_user("no-as@example.com", as_=False))
+        self.client.force_login(make_staff("no-as@example.com", as_=False))
         for url in [
             reverse("as:cdwgs"),
             reverse("as:cdwg-create"),

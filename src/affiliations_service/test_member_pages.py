@@ -8,8 +8,8 @@ from django.urls import reverse
 from affiliations_service.models import Membership
 from affiliations_service.test_memberships import TODAY, make_membership
 from affiliations_service.test_models import make_affiliation
-from affiliations_service.test_people import make_person
-from affiliations_service.tests import make_user
+from affiliations_service.test_users import make_user
+from affiliations_service.tests import make_staff
 
 if TYPE_CHECKING:
     # Django's stubs name the test client's response type only for type checkers.
@@ -22,15 +22,15 @@ class AddMemberTest(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.affiliation = make_affiliation(full_name="Cardiomyopathy VCEP")
-        cls.ada = make_person("ada@example.org", name="Ada Lovelace")
+        cls.ada = make_user("ada@example.org", name="Ada Lovelace")
 
     def setUp(self):
-        self.client.force_login(make_user("as@example.com"))
+        self.client.force_login(make_staff("as@example.com"))
         self.url = reverse("as:membership-add", kwargs={"pk": self.affiliation.pk})
 
     def _post(self, headers: dict | None = None, **fields: str) -> "Response":
         data = {
-            "person": str(self.ada.pk),
+            "user": str(self.ada.pk),
             "role": "COORDINATOR",
             "start_date": "",
         } | fields
@@ -51,7 +51,7 @@ class AddMemberTest(TestCase):
         make_membership(self.ada, self.affiliation, Membership.Role.COORDINATOR)
         response = self._post()
         self.assertContains(
-            response, "This person already holds this role in this affiliation."
+            response, "This user already holds this role in this affiliation."
         )
         self.assertEqual(Membership.objects.count(), 1)
 
@@ -68,15 +68,15 @@ class AddMemberTest(TestCase):
     def test_the_affiliation_page_has_the_add_member_form(self):
         page = self.client.get(self.affiliation.get_absolute_url()).content.decode()
         self.assertIn(self.url, page)
-        self.assertIn(reverse("as:person-search"), page)
+        self.assertIn(reverse("as:user-search"), page)
 
 
 class EndMembershipTest(TestCase):
     def setUp(self):
-        self.client.force_login(make_user("as@example.com"))
+        self.client.force_login(make_staff("as@example.com"))
         self.affiliation = make_affiliation()
         self.membership = make_membership(
-            make_person(name="Ada Lovelace"), self.affiliation
+            make_user(name="Ada Lovelace"), self.affiliation
         )
         self.url = reverse("as:membership-end", kwargs={"pk": self.membership.pk})
 
@@ -103,34 +103,34 @@ class EndMembershipTest(TestCase):
         )
 
 
-class PersonSearchTest(TestCase):
+class UserSearchTest(TestCase):
     def setUp(self):
-        self.client.force_login(make_user("as@example.com"))
+        self.client.force_login(make_staff("as@example.com"))
 
-    def test_finds_people_by_name_and_email(self):
-        make_person("ada@example.org", name="Ada Lovelace")
-        make_person("grace@navy.mil", name="Grace Hopper")
-        url = reverse("as:person-search")
+    def test_finds_users_by_name_and_email(self):
+        make_user("ada@example.org", name="Ada Lovelace")
+        make_user("grace@navy.mil", name="Grace Hopper")
+        url = reverse("as:user-search")
         by_name = self.client.get(url, {"q": "lovelace"}).content.decode()
         by_email = self.client.get(url, {"q": "navy"}).content.decode()
         self.assertIn("Ada Lovelace", by_name)
         self.assertNotIn("Grace Hopper", by_name)
         self.assertIn("Grace Hopper", by_email)
 
-    def test_offers_to_add_a_person_when_no_one_matches(self):
-        response = self.client.get(reverse("as:person-search"), {"q": "nobody"})
-        self.assertContains(response, reverse("as:person-create"))
+    def test_offers_to_add_a_user_when_no_one_matches(self):
+        response = self.client.get(reverse("as:user-search"), {"q": "nobody"})
+        self.assertContains(response, reverse("as:user-create"))
 
 
 class MemberPermissionTest(TestCase):
     def test_member_endpoints_require_the_as_permission(self):
         affiliation = make_affiliation()
-        membership = make_membership(make_person(), affiliation)
-        self.client.force_login(make_user("no-as@example.com", as_=False))
+        membership = make_membership(make_user(), affiliation)
+        self.client.force_login(make_staff("no-as@example.com", as_=False))
         for url in [
             reverse("as:membership-add", kwargs={"pk": affiliation.pk}),
             reverse("as:membership-end", kwargs={"pk": membership.pk}),
-            reverse("as:person-search"),
+            reverse("as:user-search"),
         ]:
             with self.subTest(url=url):
                 self.assertEqual(self.client.post(url).status_code, 403)

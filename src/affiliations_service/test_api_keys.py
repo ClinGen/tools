@@ -2,7 +2,7 @@
 
 import hashlib
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User as StaffUser
 from django.test import TestCase
 from django.urls import reverse
 
@@ -60,7 +60,7 @@ class ApiAuthTest(TestCase):
 class ApiKeyAdminTest(TestCase):
     def test_creating_a_key_in_the_admin_shows_it_once(self):
         self.client.force_login(
-            User.objects.create_superuser("root", "r@example.com", "pw")
+            StaffUser.objects.create_superuser("root", "r@example.com", "pw")
         )
         response = self.client.post(
             reverse("admin:affiliations_service_apikey_add"),

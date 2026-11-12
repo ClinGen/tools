@@ -10,7 +10,7 @@ from affiliations_service.models import (
     Affiliation,
     ClinVarSubmitterId,
     Membership,
-    Person,
+    User,
 )
 from affiliations_service.old_as_import import ImportResult, import_old_as
 
@@ -111,32 +111,32 @@ class ImportTest(TestCase):
         self.assertEqual(submitter.submitter_id, "500001")
         self.assertEqual(submitter.affiliation.type, "GCEP")
 
-    def test_coordinators_and_approvers_become_people_and_memberships(self):
+    def test_coordinators_and_approvers_become_users_and_memberships(self):
         self._import()
-        ada = Person.objects.get(email__iexact="ada@example.org")
+        ada = User.objects.get(email__iexact="ada@example.org")
         self.assertEqual(ada.name, "Ada Lovelace")
         self.assertEqual(
             set(ada.memberships.values_list("affiliation__type", "role")),  # type: ignore
             {("GCEP", "COORDINATOR"), ("GCEP", "APPROVER"), ("VCEP", "COORDINATOR")},
         )
-        self.assertEqual(Person.objects.get(name="Grace Hopper").email, "")
-        alan = Person.objects.get(name="Alan Turing")
+        self.assertEqual(User.objects.get(name="Grace Hopper").email, "")
+        alan = User.objects.get(name="Alan Turing")
         self.assertEqual(alan.email, "")
         self.assertEqual(alan.memberships.get().role, Membership.Role.APPROVER)  # type: ignore
-        self.assertEqual(Person.objects.count(), 3)
+        self.assertEqual(User.objects.count(), 3)
 
     def test_a_second_run_creates_nothing_new(self):
         self._import()
         counts = [
             model.objects.count()
-            for model in [CDWG, Affiliation, ClinVarSubmitterId, Person, Membership]
+            for model in [CDWG, Affiliation, ClinVarSubmitterId, User, Membership]
         ]
         self._import()
         self.assertEqual(
             counts,
             [
                 model.objects.count()
-                for model in [CDWG, Affiliation, ClinVarSubmitterId, Person, Membership]
+                for model in [CDWG, Affiliation, ClinVarSubmitterId, User, Membership]
             ],
         )
 
@@ -151,7 +151,7 @@ class ImportTest(TestCase):
         result = self._import(dry_run=True)
         self.assertEqual(result.created["affiliations"], 3)
         self.assertFalse(Affiliation.objects.exists())
-        self.assertFalse(Person.objects.exists())
+        self.assertFalse(User.objects.exists())
 
     def test_rule_breaking_records_import_with_a_warning(self):
         result = self._import()

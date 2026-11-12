@@ -1,7 +1,8 @@
 """Houses tests for the AS's business rules and the admin's locked IDs."""
 
 from django.contrib import admin
-from django.contrib.auth.models import Permission, User
+from django.contrib.auth.models import Permission
+from django.contrib.auth.models import User as StaffUser
 from django.core.exceptions import ValidationError
 from django.forms import model_to_dict
 from django.test import RequestFactory, TestCase
@@ -133,8 +134,10 @@ class AdminLockedFieldsTest(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.affiliation = make_affiliation(Affiliation.Type.GCEP)
-        cls.superuser = User.objects.create_superuser("root", "root@example.com", "pw")
-        cls.staff = User.objects.create_user("staff", "staff@example.com", "pw")
+        cls.superuser = StaffUser.objects.create_superuser(
+            "root", "root@example.com", "pw"
+        )
+        cls.staff = StaffUser.objects.create_user("staff", "staff@example.com", "pw")
         cls.staff.is_staff = True
         cls.staff.save()
         cls.staff.user_permissions.add(
@@ -143,7 +146,7 @@ class AdminLockedFieldsTest(TestCase):
             )
         )
 
-    def _change_page(self, user: User) -> str:
+    def _change_page(self, user: StaffUser) -> str:
         self.client.force_login(user)
         url = reverse(
             "admin:affiliations_service_affiliation_change", args=[self.affiliation.pk]

@@ -35,10 +35,10 @@
                         <label class="label" for="coordinator-search">{{ field.label }}</label>
                         <p class="help mb-2">{{ field.help_text }}</p>
                         <div id="coordinators-picked">
-                            {% for person in form.picked_coordinators %}
+                            {% for as_user in form.picked_coordinators %}
                                 <label class="checkbox is-block mb-1">
-                                    <input type="checkbox" name="coordinators" value="{{ person.pk }}" checked>
-                                    {{ person.name }} <span class="has-text-grey">{{ person.email }}</span>
+                                    <input type="checkbox" name="coordinators" value="{{ as_user.pk }}" checked>
+                                    {{ as_user.name }} <span class="has-text-grey">{{ as_user.email }}</span>
                                 </label>
                             {% endfor %}
                         </div>
@@ -48,7 +48,7 @@
                                    type="search"
                                    name="q"
                                    placeholder="Search by name or email"
-                                   hx-get="{% url 'as:person-search' %}"
+                                   hx-get="{% url 'as:user-search' %}"
                                    hx-vals='{"input": "coordinators"}'
                                    onkeydown="return event.key !== 'Enter'"
                                    hx-trigger="input changed delay:300ms"

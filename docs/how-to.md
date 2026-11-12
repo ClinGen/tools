@@ -250,7 +250,7 @@ ClinVar accept and process the batches you send, so nothing reaches the VCI or C
 
 ## How to Import Data from the Old AS
 
-The AS can copy CDWGs, affiliations, and people from the old AS
+The AS can copy CDWGs, affiliations, and users from the old AS
 (affils.clinicalgenome.org) with the `import_old_as` command.
 
 1. Put an old AS API key in `.env` as `AS_API_KEY`.

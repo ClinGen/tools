@@ -12,16 +12,16 @@ from ninja.pagination import paginate
 from pydantic import ConfigDict
 
 from affiliations_service.api.helpers import save_validated
-from affiliations_service.models import Affiliation, Membership, Person
+from affiliations_service.models import Affiliation, Membership, User
 
 router = Router()
 
 
 class MembershipOut(Schema):
-    """A role a person holds in an affiliation."""
+    """A role a user holds in an affiliation."""
 
     id: uuid.UUID
-    person: uuid.UUID
+    user: uuid.UUID
     affiliation: uuid.UUID
     role: Membership.Role
     start_date: date | None
@@ -31,9 +31,9 @@ class MembershipOut(Schema):
     updated_at: datetime
 
     @staticmethod
-    def resolve_person(membership: Membership) -> uuid.UUID:
-        """Returns the person's ID."""
-        return membership.person_id  # ty: ignore[unresolved-attribute] (Django adds person_id.)
+    def resolve_user(membership: Membership) -> uuid.UUID:
+        """Returns the user's ID."""
+        return membership.user_id  # ty: ignore[unresolved-attribute] (Django adds user_id.)
 
     @staticmethod
     def resolve_affiliation(membership: Membership) -> uuid.UUID:
@@ -46,7 +46,7 @@ class MembershipIn(Schema):
 
     model_config = ConfigDict(extra="forbid")
 
-    person: uuid.UUID
+    user: uuid.UUID
     affiliation: uuid.UUID
     role: Membership.Role
     start_date: date | None = None
@@ -66,13 +66,13 @@ class MembershipFilters(Schema):
     """Narrows the list of memberships."""
 
     affiliation: uuid.UUID | None = None
-    person: uuid.UUID | None = None
+    user: uuid.UUID | None = None
     role: Membership.Role | None = None
     current: bool | None = None
 
 
-def _get_or_400[T: (Person, Affiliation)](model: type[T], pk: uuid.UUID) -> T:
-    """Returns the person or affiliation with this ID.
+def _get_or_400[T: (User, Affiliation)](model: type[T], pk: uuid.UUID) -> T:
+    """Returns the user or affiliation with this ID.
 
     Raises:
         ValidationError: If there's none, so the API returns a 400.
@@ -105,7 +105,7 @@ def list_memberships(
         )
     exact = {
         "affiliation_id": filters.affiliation,
-        "person_id": filters.person,
+        "user_id": filters.user,
         "role": filters.role,
     }
     return memberships.filter(
@@ -128,7 +128,7 @@ def create_membership(
     request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     data: MembershipIn,
 ) -> Status[Membership]:
-    """Gives a person a role in an affiliation.
+    """Gives a user a role in an affiliation.
 
     Returns:
         201 and the new membership.
@@ -141,7 +141,7 @@ def create_membership(
         error_message = "That affiliation has been deleted."
         raise ValidationError(error_message)
     membership = Membership(
-        person=_get_or_400(Person, data.person),
+        user=_get_or_400(User, data.user),
         affiliation=affiliation,
         role=data.role,
         start_date=data.start_date,

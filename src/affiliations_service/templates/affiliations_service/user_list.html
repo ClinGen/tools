@@ -1,22 +1,22 @@
 {% extends "layouts/base.html" %}
-{% block title %}People{% endblock %}
-{% block description %}Find the people in ClinGen's affiliations.{% endblock %}
+{% block title %}Users{% endblock %}
+{% block description %}Find the users in ClinGen's affiliations.{% endblock %}
 {% block main %}
     <div class="block mt-6 mb-6">
         {% include "affiliations_service/partials/header.html" %}
         <form method="get"
               class="block"
-              hx-get="{% url 'as:people' %}"
-              hx-trigger="input changed delay:300ms from:#person-search, submit"
-              hx-target="#person-results"
-              hx-select="#person-results"
+              hx-get="{% url 'as:users' %}"
+              hx-trigger="input changed delay:300ms from:#user-search, submit"
+              hx-target="#user-results"
+              hx-select="#user-results"
               hx-swap="outerHTML"
               hx-push-url="true">
             <div class="field">
-                <label class="label" for="person-search">Search</label>
+                <label class="label" for="user-search">Search</label>
                 <div class="control">
                     <input class="input"
-                           id="person-search"
+                           id="user-search"
                            name="q"
                            type="search"
                            placeholder="Name or email"
@@ -26,31 +26,31 @@
             <noscript><button type="submit" class="button is-link">Search</button></noscript>
         </form>
         <div class="buttons">
-            <a href="{% url 'as:person-create' %}" class="button is-link">
+            <a href="{% url 'as:user-create' %}" class="button is-link">
                 {% include "common/icon.html" with icon_name="plus-circle" %}
-                Add Person
+                Add User
             </a>
         </div>
-        <div id="person-results" class="block">
-            {% if people %}
+        <div id="user-results" class="block">
+            {% if as_users %}
                 <div class="table-container">
                     <table class="table is-hoverable is-fullwidth">
                         <thead>
                             <tr><th>Name</th><th>Email</th><th>Institution</th></tr>
                         </thead>
                         <tbody>
-                            {% for person in people %}
+                            {% for as_user in as_users %}
                                 <tr>
-                                    <td><a href="{{ person.get_absolute_url }}">{{ person.name }}</a></td>
-                                    <td>{{ person.email }}</td>
-                                    <td>{{ person.institution }}</td>
+                                    <td><a href="{{ as_user.get_absolute_url }}">{{ as_user.name }}</a></td>
+                                    <td>{{ as_user.email }}</td>
+                                    <td>{{ as_user.institution }}</td>
                                 </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             {% else %}
-                <p>No people match.</p>
+                <p>No users match.</p>
             {% endif %}
         </div>
     </div>

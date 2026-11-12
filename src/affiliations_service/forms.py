@@ -9,8 +9,8 @@ from affiliations_service.models import (
     Affiliation,
     ClinVarSubmitterId,
     Membership,
-    Person,
-    PersonEmail,
+    User,
+    UserEmail,
 )
 
 
@@ -38,11 +38,11 @@ class AffiliationCreateForm(BulmaFormMixin, forms.ModelForm):
     """
 
     coordinators = forms.ModelMultipleChoiceField(
-        queryset=Person.objects.all(),
+        queryset=User.objects.all(),
         required=False,
         widget=forms.CheckboxSelectMultiple,
         label="Coordinators",
-        help_text="Search for people by name or email, and check each coordinator.",
+        help_text="Search for users by name or email, and check each coordinator.",
     )
 
     class Meta:
@@ -51,13 +51,13 @@ class AffiliationCreateForm(BulmaFormMixin, forms.ModelForm):
         model = Affiliation
         fields = ["type", "full_name", "short_name", "status", "cdwg", "gpm_uuid"]
 
-    def picked_coordinators(self) -> list[Person]:
+    def picked_coordinators(self) -> list[User]:
         """Returns the coordinators staff picked, so a re-rendered form keeps them."""
         cleaned_data = getattr(self, "cleaned_data", {})
         return list(cleaned_data.get("coordinators") or [])
 
     def save(self, commit: bool = True) -> Affiliation:  # ruff: ignore[boolean-type-hint-positional-argument, boolean-default-value-positional-argument] (Django's signature.)
-        """Saves the affiliation and makes each picked person a coordinator.
+        """Saves the affiliation and makes each picked user a coordinator.
 
         Returns:
             The saved affiliation.
@@ -66,11 +66,11 @@ class AffiliationCreateForm(BulmaFormMixin, forms.ModelForm):
         if commit:
             Membership.objects.bulk_create(
                 Membership(
-                    person=person,
+                    user=user,
                     affiliation=affiliation,
                     role=Membership.Role.COORDINATOR,
                 )
-                for person in self.cleaned_data["coordinators"]
+                for user in self.cleaned_data["coordinators"]
             )
         return affiliation
 
@@ -101,13 +101,13 @@ SubmitterIdFormSet.form = type(
 )
 
 
-class PersonForm(BulmaFormMixin, forms.ModelForm):
-    """The fields staff fill in for a person."""
+class UserForm(BulmaFormMixin, forms.ModelForm):
+    """The fields staff fill in for a user."""
 
     class Meta:
         """Provides metadata."""
 
-        model = Person
+        model = User
         fields = [
             "name",
             "preferred_name",
@@ -120,8 +120,8 @@ class PersonForm(BulmaFormMixin, forms.ModelForm):
 
 
 OtherEmailFormSet = forms.inlineformset_factory(
-    Person,
-    PersonEmail,
+    User,
+    UserEmail,
     fields=["email"],
     extra=1,
     can_delete=True,
@@ -132,30 +132,30 @@ OtherEmailFormSet.form = type(
 
 
 class MembershipAddForm(BulmaFormMixin, forms.ModelForm):
-    """Gives a person a role in an affiliation.
+    """Gives a user a role in an affiliation.
 
-    The person is picked from search results, so the field is a radio list that the
+    The user is picked from search results, so the field is a radio list that the
     search fills in.
     """
 
-    person = forms.ModelChoiceField(
-        queryset=Person.objects.all(),
+    user = forms.ModelChoiceField(
+        queryset=User.objects.all(),
         widget=forms.RadioSelect,
-        error_messages={"required": "Search for a person, then pick them."},
+        error_messages={"required": "Search for a user, then pick them."},
     )
 
     class Meta:
         """Provides metadata."""
 
         model = Membership
-        fields = ["person", "role", "start_date"]
+        fields = ["user", "role", "start_date"]
         widgets = {"start_date": forms.DateInput(attrs={"type": "date"})}
 
     def clean(self) -> dict[str, Any]:
         """Also checks the constraints that involve the affiliation.
 
         Django skips constraints on fields that aren't in the form, such as the
-        affiliation, so a person holding the same role twice would otherwise only be
+        affiliation, so a user holding the same role twice would otherwise only be
         caught by the database. `validate_constraints()` raises the error, and the
         form shows it.
 
@@ -165,11 +165,11 @@ class MembershipAddForm(BulmaFormMixin, forms.ModelForm):
         cleaned_data = super().clean() or {}
         membership = Membership(
             affiliation_id=self.instance.affiliation_id,
-            person=cleaned_data.get("person"),
+            user=cleaned_data.get("user"),
             role=cleaned_data.get("role"),
             start_date=cleaned_data.get("start_date"),
         )
-        if membership.person_id and membership.role:  # ty: ignore[unresolved-attribute] (Django adds person_id.)
+        if membership.user_id and membership.role:  # ty: ignore[unresolved-attribute] (Django adds user_id.)
             membership.validate_constraints()
         return cleaned_data
 

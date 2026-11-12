@@ -2,7 +2,7 @@
 
 This app is the Affiliations Service (AS), mounted at `/as/` with the URL namespace
 `as`. It's the source of truth for users and groups inside and outside of ClinGen apps:
-the people in ClinGen's affiliations, the affiliations themselves, and the CDWGs they
+the users in ClinGen's affiliations, the affiliations themselves, and the CDWGs they
 belong to. Only users with `has_as_permissions` can use its pages. "The Affiliations
 Service" in `docs/design.md` describes its design.
 
@@ -10,29 +10,18 @@ Service" in `docs/design.md` describes its design.
 
 Empty file that marks `affiliations_service` as a Python package.
 
+### `admin.py`
+
+Registers CDWGs and affiliations in the Django admin, with their history. ClinVar
+submitter IDs are edited inline on their affiliation, and other emails inline on their
+user. Memberships are edited inline on both affiliations and users. Admin search finds a
+user by any of their emails. Creating an API key shows the raw key once, in a message,
+since only its hash is stored. Only superusers can change an existing affiliation's IDs,
+type, and GPM UUID.
+
 ### `api/__init__.py`
 
 Marks `api` as a Python package.
-
-### `api/memberships.py`
-
-Serves `/memberships`: list (paginated, filtered by affiliation, person, role, and
-`current`), get, create, and `PATCH` for the dates. Setting `end_date` ends a
-membership; there's no delete. A deleted affiliation can't get new members.
-
-### `api/people.py`
-
-Serves `/people`: list (paginated, with `q` searching names and every email, and exact
-filters for `email`, `orcid`, and `gpm_uuid`), get, create, and update (`PATCH`).
-Sending `other_emails` replaces the list. There's no delete, since people stay on
-record. Responses for one person include their current memberships.
-
-### `api/v1.py`
-
-Defines the AS's API, a Django Ninja `NinjaAPI` served at `/as/api/v1/`, with OpenAPI
-docs at `/as/api/v1/docs`. Every endpoint needs an API key. It adds each resource's
-router and turns a `ValidationError` (a broken business rule) into a 400 whose `detail`
-is the error's plain-language message.
 
 ### `api/affiliations.py`
 
@@ -57,14 +46,25 @@ Serves `/cdwgs`: list (paginated), get, create, and update (`PATCH`) CDWGs.
 Holds `save_validated`, which applies changes to a model instance, runs `full_clean()`,
 and saves it, so every endpoint checks the same rules as the admin and the staff UI.
 
-### `admin.py`
+### `api/memberships.py`
 
-Registers CDWGs and affiliations in the Django admin, with their history. ClinVar
-submitter IDs are edited inline on their affiliation, and other emails inline on their
-person. Memberships are edited inline on both affiliations and people. Admin search
-finds a person by any of their emails. Creating an API key shows the raw key once, in a
-message, since only its hash is stored. Only superusers can change an existing
-affiliation's IDs, type, and GPM UUID.
+Serves `/memberships`: list (paginated, filtered by affiliation, user, role, and
+`current`), get, create, and `PATCH` for the dates. Setting `end_date` ends a
+membership; there's no delete. A deleted affiliation can't get new members.
+
+### `api/users.py`
+
+Serves `/users`: list (paginated, with `q` searching names and every email, and exact
+filters for `email`, `orcid`, and `gpm_uuid`), get, create, and update (`PATCH`).
+Sending `other_emails` replaces the list. There's no delete, since users stay on record.
+Responses for one user include their current memberships.
+
+### `api/v1.py`
+
+Defines the AS's API, a Django Ninja `NinjaAPI` served at `/as/api/v1/`, with OpenAPI
+docs at `/as/api/v1/docs`. Every endpoint needs an API key. It adds each resource's
+router and turns a `ValidationError` (a broken business rule) into a 400 whose `detail`
+is the error's plain-language message.
 
 ### `apps.py`
 
@@ -79,12 +79,12 @@ links home. Each view passes its trail to its template as `breadcrumbs`.
 ### `forms.py`
 
 Defines the forms on the AS's pages: `AffiliationCreateForm` (which can also make picked
-people the new affiliation's coordinators), `AffiliationEditForm` (which leaves out the
+users the new affiliation's coordinators), `AffiliationEditForm` (which leaves out the
 IDs, type, and GPM UUID, so posting them changes nothing), and `SubmitterIdFormSet` for
-an affiliation's ClinVar submitter IDs, `PersonForm`, and `OtherEmailFormSet` for a
-person's other emails, and `MembershipAddForm`, which also checks the membership
-constraints that Django would skip because the affiliation isn't a form field, and
-`CdwgForm`. `BulmaFormMixin` gives text inputs Bulma's classes.
+an affiliation's ClinVar submitter IDs, `UserForm`, and `OtherEmailFormSet` for a user's
+other emails, and `MembershipAddForm`, which also checks the membership constraints that
+Django would skip because the affiliation isn't a form field, and `CdwgForm`.
+`BulmaFormMixin` gives text inputs Bulma's classes.
 
 ### `history.py`
 
@@ -102,7 +102,7 @@ Marks `commands` as a Python package.
 
 ### `management/commands/import_old_as.py`
 
-Defines `import_old_as`, which copies CDWGs, affiliations, and people from the old AS
+Defines `import_old_as`, which copies CDWGs, affiliations, and users from the old AS
 using the key in `AS_API_KEY`. `--dry-run` shows what it would do without saving.
 
 ### `models.py`
@@ -116,14 +116,14 @@ business rules (an SC-VCEP's CDWG, an independent curation group's CDWG and GPM 
 and that hand-set IDs are in range and end in the same three digits. Constraint and
 uniqueness errors have plain-language messages, so forms can show them to staff.
 
-It also defines `Person` and `PersonEmail` (a person's other emails). A person's main
-email is optional, but no two people share an email, ignoring case, whether it's a
-primary or another email: constraints catch duplicates within each table, and `clean()`
-catches them across the two, and a person's other email that repeats their main one.
-ORCID iDs are checked for format and are unique when set.
+It also defines `User` and `UserEmail` (a user's other emails). A user's main email is
+optional, but no two users share an email, ignoring case, whether it's a primary or
+another email: constraints catch duplicates within each table, and `clean()` catches
+them across the two, and a user's other email that repeats their main one. ORCID iDs are
+checked for format and are unique when set.
 
-Finally, it defines `Membership`: a person's role (coordinator, approver, or curator) in
-an affiliation, with optional start and end dates. A person can't hold the same role in
+Finally, it defines `Membership`: a user's role (coordinator, approver, or curator) in
+an affiliation, with optional start and end dates. A user can't hold the same role in
 the same affiliation twice at once, and an end date can't come before its start date.
 `Membership.objects.current()` returns memberships that haven't ended, and `end()` ends
 one by setting its end date instead of deleting it.
@@ -136,9 +136,9 @@ finds the active key for a raw value and records its use.
 
 Imports from the old AS's API (`cdwg_list/` and `database_list/`): CDWGs, affiliations
 with their IDs, deleted flags, and ClinVar submitter IDs, and coordinators and approvers
-as people with memberships. People are matched by email, then by name, so an approver
-who is also a coordinator becomes one person. Rerunning it updates only what changed.
-Records that break the AS's rules are imported anyway, with a warning.
+as users with memberships. Users are matched by email, then by name, so an approver who
+is also a coordinator becomes one user. Rerunning it updates only what changed. Records
+that break the AS's rules are imported anyway, with a warning.
 
 ### `static/affiliations_service/formset.js`
 
@@ -160,7 +160,7 @@ modal, then posts to the delete page. It says so if the affiliation was deleted.
 ### `templates/affiliations_service/affiliation_form.html`
 
 The form for creating or editing an affiliation, with its ClinVar submitter IDs. When
-creating, staff can search for people and check the affiliation's coordinators. When
+creating, staff can search for users and check the affiliation's coordinators. When
 editing, it shows the IDs, type, and whether it's linked to the GPM as read-only.
 
 ### `templates/affiliations_service/cdwg_form.html`
@@ -178,17 +178,74 @@ each one. CDWGs aren't deleted from the UI, since affiliations need them.
 The AS's home page, which lists affiliations. Its search box and filters update the list
 with HTMX as staff type, and work as a plain form without JavaScript.
 
+### `templates/affiliations_service/partials/breadcrumbs.html`
+
+Renders `breadcrumbs` as a Bulma breadcrumb, with the current page last, bold, and not a
+link elsewhere. `partials/header.html` includes it under the navbar.
+
+### `templates/affiliations_service/partials/field.html`
+
+Renders one form field with its label, help text, and errors in Bulma's style.
+
+### `templates/affiliations_service/partials/formset.html`
+
+Renders an inline formset of one-field rows, such as ClinVar submitter IDs or other
+emails, with an Add Another button and the blank row it copies. The rows have a bottom
+margin, so the button doesn't touch the last one.
+
+### `templates/affiliations_service/partials/formset_row.html`
+
+One row of `partials/formset.html`: the field, its errors, and a Remove checkbox for
+saved rows. The rows have a bottom margin so the button doesn't touch them.
+
 ### `templates/affiliations_service/partials/header.html`
 
 The AS's title and subtitle, then its navbar, copied from the HCI's: Affiliations,
-CDWGs, and People dropdowns, each with Search and Add links, and a burger menu on narrow
+CDWGs, and Users dropdowns, each with Search and Add links, and a burger menu on narrow
 screens, then the page's breadcrumbs. Every AS page includes it.
+
+### `templates/affiliations_service/partials/history.html`
+
+A table of the changes in `history`, from `history.describe_history()`.
+
+### `templates/affiliations_service/partials/members.html`
+
+An affiliation's members section: current members by role, each with an End button that
+asks in the confirmation modal, the Add a Member form, and past members. HTMX swaps the
+whole section after adding or ending a membership.
+
+### `templates/affiliations_service/partials/navbar_link.html`
+
+One navbar link, in bold when it's the current page. Pass `url` (a URL name) and `text`.
+
+### `templates/affiliations_service/partials/status.html`
+
+An affiliation's status as a tag: green for active, yellow for applying, and grey
+otherwise.
+
+### `templates/affiliations_service/partials/user_choices.html`
+
+The user search's results: radio buttons for the add-member form, checkboxes for the
+new-affiliation form's coordinators, or a link to add a user when no one matches.
+
+### `templates/affiliations_service/user_detail.html`
+
+A user's page: their details, other emails, current and past affiliations (linking to
+each), and history.
+
+### `templates/affiliations_service/user_form.html`
+
+The form for adding or editing a user, with their other emails.
+
+### `templates/affiliations_service/user_list.html`
+
+Lists users, with a search box for names and emails that updates the list with HTMX.
 
 ### `test_affiliation_forms.py`
 
 Tests creating, editing, and deleting affiliations on the AS's pages, including locked
 fields, submitter IDs, plain-language errors, permissions, and the Add Another button on
-the affiliation and person forms, and picking coordinators on the new-affiliation form.
+the affiliation and user forms, and picking coordinators on the new-affiliation form.
 
 ### `test_affiliation_pages.py`
 
@@ -213,22 +270,22 @@ the public docs, and showing a new key once in the admin.
 ### `test_api_memberships.py`
 
 Tests the API's membership endpoints: filters, creating, ending, constraint errors, no
-delete, and the current memberships in affiliation and person responses.
+delete, and the current memberships in affiliation and user responses.
 
-### `test_api_people.py`
+### `test_api_users.py`
 
-Tests the API's person endpoints: search and filters, other emails, duplicate emails,
-ORCID iD checks, 404s, and that people can't be deleted.
-
-### `test_member_pages.py`
-
-Tests adding and ending memberships from an affiliation's page, with and without HTMX,
-and the person search behind the add-member form.
+Tests the API's user endpoints: search and filters, other emails, duplicate emails,
+ORCID iD checks, 404s, and that users can't be deleted.
 
 ### `test_cdwg_pages.py`
 
 Tests the CDWG list's counts and links, adding and editing CDWGs, and the error for a
 name that differs from another only in case.
+
+### `test_member_pages.py`
+
+Tests adding and ending memberships from an affiliation's page, with and without HTMX,
+and the user search behind the add-member form.
 
 ### `test_memberships.py`
 
@@ -246,79 +303,22 @@ link is bold, the CDWG list's search, and the breadcrumb trails.
 
 ### `test_old_as_import.py`
 
-Tests the old AS import with a fake fetch: what it imports, how it matches people, that
+Tests the old AS import with a fake fetch: what it imports, how it matches users, that
 reruns change nothing, dry runs, and rule warnings.
-
-### `test_people.py`
-
-Tests people's email uniqueness, ORCID iD checks, GPM UUIDs, history, and admin search.
-
-### `test_people_pages.py`
-
-Tests the people list's search, a person's page, and adding and editing people and their
-other emails, including duplicate emails and bad ORCID iDs.
 
 ### `test_rules.py`
 
 Tests the business rules in `Affiliation.clean()`, the ID checks, the plain-language
 uniqueness errors, and which fields the admin locks for non-superusers.
 
-### `templates/affiliations_service/person_detail.html`
+### `test_user_pages.py`
 
-A person's page: their details, other emails, current and past affiliations (linking to
-each), and history.
+Tests the users list's search, a user's page, and adding and editing users and their
+other emails, including duplicate emails and bad ORCID iDs.
 
-### `templates/affiliations_service/person_form.html`
+### `test_users.py`
 
-The form for adding or editing a person, with their other emails.
-
-### `templates/affiliations_service/person_list.html`
-
-Lists people, with a search box for names and emails that updates the list with HTMX.
-
-### `templates/affiliations_service/partials/breadcrumbs.html`
-
-Renders `breadcrumbs` as a Bulma breadcrumb, with the current page last, bold, and not a
-link elsewhere. `partials/header.html` includes it under the navbar.
-
-### `templates/affiliations_service/partials/field.html`
-
-Renders one form field with its label, help text, and errors in Bulma's style.
-
-### `templates/affiliations_service/partials/navbar_link.html`
-
-One navbar link, in bold when it's the current page. Pass `url` (a URL name) and `text`.
-
-### `templates/affiliations_service/partials/members.html`
-
-An affiliation's members section: current members by role, each with an End button that
-asks in the confirmation modal, the Add a Member form, and past members. HTMX swaps the
-whole section after adding or ending a membership.
-
-### `templates/affiliations_service/partials/formset.html`
-
-Renders an inline formset of one-field rows, such as ClinVar submitter IDs or other
-emails, with an Add Another button and the blank row it copies. The rows have a bottom
-margin, so the button doesn't touch the last one.
-
-### `templates/affiliations_service/partials/formset_row.html`
-
-One row of `partials/formset.html`: the field, its errors, and a Remove checkbox for
-saved rows. The rows have a bottom margin so the button doesn't touch them.
-
-### `templates/affiliations_service/partials/history.html`
-
-A table of the changes in `history`, from `history.describe_history()`.
-
-### `templates/affiliations_service/partials/person_choices.html`
-
-The person search's results: radio buttons for the add-member form, checkboxes for the
-new-affiliation form's coordinators, or a link to add a person when no one matches.
-
-### `templates/affiliations_service/partials/status.html`
-
-An affiliation's status as a tag: green for active, yellow for applying, and grey
-otherwise.
+Tests users's email uniqueness, ORCID iD checks, GPM UUIDs, history, and admin search.
 
 ### `tests.py`
 
@@ -334,8 +334,8 @@ Routes the AS's pages under `/as/` (an affiliation's page is
 
 Defines the AS's pages: the affiliation list, an affiliation's page, and the pages that
 create, edit, and delete an affiliation. Deleting marks it deleted. It also has the
-people list, a person's page, and the pages that add and edit a person. The membership
-views add a member to an affiliation and end a membership, returning the updated members
-section to HTMX requests, and `person_search` finds people for the add-member form.
+users list, a user's page, and the pages that add and edit a user. The membership views
+add a member to an affiliation and end a membership, returning the updated members
+section to HTMX requests, and `user_search` finds users for the add-member form.
 `_save_form_and_formset` saves an object and its inline formset together, or neither.
 Each view requires `has_as_permissions`.

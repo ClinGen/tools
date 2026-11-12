@@ -12,7 +12,7 @@ from affiliations_service.api.affiliations import router as affiliations_router
 from affiliations_service.api.auth import ApiKeyAuth
 from affiliations_service.api.cdwgs import router as cdwgs_router
 from affiliations_service.api.memberships import router as memberships_router
-from affiliations_service.api.people import router as people_router
+from affiliations_service.api.users import router as users_router
 
 api = NinjaAPI(
     title="Affiliations Service API",
@@ -41,4 +41,4 @@ def validation_error(request: HttpRequest, error: ValidationError) -> HttpRespon
 api.add_router("/affiliations", affiliations_router, tags=["Affiliations"])
 api.add_router("/cdwgs", cdwgs_router, tags=["CDWGs"])
 api.add_router("/memberships", memberships_router, tags=["Memberships"])
-api.add_router("/people", people_router, tags=["People"])
+api.add_router("/users", users_router, tags=["Users"])

@@ -9,8 +9,8 @@ from affiliations_service.models import (
     ApiKey,
     ClinVarSubmitterId,
     Membership,
-    Person,
-    PersonEmail,
+    User,
+    UserEmail,
 )
 
 
@@ -28,11 +28,11 @@ class ClinVarSubmitterIdInline(admin.TabularInline):
 class AffiliationMembershipInline(admin.TabularInline):
     model = Membership
     extra = 0
-    autocomplete_fields = ["person"]
-    fields = ["person", "role", "start_date", "end_date"]
+    autocomplete_fields = ["user"]
+    fields = ["user", "role", "start_date", "end_date"]
 
 
-class PersonMembershipInline(admin.TabularInline):
+class UserMembershipInline(admin.TabularInline):
     model = Membership
     extra = 0
     autocomplete_fields = ["affiliation"]
@@ -72,16 +72,16 @@ class AffiliationAdmin(SimpleHistoryAdmin):
         return readonly
 
 
-class PersonEmailInline(admin.TabularInline):
-    model = PersonEmail
+class UserEmailInline(admin.TabularInline):
+    model = UserEmail
     extra = 0
 
 
-@admin.register(Person)
-class PersonAdmin(SimpleHistoryAdmin):
+@admin.register(User)
+class UserAdmin(SimpleHistoryAdmin):
     list_display = ["name", "preferred_name", "email", "institution"]
     search_fields = ["name", "preferred_name", "email", "other_emails__email", "orcid"]
-    inlines = [PersonEmailInline, PersonMembershipInline]
+    inlines = [UserEmailInline, UserMembershipInline]
 
 
 @admin.register(ApiKey)

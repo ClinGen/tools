@@ -4,14 +4,14 @@ from django.test import TestCase
 from django.urls import reverse
 
 from affiliations_service.test_models import make_affiliation, make_cdwg
-from affiliations_service.test_people import make_person
-from affiliations_service.tests import make_user
+from affiliations_service.test_users import make_user
+from affiliations_service.tests import make_staff
 
 NAVBAR_URLS = [
     "as:index",
     "as:affiliation-create",
-    "as:people",
-    "as:person-create",
+    "as:users",
+    "as:user-create",
     "as:cdwgs",
     "as:cdwg-create",
 ]
@@ -21,20 +21,20 @@ class NavbarTest(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.affiliation = make_affiliation()
-        cls.person = make_person()
+        cls.user = make_user()
 
     def setUp(self):
-        self.client.force_login(make_user("as@example.com"))
+        self.client.force_login(make_staff("as@example.com"))
 
     def _pages(self) -> list[str]:
-        affiliation, person, cdwg = self.affiliation, self.person, self.affiliation.cdwg
+        affiliation, user, cdwg = self.affiliation, self.user, self.affiliation.cdwg
         return [
             *[reverse(name) for name in NAVBAR_URLS],
             affiliation.get_absolute_url(),
             reverse("as:affiliation-edit", kwargs={"pk": affiliation.pk}),
             reverse("as:affiliation-delete", kwargs={"pk": affiliation.pk}),
-            person.get_absolute_url(),
-            reverse("as:person-edit", kwargs={"pk": person.pk}),
+            user.get_absolute_url(),
+            reverse("as:user-edit", kwargs={"pk": user.pk}),
             reverse("as:cdwg-edit", kwargs={"pk": cdwg.pk}),
         ]
 
@@ -50,17 +50,17 @@ class NavbarTest(TestCase):
         self.assertLess(page.index('class="subtitle"'), page.index('id="as-navbar"'))
         self.assertNotIn('class="tabs', page)
 
-    def test_cdwgs_come_before_people(self):
+    def test_cdwgs_come_before_users(self):
         page = self.client.get(reverse("as:index")).content.decode()
         self.assertLess(
             page.index('<a class="navbar-link">CDWGs</a>'),
-            page.index('<a class="navbar-link">People</a>'),
+            page.index('<a class="navbar-link">Users</a>'),
         )
 
     def test_the_current_pages_link_is_bold(self):
-        page = self.client.get(reverse("as:people")).content.decode()
+        page = self.client.get(reverse("as:users")).content.decode()
         self.assertIn(
-            f'href="{reverse("as:people")}" class="navbar-item has-text-weight-bold"',
+            f'href="{reverse("as:users")}" class="navbar-item has-text-weight-bold"',
             page,
         )
         self.assertIn(f'href="{reverse("as:cdwgs")}" class="navbar-item"', page)
@@ -70,7 +70,7 @@ class CdwgSearchTest(TestCase):
     def test_q_narrows_the_cdwg_list(self):
         make_cdwg("Cardiovascular")
         make_cdwg("Kidney")
-        self.client.force_login(make_user("as@example.com"))
+        self.client.force_login(make_staff("as@example.com"))
         page = self.client.get(reverse("as:cdwgs"), {"q": "kid"}).content.decode()
         self.assertIn("Kidney", page)
         self.assertNotIn("Cardiovascular", page)
@@ -80,10 +80,10 @@ class BreadcrumbTest(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.affiliation = make_affiliation(full_name="Kidney Cystic GCEP")
-        cls.person = make_person(name="Ada Lovelace")
+        cls.user = make_user(name="Ada Lovelace")
 
     def setUp(self):
-        self.client.force_login(make_user("as@example.com"))
+        self.client.force_login(make_staff("as@example.com"))
 
     def _crumbs(self, url: str) -> list[tuple[str, str]]:
         """Returns each breadcrumb's text and link on a page."""
@@ -105,17 +105,17 @@ class BreadcrumbTest(TestCase):
     def test_list_pages_end_at_their_search_crumb(self):
         cases = [
             ("as:index", "Affiliation Search"),
-            ("as:people", "People Search"),
+            ("as:users", "User Search"),
             ("as:cdwgs", "CDWG Search"),
         ]
         for name, text in cases:
             with self.subTest(page=name):
                 self.assertEqual(self._crumbs(reverse(name))[-1], (text, ""))
 
-    def test_person_and_new_pages_trails(self):
+    def test_user_and_new_pages_trails(self):
         self.assertEqual(
-            [text for text, _ in self._crumbs(self.person.get_absolute_url())],
-            ["People Search", "Ada Lovelace"],
+            [text for text, _ in self._crumbs(self.user.get_absolute_url())],
+            ["User Search", "Ada Lovelace"],
         )
         self.assertEqual(
             [text for text, _ in self._crumbs(reverse("as:affiliation-create"))],

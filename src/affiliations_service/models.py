@@ -358,31 +358,31 @@ ORCID_VALIDATOR = RegexValidator(
 DUPLICATE_EMAIL_MESSAGE = "Someone already has this email."
 
 
-def email_is_taken(email: str, *, person: "Person | None" = None) -> bool:
-    """Reports whether a person other than the given one has an email.
+def email_is_taken(email: str, *, user: "User | None" = None) -> bool:
+    """Reports whether a user other than the given one has an email.
 
     Emails are compared ignoring case, and both primary and other emails count.
 
     Args:
         email: The email to look for.
-        person: The person who may already have the email, if any.
+        user: The user who may already have the email, if any.
 
     Returns:
         True if someone else has the email.
     """
-    people = Person.objects.filter(email__iexact=email)
-    other_emails = PersonEmail.objects.filter(email__iexact=email)
-    if person is not None and person.pk is not None:
-        people = people.exclude(pk=person.pk)
-        other_emails = other_emails.exclude(person=person)
-    return people.exists() or other_emails.exists()
+    users = User.objects.filter(email__iexact=email)
+    other_emails = UserEmail.objects.filter(email__iexact=email)
+    if user is not None and user.pk is not None:
+        users = users.exclude(pk=user.pk)
+        other_emails = other_emails.exclude(user=user)
+    return users.exists() or other_emails.exists()
 
 
-class Person(UUIDModel):
-    """A person in ClinGen's affiliations, such as a coordinator or a curator.
+class User(UUIDModel):
+    """A user in ClinGen's affiliations, such as a coordinator or a curator.
 
-    A person's email is optional, since some people, such as approvers carried over
-    from the old AS, have only a name. People are never deleted. Their fields are a
+    A user's email is optional, since some users, such as approvers carried over
+    from the old AS, have only a name. Users are never deleted. Their fields are a
     starting point; we expect to add more.
     """
 
@@ -392,13 +392,13 @@ class Person(UUIDModel):
         default="",
         max_length=255,
         verbose_name="Preferred Name",
-        help_text="What the person likes to be called, if it differs from their name.",
+        help_text="What the user likes to be called, if it differs from their name.",
     )
     email = models.EmailField(
         blank=True,
         default="",
         verbose_name="Email",
-        help_text=("The person's main email, if known. No two people share an email."),
+        help_text=("The user's main email, if known. No two users share an email."),
     )
     institution = models.CharField(
         blank=True,
@@ -425,9 +425,9 @@ class Person(UUIDModel):
         blank=True,
         null=True,
         unique=True,
-        error_messages={"unique": "Another person already has this GPM UUID."},
+        error_messages={"unique": "Another user already has this GPM UUID."},
         verbose_name="GPM UUID",
-        help_text="The UUID the GPM uses for this person, if it has one.",
+        help_text="The UUID the GPM uses for this user, if it has one.",
     )
     added_at = models.DateTimeField(auto_now_add=True, verbose_name="Added At")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
@@ -436,54 +436,54 @@ class Person(UUIDModel):
     class Meta:  # ty: ignore[invalid-attribute-override] (Each Django model declares its own Meta.)
         """Provides metadata."""
 
-        verbose_name_plural = "People"
+        verbose_name_plural = "Users"
         ordering = ["name"]
         constraints = [
             models.UniqueConstraint(
                 Lower("email"),
                 condition=~models.Q(email=""),
-                name="as_person_unique_email",
+                name="as_user_unique_email",
                 violation_error_message=DUPLICATE_EMAIL_MESSAGE,
             ),
             models.UniqueConstraint(
                 fields=["orcid"],
                 condition=~models.Q(orcid=""),
-                name="as_person_unique_orcid",
-                violation_error_message="Another person already has this ORCID iD.",
+                name="as_user_unique_orcid",
+                violation_error_message="Another user already has this ORCID iD.",
             ),
         ]
 
     def __str__(self) -> str:
-        """Returns the person's preferred name, or their name if they have none."""
+        """Returns the user's preferred name, or their name if they have none."""
         return self.preferred_name or self.name
 
     def get_absolute_url(self) -> str:
-        """Returns the URL of the person's page."""
-        return reverse("as:person", kwargs={"pk": self.pk})
+        """Returns the URL of the user's page."""
+        return reverse("as:user", kwargs={"pk": self.pk})
 
     def clean(self) -> None:
-        """Checks that no one else has the person's email as an other email.
+        """Checks that no one else has the user's email as an other email.
 
         Raises:
             ValidationError: If someone else has the email.
         """
-        if self.email and email_is_taken(self.email, person=self):
+        if self.email and email_is_taken(self.email, user=self):
             raise ValidationError({"email": DUPLICATE_EMAIL_MESSAGE})
 
 
-class PersonEmail(UUIDModel):
-    """An email a person has besides their main one."""
+class UserEmail(UUIDModel):
+    """An email a user has besides their main one."""
 
-    person = models.ForeignKey(
-        Person,
+    user = models.ForeignKey(
+        User,
         on_delete=models.CASCADE,
         related_name="other_emails",
-        verbose_name="Person",
+        verbose_name="User",
     )
     email = models.EmailField(verbose_name="Email")
     history = HistoricalRecords()
 
-    person_id: uuid.UUID | None  # Django adds this for the person foreign key.
+    user_id: uuid.UUID | None  # Django adds this for the user foreign key.
 
     class Meta:  # ty: ignore[invalid-attribute-override] (Each Django model declares its own Meta.)
         """Provides metadata."""
@@ -494,7 +494,7 @@ class PersonEmail(UUIDModel):
         constraints = [
             models.UniqueConstraint(
                 Lower("email"),
-                name="as_person_email_unique_email",
+                name="as_user_email_unique_email",
                 violation_error_message=DUPLICATE_EMAIL_MESSAGE,
             ),
         ]
@@ -507,15 +507,15 @@ class PersonEmail(UUIDModel):
         """Checks that no one else has this email, and that it isn't the main one.
 
         Raises:
-            ValidationError: If someone else has the email, or it's the person's main
+            ValidationError: If someone else has the email, or it's the user's main
                 email.
         """
-        person = self.person if self.person_id is not None else None
+        user = self.user if self.user_id is not None else None
         if not self.email:
             return
-        if person is not None and person.email.lower() == self.email.lower():
-            raise ValidationError({"email": "This is already the person's main email."})
-        if email_is_taken(self.email, person=person):
+        if user is not None and user.email.lower() == self.email.lower():
+            raise ValidationError({"email": "This is already the user's main email."})
+        if email_is_taken(self.email, user=user):
             raise ValidationError({"email": DUPLICATE_EMAIL_MESSAGE})
 
 
@@ -543,9 +543,9 @@ class MembershipManager(models.Manager):
 
 
 class Membership(UUIDModel):
-    """A role a person holds in an affiliation.
+    """A role a user holds in an affiliation.
 
-    A person who holds two roles in an affiliation has two memberships. Memberships
+    A user who holds two roles in an affiliation has two memberships. Memberships
     aren't deleted; ending one sets its end date, so the AS remembers who was in a
     group and when.
     """
@@ -555,11 +555,11 @@ class Membership(UUIDModel):
         APPROVER = "APPROVER", "Approver"
         CURATOR = "CURATOR", "Curator"
 
-    person = models.ForeignKey(
-        Person,
+    user = models.ForeignKey(
+        User,
         on_delete=models.PROTECT,
         related_name="memberships",
-        verbose_name="Person",
+        verbose_name="User",
     )
     affiliation = models.ForeignKey(
         Affiliation,
@@ -572,13 +572,13 @@ class Membership(UUIDModel):
         blank=True,
         null=True,
         verbose_name="Start Date",
-        help_text="When the person started in this role, if known.",
+        help_text="When the user started in this role, if known.",
     )
     end_date = models.DateField(
         blank=True,
         null=True,
         verbose_name="End Date",
-        help_text="When the person's time in this role ends. Leave blank if it hasn't.",
+        help_text="When the user's time in this role ends. Leave blank if it hasn't.",
     )
     added_at = models.DateTimeField(auto_now_add=True, verbose_name="Added At")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
@@ -589,7 +589,7 @@ class Membership(UUIDModel):
     class Meta:  # ty: ignore[invalid-attribute-override] (Each Django model declares its own Meta.)
         """Provides metadata."""
 
-        ordering = ["role", "person__name"]
+        ordering = ["role", "user__name"]
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(start_date__isnull=True)
@@ -599,18 +599,18 @@ class Membership(UUIDModel):
                 violation_error_message="The end date can't be before the start date.",
             ),
             models.UniqueConstraint(
-                fields=["person", "affiliation", "role"],
+                fields=["user", "affiliation", "role"],
                 condition=models.Q(end_date__isnull=True),
                 name="as_membership_one_open_role",
                 violation_error_message=(
-                    "This person already holds this role in this affiliation."
+                    "This user already holds this role in this affiliation."
                 ),
             ),
         ]
 
     def __str__(self) -> str:
         """Returns who holds which role where."""
-        return f"{self.person}, {self.get_role_display()}, {self.affiliation}"  # ty: ignore[unresolved-attribute] (Django adds get_role_display.)
+        return f"{self.user}, {self.get_role_display()}, {self.affiliation}"  # ty: ignore[unresolved-attribute] (Django adds get_role_display.)
 
     @property
     def is_current(self) -> bool:

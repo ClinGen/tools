@@ -7,8 +7,8 @@ from django.urls import reverse
 
 from affiliations_service.models import Affiliation, ClinVarSubmitterId, Membership
 from affiliations_service.test_models import make_affiliation, make_cdwg
-from affiliations_service.test_people import make_person
-from affiliations_service.tests import make_user
+from affiliations_service.test_users import make_user
+from affiliations_service.tests import make_staff
 
 if TYPE_CHECKING:
     # Django's stubs name the test client's response type only for type checkers.
@@ -50,7 +50,7 @@ class AffiliationCreatePageTest(TestCase):
         cls.cardio = make_cdwg("Cardiovascular")
 
     def setUp(self):
-        self.client.force_login(make_user("as@example.com"))
+        self.client.force_login(make_staff("as@example.com"))
 
     def _post(self, **fields: str) -> "Response":
         data = {
@@ -97,7 +97,7 @@ class AffiliationEditPageTest(TestCase):
         )
 
     def setUp(self):
-        self.client.force_login(make_user("as@example.com"))
+        self.client.force_login(make_staff("as@example.com"))
         self.url = reverse("as:affiliation-edit", kwargs={"pk": self.affiliation.pk})
 
     def _post(self, formset: dict | None = None, **fields: str) -> "Response":
@@ -153,7 +153,7 @@ class AffiliationEditPageTest(TestCase):
 
 class AffiliationDeletePageTest(TestCase):
     def setUp(self):
-        self.client.force_login(make_user("as@example.com"))
+        self.client.force_login(make_staff("as@example.com"))
         self.affiliation = make_affiliation(full_name="Doomed VCEP")
         self.url = reverse("as:affiliation-delete", kwargs={"pk": self.affiliation.pk})
 
@@ -188,7 +188,7 @@ class FormPermissionTest(TestCase):
             reverse("as:affiliation-edit", kwargs={"pk": affiliation.pk}),
             reverse("as:affiliation-delete", kwargs={"pk": affiliation.pk}),
         ]
-        self.client.force_login(make_user("no-as@example.com", as_=False))
+        self.client.force_login(make_staff("no-as@example.com", as_=False))
         for url in urls:
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 403)
@@ -197,7 +197,7 @@ class FormPermissionTest(TestCase):
 
 class AddAnotherRowTest(TestCase):
     def setUp(self):
-        self.client.force_login(make_user("as@example.com"))
+        self.client.force_login(make_staff("as@example.com"))
 
     def test_posting_two_new_submitter_ids_saves_both(self):
         cdwg = make_cdwg("Cardiovascular")
@@ -219,7 +219,7 @@ class AddAnotherRowTest(TestCase):
     def test_forms_offer_to_add_another_row(self):
         cases = [
             (reverse("as:affiliation-create"), "clinvar_submitter_ids"),
-            (reverse("as:person-create"), "other_emails"),
+            (reverse("as:user-create"), "other_emails"),
         ]
         for url, prefix in cases:
             with self.subTest(url=url):
@@ -236,11 +236,11 @@ class CreateWithCoordinatorsTest(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.cardio = make_cdwg("Cardiovascular")
-        cls.ada = make_person("ada@example.org", name="Ada Lovelace")
-        cls.grace = make_person("grace@example.org", name="Grace Hopper")
+        cls.ada = make_user("ada@example.org", name="Ada Lovelace")
+        cls.grace = make_user("grace@example.org", name="Grace Hopper")
 
     def setUp(self):
-        self.client.force_login(make_user("as@example.com"))
+        self.client.force_login(make_staff("as@example.com"))
 
     def _post(self, coordinators: list[str], **fields: str) -> "Response":
         data = {
@@ -254,13 +254,13 @@ class CreateWithCoordinatorsTest(TestCase):
         } | fields
         return self.client.post(reverse("as:affiliation-create"), data | formset_data())
 
-    def test_picked_people_become_coordinators(self):
+    def test_picked_users_become_coordinators(self):
         self._post([str(self.ada.pk), str(self.grace.pk)])
         affiliation = Affiliation.objects.get()
         coordinators = Membership.objects.current().filter(
             affiliation=affiliation, role=Membership.Role.COORDINATOR
         )
-        self.assertEqual({m.person for m in coordinators}, {self.ada, self.grace})
+        self.assertEqual({m.user for m in coordinators}, {self.ada, self.grace})
 
     def test_coordinators_are_optional(self):
         self._post([])
@@ -277,11 +277,11 @@ class CreateWithCoordinatorsTest(TestCase):
 
     def test_the_create_form_searches_for_coordinators(self):
         page = self.client.get(reverse("as:affiliation-create")).content.decode()
-        self.assertIn(f'hx-get="{reverse("as:person-search")}"', page)
+        self.assertIn(f'hx-get="{reverse("as:user-search")}"', page)
         self.assertIn("""hx-vals='{"input": "coordinators"}'""", page)
 
-    def test_the_person_search_can_render_checkboxes(self):
+    def test_the_user_search_can_render_checkboxes(self):
         response = self.client.get(
-            reverse("as:person-search"), {"q": "ada", "input": "coordinators"}
+            reverse("as:user-search"), {"q": "ada", "input": "coordinators"}
         )
         self.assertContains(response, 'type="checkbox" name="coordinators"')

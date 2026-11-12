@@ -1,33 +1,33 @@
-"""Houses tests for the AS API's person endpoints."""
+"""Houses tests for the AS API's user endpoints."""
 
 import uuid
 
-from affiliations_service.models import Person, PersonEmail
+from affiliations_service.models import User, UserEmail
 from affiliations_service.test_api_cdwgs import ApiTestCase
-from affiliations_service.test_people import make_person
+from affiliations_service.test_users import make_user
 
-URL = "/as/api/v1/people"
+URL = "/as/api/v1/users"
 GPM_UUID = "6a1b5f0e-8f0c-4d7e-9a43-2b0f5d3c1e9a"
 ORCID = "0000-0002-1825-0097"
 
 
-class PersonListTest(ApiTestCase):
+class UserListTest(ApiTestCase):
     @classmethod
     def setUpTestData(cls) -> None:
-        cls.ada = make_person(
+        cls.ada = make_user(
             "ada@example.org", name="Ada Lovelace", orcid=ORCID, gpm_uuid=GPM_UUID
         )
-        PersonEmail.objects.create(person=cls.ada, email="countess@uni.edu")
-        PersonEmail.objects.create(person=cls.ada, email="ada@uni.edu")
-        cls.grace = make_person("grace@example.org", name="Grace Hopper")
+        UserEmail.objects.create(user=cls.ada, email="countess@uni.edu")
+        UserEmail.objects.create(user=cls.ada, email="ada@uni.edu")
+        cls.grace = make_user("grace@example.org", name="Grace Hopper")
 
     def _names(self, **params: str | int) -> list[str]:
         return [item["name"] for item in self.get(URL, **params).json()["items"]]
 
-    def test_lists_people_by_name(self):
+    def test_lists_users_by_name(self):
         self.assertEqual(self._names(), ["Ada Lovelace", "Grace Hopper"])
 
-    def test_q_finds_people_by_name_and_any_email(self):
+    def test_q_finds_users_by_name_and_any_email(self):
         self.assertEqual(self._names(q="hopper"), ["Grace Hopper"])
         self.assertEqual(self._names(q="countess"), ["Ada Lovelace"])
         self.assertEqual(self._names(q="uni.edu"), ["Ada Lovelace"])
@@ -47,7 +47,7 @@ class PersonListTest(ApiTestCase):
         self.assertEqual(item["id"], str(self.ada.pk))
 
 
-class PersonCreateUpdateTest(ApiTestCase):
+class UserCreateUpdateTest(ApiTestCase):
     def test_create(self):
         response = self.post(
             URL,
@@ -60,8 +60,8 @@ class PersonCreateUpdateTest(ApiTestCase):
             },
         )
         self.assertEqual(response.status_code, 201)
-        person = Person.objects.get()
-        self.assertEqual(person.credentials, "PhD")
+        user = User.objects.get()
+        self.assertEqual(user.credentials, "PhD")
         self.assertEqual(response.json()["other_emails"], ["ada@uni.edu"])
 
     def test_create_without_an_email(self):
@@ -70,8 +70,8 @@ class PersonCreateUpdateTest(ApiTestCase):
         self.assertEqual(response.json()["email"], "")
 
     def test_update_replaces_other_emails(self):
-        ada = make_person()
-        PersonEmail.objects.create(person=ada, email="old@uni.edu")
+        ada = make_user()
+        UserEmail.objects.create(user=ada, email="old@uni.edu")
         response = self.patch(
             f"{URL}/{ada.pk}",
             {"institution": "Stanford University", "other_emails": ["new@uni.edu"]},
@@ -83,16 +83,14 @@ class PersonCreateUpdateTest(ApiTestCase):
         self.assertEqual(list(emails), ["new@uni.edu"])
 
     def test_update_without_other_emails_keeps_them(self):
-        ada = make_person()
-        PersonEmail.objects.create(person=ada, email="old@uni.edu")
+        ada = make_user()
+        UserEmail.objects.create(user=ada, email="old@uni.edu")
         self.patch(f"{URL}/{ada.pk}", {"name": "Augusta Ada King"})
         self.assertEqual(ada.other_emails.count(), 1)  # type: ignore
 
     def test_duplicate_emails_return_400(self):
-        make_person("ada@example.org")
-        PersonEmail.objects.create(
-            person=make_person("grace@example.org"), email="g@uni.edu"
-        )
+        make_user("ada@example.org")
+        UserEmail.objects.create(user=make_user("grace@example.org"), email="g@uni.edu")
         cases = [
             {"name": "Imposter", "email": "ADA@example.org"},
             {"name": "Imposter", "email": "g@UNI.edu"},
@@ -109,7 +107,7 @@ class PersonCreateUpdateTest(ApiTestCase):
                 self.assertEqual(
                     response.json(), {"detail": "Someone already has this email."}
                 )
-        self.assertEqual(Person.objects.count(), 2)
+        self.assertEqual(User.objects.count(), 2)
 
     def test_bad_orcid_returns_400(self):
         response = self.post(
@@ -122,10 +120,10 @@ class PersonCreateUpdateTest(ApiTestCase):
         self.assertEqual(self.get(unknown).status_code, 404)
         self.assertEqual(self.patch(unknown, {"name": "X"}).status_code, 404)
 
-    def test_people_cant_be_deleted(self):
-        ada = make_person()
+    def test_users_cant_be_deleted(self):
+        ada = make_user()
         self.assertEqual(self.delete(f"{URL}/{ada.pk}").status_code, 405)
-        self.assertTrue(Person.objects.filter(pk=ada.pk).exists())
+        self.assertTrue(User.objects.filter(pk=ada.pk).exists())
 
     def test_requests_without_a_key_get_401(self):
         self.assertEqual(self.client.get(URL).status_code, 401)

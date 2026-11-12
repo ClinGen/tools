@@ -1,9 +1,9 @@
-"""Imports CDWGs, affiliations, and people from the old AS's API.
+"""Imports CDWGs, affiliations, and users from the old AS's API.
 
 The old AS (affils.clinicalgenome.org) keeps coordinators as a name and an email and
-approvers as a name only. Each becomes a `Person` with a membership in the affiliation.
-People are matched by email, ignoring case, and then by name, so an approver who is
-also a coordinator becomes one person. Running the import again updates what it
+approvers as a name only. Each becomes a `User` with a membership in the affiliation.
+Users are matched by email, ignoring case, and then by name, so an approver who is
+also a coordinator becomes one user. Running the import again updates what it
 imported before instead of duplicating it.
 
 Records are saved as the old AS has them, even when they break the AS's rules, so
@@ -24,7 +24,7 @@ from affiliations_service.models import (
     Affiliation,
     ClinVarSubmitterId,
     Membership,
-    Person,
+    User,
 )
 
 # The old AS answers each path this import reads with a list of JSON objects.
@@ -91,14 +91,14 @@ class _Importer:
         # to them by name.
         for old, affiliation in imported:
             for coordinator in old.get("coordinators") or []:
-                person = self._find_or_create_person(
+                user = self._find_or_create_user(
                     coordinator["coordinator_name"], coordinator["coordinator_email"]
                 )
-                self._add_membership(person, affiliation, Membership.Role.COORDINATOR)
+                self._add_membership(user, affiliation, Membership.Role.COORDINATOR)
         for old, affiliation in imported:
             for approver in old.get("approvers") or []:
-                person = self._find_or_create_person(approver["approver_name"], "")
-                self._add_membership(person, affiliation, Membership.Role.APPROVER)
+                user = self._find_or_create_user(approver["approver_name"], "")
+                self._add_membership(user, affiliation, Membership.Role.APPROVER)
 
     def _import_cdwg(self, old: dict) -> CDWG:
         name = old["name"].strip()
@@ -170,41 +170,39 @@ class _Importer:
             for message in error.messages:
                 self.result.warnings.append(f"{label} breaks a rule: {message}")
 
-    def _find_or_create_person(self, name: str, email: str) -> Person:
+    def _find_or_create_user(self, name: str, email: str) -> User:
         name, email = name.strip(), email.strip()
-        person = None
+        user = None
         if email:
-            person = (
-                Person.objects.filter(email__iexact=email).first()
-                or Person.objects.filter(other_emails__email__iexact=email).first()
+            user = (
+                User.objects.filter(email__iexact=email).first()
+                or User.objects.filter(other_emails__email__iexact=email).first()
             )
-        if person is None:
-            same_name = Person.objects.filter(name__iexact=name)
+        if user is None:
+            same_name = User.objects.filter(name__iexact=name)
             if email:
-                # Only a person without an email can be the same as one with an email.
+                # Only a user without an email can be the same as one with an email.
                 same_name = same_name.filter(email="")
-            person = same_name.first()
-            if person is not None and email:
-                person.email = email
-                person.save()
-        if person is None:
-            person = Person.objects.create(name=name, email=email)
-            self.result.created["people"] += 1
-        return person
+            user = same_name.first()
+            if user is not None and email:
+                user.email = email
+                user.save()
+        if user is None:
+            user = User.objects.create(name=name, email=email)
+            self.result.created["users"] += 1
+        return user
 
-    def _add_membership(
-        self, person: Person, affiliation: Affiliation, role: str
-    ) -> None:
+    def _add_membership(self, user: User, affiliation: Affiliation, role: str) -> None:
         current = Membership.objects.filter(
-            person=person, affiliation=affiliation, role=role, end_date__isnull=True
+            user=user, affiliation=affiliation, role=role, end_date__isnull=True
         )
         if not current.exists():
-            Membership.objects.create(person=person, affiliation=affiliation, role=role)
+            Membership.objects.create(user=user, affiliation=affiliation, role=role)
             self.result.created["memberships"] += 1
 
 
 def import_old_as(fetch: Fetch, *, dry_run: bool = False) -> ImportResult:
-    """Imports CDWGs, affiliations, and people from the old AS.
+    """Imports CDWGs, affiliations, and users from the old AS.
 
     Args:
         fetch: Returns the JSON at a path of the old AS's API. `make_fetch` builds one.
