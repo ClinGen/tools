@@ -33,16 +33,20 @@ Defines `ApiKeyAuth`, the Ninja auth class for the CSS's API. It reads the key f
 
 Serves the CSS's API, version 1, as a Django Ninja `NinjaAPI` at `/css/api/v1/`, with
 OpenAPI docs at `/css/api/v1/docs`. Every endpoint needs an API key (see `api/auth.py`),
-and a client sees only its own records. `POST /records` takes the client's affiliation
-and one germline record (`content.RecordRequest`) and saves it to wait for a batch,
-returning 201, or 200 if it replaced a waiting record with the same tool ID. `GET
-/records` lists the client's records a page at a time, `GET /records/{slug}` reads one
-with its JSON and its attempts (`RecordDetail`): each batch it was sent in, oldest
-first, with the batch's status and ClinVar's result, SCV, and errors for the record,
-plus the batch it's in now, if any. Every status comes with the label and description
-the CSS's pages use, and `POST /records/{slug}/withdraw` withdraws a waiting one, or
-returns a 409 for any other. A record that doesn't match, or a body with
-submission-level fields, gets a 422. Clients never see who made a batch or any API key.
+and a client sees only its own records and the batches that hold them. `POST /records`
+takes the client's affiliation and one germline record (`content.RecordRequest`) and
+saves it to wait for a batch, returning 201, or 200 if it replaced a waiting record with
+the same tool ID. `GET /records` lists the client's records a page at a time, `GET
+/records/{slug}` reads one with its JSON and its attempts (`RecordDetail`): each batch
+it was sent in, oldest first, with the batch's status and ClinVar's result, SCV, and
+errors for the record, plus the batch it's in now, if any. `POST
+/records/{slug}/withdraw` withdraws a waiting one, or returns a 409 for any other. `GET
+/batches` lists, newest first and filterable by status and affiliation, the batches
+holding the client's records, and `GET /batches/{slug}` reads one; both count and list
+only the client's records in a batch (`_client_batches()`), so a client never sees
+another client's records. Every status comes with the label and description the CSS's
+pages use. A record that doesn't match, or a body with submission-level fields, gets a
+422. Clients never see who made a batch or any API key.
 
 ### `apps.py`
 
@@ -308,8 +312,10 @@ withdraw a waiting record, with who did in its history, and gets a 409 for any o
 withdraw another client's records; pagination; that a record's detail lists its attempts
 in order, with each batch's status and ClinVar's result, SCV, and errors, and its
 current batch, never names who made a batch, and takes the same number of queries for
-any number of attempts; the OpenAPI docs and endpoints; and that the old batch endpoints
-are gone.
+any number of attempts; that a client lists and reads only batches holding its records,
+each once, with only its own records, filters them by status and affiliation, and never
+sees who made one; the OpenAPI docs and endpoints; and that the old batch endpoints are
+gone.
 
 ### `tests/test_api_keys.py`
 

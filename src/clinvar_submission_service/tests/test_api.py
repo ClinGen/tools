@@ -389,3 +389,107 @@ class RecordAttemptsTest(ApiTestCase):
             self._attempt(self._batch())
         with self.assertNumQueries(len(one)):
             self.get(self.url)
+
+
+BATCHES_URL = "/css/api/v1/batches"
+
+
+class BatchesTest(ApiTestCase):
+    """Tests that a client reads only its own records in the batches that hold them."""
+
+    def setUp(self):
+        super().setUp()
+        self.other_key, self.other_raw_key = ApiKey.objects.create_key(name="VCI")
+        self.mine = self._record("var-1", self.raw_key)
+        self.theirs = self._record("var-2", self.other_raw_key)
+
+    def _record(self, tool_id: str, raw_key: str) -> Record:
+        slug = self.post_record(make_record(tool_id), raw_key=raw_key).json()["slug"]
+        return Record.objects.get(slug=slug)
+
+    def _batch(self, *records: Record, **fields: object) -> Batch:
+        defaults = {"affiliation_id": 10007, "affiliation_name": "Hearing Loss VCEP"}
+        batch = Batch.objects.create(**(defaults | fields))
+        for position, record in enumerate(records):
+            BatchRecord.objects.create(batch=batch, record=record, position=position)
+        return batch
+
+    def test_lists_only_batches_holding_the_clients_records_newest_first(self):
+        older = self._batch(self.mine)
+        self._batch(self.theirs)
+        newer = self._batch(self.mine)
+        body = self.get(BATCHES_URL).json()
+        self.assertEqual([b["slug"] for b in body["items"]], [newer.slug, older.slug])
+        self.assertEqual(body["count"], 2)
+
+    def test_reads_a_batch_with_its_status_and_the_clients_records(self):
+        batch = self._batch(
+            self.mine,
+            status=Batch.Status.ERROR_AT_CLINVAR,
+            clinvar_submission_id="SUB1",
+            clinvar_error_code=1,
+        )
+        BatchRecord.objects.filter(record=self.mine).update(
+            result=BatchRecord.Result.ERROR, errors=[{"userMessage": "Bad HGVS."}]
+        )
+        body = self.get(f"{BATCHES_URL}/{batch.slug}").json()
+        self.assertEqual(body["slug"], batch.slug)
+        self.assertEqual(body["affiliation"], AFFILIATION)
+        self.assertEqual(body["status"], "error_at_clinvar")
+        self.assertEqual(body["status_label"], "Error")
+        self.assertEqual(body["status_description"], Batch.ERROR_CODE_HELP[1])
+        self.assertEqual(body["clinvar_submission_id"], "SUB1")
+        self.assertEqual(body["clinvar_error_code"], 1)
+        self.assertEqual(body["record_count"], 1)
+        [record] = body["records"]
+        self.assertEqual(record["slug"], self.mine.slug)
+        self.assertEqual(record["tool_id"], "var-1")
+        self.assertEqual(record["result"], "Error")
+        self.assertEqual(record["errors"], [{"userMessage": "Bad HGVS."}])
+
+    def test_shows_each_client_only_its_own_records_in_a_shared_batch(self):
+        batch = self._batch(self.theirs, self.mine)
+        mine = self.get(f"{BATCHES_URL}/{batch.slug}").json()
+        theirs = self.get(f"{BATCHES_URL}/{batch.slug}", self.other_raw_key).json()
+        self.assertEqual([r["slug"] for r in mine["records"]], [self.mine.slug])
+        self.assertEqual([r["slug"] for r in theirs["records"]], [self.theirs.slug])
+        self.assertEqual(mine["record_count"], 1)
+        listed = self.get(BATCHES_URL).json()["items"]
+        self.assertEqual(listed[0]["record_count"], 1)
+
+    def test_a_batch_with_several_of_the_clients_records_is_listed_once(self):
+        second = self._record("var-3", self.raw_key)
+        batch = self._batch(self.mine, self.theirs, second)
+        [listed] = self.get(BATCHES_URL).json()["items"]
+        self.assertEqual(listed["record_count"], 2)
+        body = self.get(f"{BATCHES_URL}/{batch.slug}").json()
+        self.assertEqual(
+            [r["slug"] for r in body["records"]], [self.mine.slug, second.slug]
+        )
+
+    def test_another_clients_batch_is_not_found(self):
+        batch = self._batch(self.theirs)
+        self.assertEqual(self.get(f"{BATCHES_URL}/{batch.slug}").status_code, 404)
+        self.assertEqual(self.get(BATCHES_URL).json()["items"], [])
+
+    def test_filters_by_status_and_affiliation(self):
+        sent = self._batch(self.mine, status=Batch.Status.SUBMITTED_TO_CLINVAR)
+        self._batch(self.mine, affiliation_id=10008)
+        by_status = self.get(f"{BATCHES_URL}?status=submitted_to_clinvar").json()
+        self.assertEqual([b["slug"] for b in by_status["items"]], [sent.slug])
+        by_affiliation = self.get(f"{BATCHES_URL}?affiliation=10008").json()
+        self.assertEqual(len(by_affiliation["items"]), 1)
+        self.assertEqual(by_affiliation["items"][0]["affiliation"]["id"], 10008)
+        self.assertEqual(self.get(f"{BATCHES_URL}?status=nope").status_code, 422)
+
+    def test_never_shows_who_made_a_batch_or_any_api_key(self):
+        batch = self._batch(self.mine)
+        for url in (BATCHES_URL, f"{BATCHES_URL}/{batch.slug}"):
+            text = self.get(url).content.decode()
+            for name in ("made_by", "api_key", "staff"):
+                self.assertNotIn(name, text)
+
+    def test_the_openapi_schema_has_the_batches_paths(self):
+        paths = self.client.get("/css/api/v1/openapi.json").json()["paths"]
+        self.assertIn("/css/api/v1/batches", paths)
+        self.assertIn("/css/api/v1/batches/{slug}", paths)

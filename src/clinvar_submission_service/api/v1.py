@@ -2,14 +2,14 @@
 
 Clients send records one at a time, and staff later send them to ClinVar in batches.
 Clients authenticate with an API key in the X-API-Key header and see only their own
-records. The OpenAPI docs are at /css/api/v1/docs.
+records, and the batches that hold them. The OpenAPI docs are at /css/api/v1/docs.
 """
 
 import json
 from datetime import datetime
 from typing import Any
 
-from django.db.models import Prefetch, QuerySet
+from django.db.models import Count, Prefetch, Q, QuerySet
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from ninja import Field, NinjaAPI, Schema, Status
@@ -17,7 +17,7 @@ from ninja.pagination import paginate
 
 from clinvar_submission_service.api.auth import ApiKeyAuth
 from clinvar_submission_service.content import Affiliation, RecordRequest
-from clinvar_submission_service.models import BatchRecord, Record
+from clinvar_submission_service.models import ApiKey, Batch, BatchRecord, Record
 from clinvar_submission_service.services import (
     NotWithdrawableError,
     save_record,
@@ -37,11 +37,11 @@ api = NinjaAPI(
 )
 
 
-def _affiliation_of(record: Record) -> Affiliation | None:
-    """Returns a record's affiliation, or None if it has none."""
-    if record.affiliation_id is None:
+def _affiliation_of(obj: Record | Batch) -> Affiliation | None:
+    """Returns a record's or batch's affiliation, or None if it has none."""
+    if obj.affiliation_id is None:
         return None
-    return Affiliation(id=record.affiliation_id, name=record.affiliation_name)
+    return Affiliation(id=obj.affiliation_id, name=obj.affiliation_name)
 
 
 class BatchSummary(Schema):
@@ -190,3 +190,101 @@ def withdraw(request: HttpRequest, slug: str) -> Record | Status[Error]:
         return withdraw_record(record, by=f"the {api_key.name}")
     except NotWithdrawableError as error:
         return Status(409, Error(detail=str(error)))
+
+
+class BatchRecordOut(Schema):
+    """One of the client's records in a batch, and ClinVar's result for it."""
+
+    slug: str
+    tool_id: str
+    position: int
+    result: str
+    scv: str
+    errors: Any = Field(description="ClinVar's errors for the record, as it sent them.")
+
+    @staticmethod
+    def resolve_slug(attempt: BatchRecord) -> str:
+        """Returns the record's slug."""
+        return attempt.record.slug
+
+    @staticmethod
+    def resolve_tool_id(attempt: BatchRecord) -> str:
+        """Returns the record's tool ID."""
+        return attempt.record.tool_id
+
+
+class BatchOut(BatchSummary):
+    """A batch that holds some of the client's records."""
+
+    affiliation: Affiliation | None
+    record_count: int = Field(
+        alias="client_record_count",
+        description="How many of the client's records the batch holds.",
+    )
+
+    @staticmethod
+    def resolve_affiliation(batch: Batch) -> Affiliation | None:
+        """Returns the batch's affiliation, if it has one."""
+        return _affiliation_of(batch)
+
+
+class BatchDetail(BatchOut):
+    """A batch and the client's records in it, in batch order."""
+
+    records: list[BatchRecordOut] = Field(alias="client_records")
+
+
+def _client_batches(api_key: ApiKey) -> QuerySet[Batch]:
+    """Returns the batches holding the client's records, newest first.
+
+    Each batch counts and prefetches only the client's records, so a client never
+    sees another client's records in a batch they share.
+    """
+    mine = Q(batch_records__record__api_key=api_key)
+    client_records = (
+        BatchRecord.objects.filter(record__api_key=api_key)
+        .select_related("record")
+        .order_by("position")
+    )
+    return (
+        Batch.objects.filter(mine)
+        .annotate(client_record_count=Count("batch_records", filter=mine))
+        .prefetch_related(
+            Prefetch("batch_records", queryset=client_records, to_attr="client_records")
+        )
+        .order_by("-added_at")
+    )
+
+
+@api.get("/batches", response=list[BatchOut])
+@paginate
+def list_batches(
+    request: HttpRequest,
+    status: Batch.Status | None = None,
+    affiliation: int | None = None,
+) -> QuerySet[Batch]:
+    """Lists the batches that hold the calling client's records, newest first.
+
+    Filter by status, such as submitted_to_clinvar, or by affiliation, by its AS ID.
+
+    Returns:
+        The batches, a page at a time.
+    """
+    batches = _client_batches(request.auth)  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)
+    if status:
+        batches = batches.filter(status=status)
+    if affiliation is not None:
+        batches = batches.filter(affiliation_id=affiliation)
+    return batches
+
+
+@api.get("/batches/{slug}", response=BatchDetail)
+def read_batch(request: HttpRequest, slug: str) -> Batch:
+    """Reads a batch that holds the calling client's records.
+
+    It lists only the client's records in the batch, with ClinVar's result for each.
+
+    Returns:
+        The batch, or 404 if it holds none of the client's records.
+    """
+    return get_object_or_404(_client_batches(request.auth), slug=slug)  # ty: ignore[unresolved-attribute] (Ninja sets request.auth.)

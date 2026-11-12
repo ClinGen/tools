@@ -384,14 +384,21 @@ go in a new version beside it. Ninja validates request bodies and serves OpenAPI
 - `GET /css/api/v1/records`: list the calling client's records, newest first.
 - `POST /css/api/v1/records/{slug}/withdraw`: withdraw a waiting record, so it won't be
   sent to ClinVar. A record in a batch, or one ClinVar accepted, gets a 409.
+- `GET /css/api/v1/batches`: list the batches that hold the calling client's records,
+  newest first, filtered by status or affiliation if asked.
+- `GET /css/api/v1/batches/{slug}`: read one of those batches: its affiliation, status,
+  ClinVar ID, ClinVar's error code, and the client's records in it, in order, with
+  ClinVar's result, SCV, and errors for each. A batch with none of the client's records
+  is a 404.
 
 Each client system has its own API key, which it sends in the `X-API-Key` header. The
 Django admin shows a new key once and stores only its hash. A client sees only its own
-records. Unlike the staff pages, the API returns ClinVar's errors as ClinVar sent them,
-so each client tool can decide how to show them, and every status comes with the label
-and description the CSS's pages use. It never says who made a batch. There are no
-webhooks: clients poll a record's GET endpoint to learn when its status changes. The API
-doesn't use Clerk sessions or CSRF protection.
+records, and in a batch, only its own records, since two clients could send records for
+one affiliation. Unlike the staff pages, the API returns ClinVar's errors as ClinVar
+sent them, so each client tool can decide how to show them, and every status comes with
+the label and description the CSS's pages use. It never says who made a batch. There are
+no webhooks: clients poll a record's GET endpoint to learn when its status changes. The
+API doesn't use Clerk sessions or CSRF protection.
 
 #### Poller
 
