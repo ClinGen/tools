@@ -242,12 +242,6 @@ django-send-dummy-records *args:
     uv run scripts/send_dummy_records.py {{args}}
 alias djsd := django-send-dummy-records
 
-# Replace the CSS's batches and records with the sample fixture. ------
-[group('django')]
-django-loaddata-test:
-    cd src && uv run manage.py load_css_sample_data
-alias djlt := django-loaddata-test
-
 # Enter the shell. ---------------------------------------------------
 [group('django')]
 django-shell:

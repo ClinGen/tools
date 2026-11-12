@@ -70,18 +70,6 @@ reports in memory, so tests never reach ClinVar. Each of its calls can be told t
 Also builds sample content: `make_record()` returns a germline record, with any field
 replaced, and `make_content()` wraps records in content.
 
-### `fixtures/test_batches.json`
-
-A Django fixture with a VCI API key, records from five made-up affiliations, and eight
-batches of them, with at least one batch in each status: ones ClinVar never got (not
-sent and send failed), and submitted, processing, processed, and error ones sent to
-ClinVar, with made-up ClinVar IDs, responses, and summary reports with SCVs and errors.
-Each attempt's result matches its batch's report. Records are in every status, including
-waiting ones not yet in a batch, a withdrawn one, accepted ones with their SCVs, one
-that failed and waits again, and one retried across two batches. Two affiliations have
-settings. No batch is made by a client, and none is due to poll. Load it with `just
-django-loaddata-test`; tests load it with `fixtures = ["test_batches.json"]`.
-
 ### `forms.py`
 
 Defines `AffiliationSettingsForm`, which edits an affiliation's `AffiliationSettings`.
@@ -96,13 +84,6 @@ Empty file that marks `management` as a Python package.
 ### `management/commands/__init__.py`
 
 Empty file that marks `commands` as a Python package.
-
-### `management/commands/load_css_sample_data.py`
-
-Defines the `load_css_sample_data` command, which `just django-loaddata-test` runs. In
-one transaction, it deletes the CSS's batches, records, attempts, and affiliation
-settings, then loads `fixtures/test_batches.json`, so loading again resets the sample
-data instead of conflicting with rows already there. It keeps API keys.
 
 ### `management/commands/poll_clinvar.py`
 
@@ -339,16 +320,6 @@ Checks `ClinVarClient` against ClinVar's real test endpoint with a dry run, whic
 creates nothing. It's skipped unless `RUN_CONTRACT_TESTS=1` and `CSS_CLINVAR_API_KEY`
 are set in the environment.
 
-### `test_fixtures.py`
-
-Tests the fixture: it has a batch and a record in every status, from several
-affiliations, only sent batches have a ClinVar ID, only finished ones have a summary
-report, each batch's records match what parsing its content gives, each attempt's result
-matches its batch's report, a record is retried across two batches, and every CSS page
-renders, including each batch's, record's, new batch, and settings page. Also tests that
-`load_css_sample_data` can run twice, replaces attempts numbered differently from the
-fixture and data made in the UI, and keeps API keys.
-
 ### `test_polling.py`
 
 Tests the poller against `FakeClinVarClient`: the backoff and its cap, that it maps each
@@ -410,7 +381,7 @@ records who did, refuses an empty, mixed, or not-waiting selection with a plain 
 affiliation; and that a record's page shows its fields, status, attempts with their
 batch, result, and SCV, and its history in plain words, offers Withdraw only while the
 record waits, is linked from the Records list and batch pages, shows no raw JSON or
-ClinVar errors, and 404s for an unknown slug. Against the fixtures, tests the
+ClinVar errors, and 404s for an unknown slug. With two affiliations' data, tests the
 affiliations page's counts for each pill, an affiliation known only from its records,
 order, columns matching each list's pills, links to the filtered lists, and labeled
 settings gear; and, on both lists, the affiliation select's options, order, and
@@ -459,7 +430,7 @@ pairs each `Record` with its result in ClinVar's summary report. The resend view
 takes only POSTs, forwards a send_to_clinvar_failed batch again through
 `services.forward_batch()` and shows a plain error message if ClinVar still didn't get
 it. The withdraw view, also POST-only, withdraws a waiting record through
-`services.withdraw_record()` and returns to the record's page with a plain message. While
-ClinVar is simulated, the POST-only delete views delete every record or every batch
-through `simulation.py` and return to that list with a message; otherwise they're 404,
-so real data can't be deleted.
+`services.withdraw_record()` and returns to the record's page with a plain message.
+While ClinVar is simulated, the POST-only delete views delete every record or every
+batch through `simulation.py` and return to that list with a message; otherwise they're
+404, so real data can't be deleted.

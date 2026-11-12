@@ -1007,8 +1007,49 @@ class AffiliationSelectTest(CssViewTestCase):
                 self.assertNotContains(response, _new_batch_url(10007))
 
 
+def _sample_record(affiliation_id: int, name: str, status: str) -> Record:
+    """Returns a new record from the affiliation, in the status."""
+    local_id = f"var-{Record.objects.count()}"
+    content = Content.model_validate(make_content(make_record(local_id)))
+    return Record.objects.create(
+        **record_fields(content)[0],
+        affiliation_id=affiliation_id,
+        affiliation_name=name,
+        status=status,
+    )
+
+
 class AffiliationTestCase(TestCase):
-    fixtures = ["test_batches.json"]
+    """Has two affiliations' records and batches, each in a few statuses."""
+
+    @classmethod
+    def setUpTestData(cls) -> None:
+        samples = {
+            (10901, "Cardiomyopathy VCEP"): (
+                [
+                    Record.Status.WAITING_FOR_BATCH,
+                    Record.Status.WAITING_FOR_BATCH,
+                    Record.Status.IN_BATCH,
+                    Record.Status.SUCCEEDED_AT_CLINVAR,
+                ],
+                [
+                    Batch.Status.NOT_SENT_TO_CLINVAR,
+                    Batch.Status.PROCESSED_BY_CLINVAR,
+                    Batch.Status.ERROR_AT_CLINVAR,
+                ],
+            ),
+            (10902, "TP53 VCEP"): (
+                [Record.Status.WITHDRAWN],
+                [Batch.Status.SUBMITTED_TO_CLINVAR],
+            ),
+        }
+        for (affiliation_id, name), (records, batches) in samples.items():
+            for status in records:
+                _sample_record(affiliation_id, name, status)
+            for status in batches:
+                Batch.objects.create(
+                    affiliation_id=affiliation_id, affiliation_name=name, status=status
+                )
 
     def setUp(self):
         self.client.force_login(_make_user("staff@example.com", css=True))
@@ -1068,14 +1109,8 @@ class AffiliationsViewTest(AffiliationTestCase):
         self.assertEqual(
             counts,
             {
-                "CDH1 VCEP": ((3, 1, 0, 2, 0), (1, 0, 0, 0, 0, 0, 1)),
-                "Cardiomyopathy VCEP": ((5, 2, 2, 1, 0), (3, 1, 0, 0, 1, 1, 0)),
-                "Malignant Hyperthermia Susceptibility VCEP": (
-                    (1, 0, 1, 0, 0),
-                    (1, 0, 0, 1, 0, 0, 0),
-                ),
-                "Phenylketonuria VCEP": ((2, 0, 0, 2, 0), (1, 0, 0, 0, 0, 1, 0)),
-                "TP53 VCEP": ((3, 0, 2, 0, 1), (2, 0, 1, 0, 0, 0, 1)),
+                "Cardiomyopathy VCEP": ((4, 2, 1, 1, 0), (3, 1, 0, 0, 0, 1, 1)),
+                "TP53 VCEP": ((1, 0, 0, 0, 1), (1, 0, 0, 1, 0, 0, 0)),
             },
         )
 

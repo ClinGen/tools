@@ -178,39 +178,16 @@ its backup credentials first (see How to Configure Backup Credentials).
 Every deploy restarts Gunicorn and the ClinVar poller. The poller finishes the batch
 it's polling before it stops.
 
-## How to Load Sample CSS Records and Batches Locally
+## How to Try the CSS Workflow Locally
+
+This sends dummy records to your local CSS, as the VCI would, and has a simulated
+ClinVar accept and process the batches you send, so nothing reaches the VCI or ClinVar.
 
 - Apply the migrations:
 
   ```
   just django-migrate
   ```
-
-- Load the test fixtures:
-
-  ```
-  just django-loaddata-test
-  ```
-
-  This adds a VCI API key, records from five affiliations, and eight batches of them.
-  Two batches never reached ClinVar (`not_sent_to_clinvar` and
-  `send_to_clinvar_failed`), and six were sent (`submitted_to_clinvar`,
-  `processing_at_clinvar`, `processed_by_clinvar`, and `error_at_clinvar`). Records are
-  in every status: some wait for a batch, one was withdrawn, some are in a batch, and
-  some ClinVar accepted, with SCVs. One record failed in an earlier batch and was
-  retried in a later one, and one failed and is waiting again. Two affiliations have
-  ClinVar settings. The affiliation IDs and ClinVar IDs are made up, and none of the
-  batches is due to poll, so a local poller leaves them alone. The API key has no raw
-  value, so it can't call the API; create a key in the Django admin for that.
-
-- Open `/css/records/` or `/css/batches/` to see them. Loading the fixtures again resets them: it deletes every CSS
-  batch, record, and affiliation setting first, including ones you made in the UI, but
-  keeps API keys.
-
-## How to Try the CSS Workflow Locally
-
-This sends dummy records to your local CSS, as the VCI would, and has a simulated
-ClinVar accept and process the batches you send, so nothing reaches the VCI or ClinVar.
 
 - Make an API key for the dummy records. Run `just django-runserver`, open
   `/admin/clinvar_submission_service/apikey/add/`, name it `Dummy VCI`, and save. Copy
@@ -262,5 +239,4 @@ ClinVar accept and process the batches you send, so nothing reaches the VCI or C
   the poller.
 - To start over, click **Flush Records** in the banner, which deletes every record and
   batch, or **Flush Batches**, which deletes every batch and puts its records back to
-  waiting. Affiliation settings and API keys stay. To replace everything with
-  the sample fixture instead, run `just django-loaddata-test`.
+  waiting. Affiliation settings and API keys stay.
