@@ -81,8 +81,11 @@ records each write, so tests never reach AWS. It can be told to fail a write.
 ### `tests/test_clients.py`
 
 Tests each `EtsClient` method against stubbed AWS clients, including DynamoDB pagination
-and users that aren't found; the `EmailTransfer` slug, including a colliding one, and
-history; and that only users with ETS permissions can open the home page.
+and users that aren't found.
+
+### `tests/test_models.py`
+
+Tests the `EmailTransfer` slug, including a colliding one, and its history.
 
 ### `tests/test_transfers.py`
 
@@ -93,6 +96,11 @@ and confirming one, which re-checks the preconditions and records who ran it. Al
 checks that the summaries, failures, and pages name no Cognito users, DynamoDB records,
 or attribute names, while the saved transfer keeps them, and that every page has the
 header with the right tab active.
+
+### `tests/test_views.py`
+
+Tests that only users with ETS permissions can open the home page, and that the landing
+page links to it.
 
 ### `transfers.py`
 

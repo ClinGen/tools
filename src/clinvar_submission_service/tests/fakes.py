@@ -7,6 +7,18 @@ from datetime import UTC, datetime
 from typing import Any
 
 from clinvar_submission_service.clients import ClinVarError, ClinVarStatus
+from clinvar_submission_service.models import (
+    AffectedStatus,
+    AlleleOrigin,
+    Assembly,
+    Batch,
+    BatchRecord,
+    Classification,
+    CollectionMethod,
+    ConditionDb,
+    Record,
+    RecordStatus,
+)
 
 
 class FakeClinVarClient:
@@ -123,3 +135,36 @@ def make_content(*records: dict[str, Any]) -> dict[str, Any]:
         "germlineSubmission": list(records) or [make_record()],
         "assertionCriteria": {"db": "PubMed", "id": "25741868"},
     }
+
+
+def make_saved_record(batch: Batch | None, local_id: str, **fields: object) -> Record:
+    """Saves and returns a likely pathogenic record.
+
+    Args:
+        batch: The batch to add the record to, or None for a record in no batch.
+        local_id: The record's local ID.
+        **fields: Fields to set in place of the defaults.
+
+    Returns:
+        The saved record.
+    """
+    defaults = {
+        "record_status": RecordStatus.NOVEL,
+        "local_id": local_id,
+        "submitted_assembly": Assembly.GRCH38,
+        "hgvs": "NC_000017.11:g.43045712T>C",
+        "condition_db": ConditionDb.MONDO,
+        "condition_id": "MONDO:0011450",
+        "classification": Classification.LIKELY_PATHOGENIC,
+        "allele_origin": AlleleOrigin.GERMLINE,
+        "affected_status": AffectedStatus.NOT_PROVIDED,
+        "collection_method": CollectionMethod.CURATION,
+    }
+    record = Record.objects.create(**(defaults | fields))
+    if batch:
+        BatchRecord.objects.create(
+            batch=batch,
+            record=record,
+            position=batch.batch_records.count(),  # type: ignore
+        )
+    return record

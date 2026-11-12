@@ -14,7 +14,11 @@ from clinvar_submission_service.services import (
     make_batch,
     save_record,
 )
-from clinvar_submission_service.tests.fakes import FakeClinVarClient, make_record
+from clinvar_submission_service.tests.fakes import (
+    FakeClinVarClient,
+    make_record,
+    make_saved_record,
+)
 
 HEARING_LOSS = Affiliation(id=10007, name="Hearing Loss VCEP")
 
@@ -165,3 +169,29 @@ class ForwardBatchTest(ServicesTestCase):
             forward_batch(self.batch)
         self.batch.refresh_from_db()
         self.assertEqual(self.batch.status, Batch.Status.SEND_TO_CLINVAR_FAILED)
+
+
+class BuildPayloadTest(TestCase):
+    def test_lists_each_records_json_in_order_with_the_batchs_fields(self):
+        batch = Batch.objects.create(
+            assertion_criteria_db="PubMed",
+            assertion_criteria_id="25741868",
+            behalf_org_id=506185,
+            release_status="public",
+        )
+        first = make_saved_record(batch, "var-2")
+        second = make_saved_record(batch, "var-1")
+        self.assertEqual(
+            build_payload(batch),
+            {
+                "germlineSubmission": [first.payload, second.payload],
+                "assertionCriteria": {"db": "PubMed", "id": "25741868"},
+                "behalfOrgID": 506185,
+                "clinvarSubmissionReleaseStatus": "public",
+            },
+        )
+
+    def test_leaves_out_fields_the_batch_doesnt_have(self):
+        batch = Batch.objects.create()
+        record = make_saved_record(batch, "var-1")
+        self.assertEqual(build_payload(batch), {"germlineSubmission": [record.payload]})

@@ -1,29 +1,15 @@
-import uuid
-from unittest import mock
-
 import boto3
 from botocore.stub import Stubber
-from django.contrib.auth.models import User
 from django.test import TestCase
-from django.urls import reverse
 
-from auth_.models import UserProfile
 from email_transfer_service.clients import (
     CognitoUser,
     EtsClient,
     UserRecord,
 )
-from email_transfer_service.models import EmailTransfer
 
 USER_POOL_ID = "us-west-2_test"
 TABLE_NAME = "GeneVariantCuration-test"
-
-
-def _make_user(username: str, *, ets: bool = False) -> User:
-    """Returns a user whose profile has the given ETS permission."""
-    user = User.objects.create_user(username=username, email=username)
-    UserProfile.objects.create(user=user, has_ets_permissions=ets)
-    return user
 
 
 def _make_client() -> tuple[EtsClient, Stubber, Stubber]:
@@ -211,76 +197,3 @@ class WriteTest(TestCase):
             client.disable_cognito_user("abc-123")
             client.enable_cognito_user("abc-123")
         cognito.assert_no_pending_responses()
-
-
-class EmailTransferModelTest(TestCase):
-    def _create(self) -> EmailTransfer:
-        return EmailTransfer.objects.create(
-            old_email="old@example.com",
-            new_email="new@example.com",
-        )
-
-    def test_slug_is_t_and_the_start_of_the_uuid(self):
-        transfer = self._create()
-        self.assertIsInstance(transfer.pk, uuid.UUID)
-        self.assertEqual(transfer.slug, f"T{transfer.pk.hex[:8]}")
-        self.assertEqual(str(transfer), transfer.slug)
-
-    def test_slug_does_not_change_on_later_saves(self):
-        transfer = self._create()
-        slug = transfer.slug
-        transfer.status = EmailTransfer.Status.FAILED
-        transfer.save()
-        transfer.refresh_from_db()
-        self.assertEqual(transfer.slug, slug)
-
-    def test_colliding_slug_gets_a_new_uuid(self):
-        taken = uuid.UUID("3f2a9c1e-0000-4000-8000-000000000001")
-        fresh = uuid.UUID("aaaaaaaa-0000-4000-8000-000000000002")
-        EmailTransfer.objects.create(
-            id=taken, old_email="a@example.com", new_email="b@example.com"
-        )
-        # Same first 8 hex characters as the taken one, so the slug collides.
-        colliding = uuid.UUID("3f2a9c1e-ffff-4fff-8fff-ffffffffffff")
-        with mock.patch("common.models.uuid.uuid4", return_value=fresh):
-            transfer = EmailTransfer.objects.create(
-                id=colliding,
-                old_email="old@example.com",
-                new_email="new@example.com",
-            )
-        self.assertEqual(transfer.pk, fresh)
-        self.assertEqual(transfer.slug, "Taaaaaaaa")
-
-    def test_changes_are_recorded_in_history(self):
-        transfer = self._create()
-        transfer.status = EmailTransfer.Status.SUCCEEDED
-        transfer.save()
-        self.assertEqual(transfer.history.first().status, "succeeded")  # type: ignore
-        self.assertGreaterEqual(transfer.history.count(), 2)  # type: ignore
-
-
-class IndexViewTest(TestCase):
-    def test_anonymous_user_is_sent_to_sign_in(self):
-        response = self.client.get(reverse("ets:index"))
-        self.assertEqual(response.status_code, 302)
-        self.assertIn("/auth/login", response["Location"])
-
-    def test_user_without_ets_permissions_gets_403(self):
-        self.client.force_login(_make_user("staff@example.com"))
-        response = self.client.get(reverse("ets:index"))
-        self.assertEqual(response.status_code, 403)
-
-    def test_user_with_ets_permissions_gets_200(self):
-        self.client.force_login(_make_user("staff@example.com", ets=True))
-        response = self.client.get(reverse("ets:index"))
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "email_transfer_service/index.html")
-        self.assertContains(
-            response,
-            "Moves a GCI/VCI user&#x27;s account from an old email to a new one.",
-        )
-
-    def test_landing_page_lists_the_ets(self):
-        response = self.client.get(reverse("home"))
-        self.assertContains(response, "Email Transfer Service")
-        self.assertContains(response, reverse("ets:index"))

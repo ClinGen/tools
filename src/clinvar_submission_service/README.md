@@ -283,7 +283,13 @@ Marks `tests` as a Python package.
 Defines `FakeClinVarClient`, which holds ClinVar's submissions, statuses, and summary
 reports in memory, so tests never reach ClinVar. Each of its calls can be told to fail.
 Also builds sample content: `make_record()` returns a germline record, with any field
-replaced, and `make_content()` wraps records in content.
+replaced, and `make_content()` wraps records in content. `make_saved_record()` saves a
+`Record`, in a batch if given one.
+
+### `tests/test_admin.py`
+
+Tests the admin pages for batches and records, including a batch's records and a
+record's batches.
 
 ### `tests/test_api.py`
 
@@ -316,17 +322,19 @@ Checks `ClinVarClient` against ClinVar's real test endpoint with a dry run, whic
 creates nothing. It's skipped unless `RUN_CONTRACT_TESTS=1` and `CSS_CLINVAR_API_KEY`
 are set in the environment.
 
+### `tests/test_migrations.py`
+
+Tests that the migration naming each status relative to ClinVar renames old rows and
+their history, and back.
+
 ### `tests/test_models.py`
 
 Tests the `Batch` slug, including a colliding one, its default status, and its history;
 a `Record`'s order, history, and classifications, and that it's deleted with its batch;
-which batches are due to poll; the admin pages, including a batch's records; and that
-only users with CSS permissions can open the home page, which the landing page links to.
-Also tests `BatchRecord`: a record's order in a batch, that it's in a batch once but can
-be tried in several, that deleting a batch keeps its records, and `build_payload()`.
-Also tests a standalone `Record`: its R slug, default status, history, status help, and
-bulk slugs that avoid taken ones. Also tests that the migration naming each status
-relative to ClinVar renames old rows and their history, and back. Also tests that
+and which batches are due to poll. Also tests `BatchRecord`: a record's order in a
+batch, that it's in a batch once but can be tried in several, and that deleting a batch
+keeps its records. Also tests a standalone `Record`: its R slug, default status,
+history, status help, and bulk slugs that avoid taken ones. Also tests that
 `AffiliationSettings` keeps history and that an affiliation has one.
 
 ### `tests/test_polling.py`
@@ -348,7 +356,8 @@ copies its affiliation's settings or, without any, leaves them out; that no reco
 mixed affiliations, withdrawn or batched records, and too many records are refused and
 save nothing; that a batch ClinVar accepts is submitted with its records' content; and
 that a rejected send, or a missing ClinVar key, leaves it send_to_clinvar_failed with
-its records in it, isn't retried, and can be resent.
+its records in it, isn't retried, and can be resent. Also tests that `build_payload()`
+lists each record's JSON in order with the batch's fields, leaving out ones it lacks.
 
 ### `tests/test_simulation.py`
 
@@ -365,8 +374,9 @@ only on a POST, and only for staff with CSS permissions.
 
 ### `tests/test_views.py`
 
-Tests the staff pages: that each needs CSS permissions; the list's order, affiliations
-and variants, status filter and its pills, affiliation filter (alone, with the status
+Tests the staff pages: that each needs CSS permissions, and that the home page goes to
+the Records list, which the landing page links to; the list's order, affiliations and
+variants, status filter and its pills, affiliation filter (alone, with the status
 filter, and with an unknown ID), search by ID, affiliation, gene, or HGVS, sorting,
 pagination that keeps the search and filters, the results-only response to HTMX, and
 header; each status's tag color, ClinVar's wording, and tooltip, on the list and the
