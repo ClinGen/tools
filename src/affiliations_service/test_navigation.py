@@ -89,7 +89,6 @@ class BreadcrumbTest(TestCase):
         self.assertEqual(
             self._crumbs(edit_url),
             [
-                ("Home", reverse("home")),
                 ("Affiliation Search", reverse("as:index")),
                 ("Kidney Cystic GCEP", affiliation.get_absolute_url()),
                 ("Edit", ""),
@@ -109,15 +108,17 @@ class BreadcrumbTest(TestCase):
     def test_person_and_new_pages_trails(self):
         self.assertEqual(
             [text for text, _ in self._crumbs(self.person.get_absolute_url())],
-            ["Home", "People Search", "Ada Lovelace"],
+            ["People Search", "Ada Lovelace"],
         )
         self.assertEqual(
             [text for text, _ in self._crumbs(reverse("as:affiliation-create"))],
-            ["Home", "Affiliation Search", "New Affiliation"],
+            ["Affiliation Search", "New Affiliation"],
         )
 
     def test_the_breadcrumbs_render_with_the_last_one_active(self):
         page = self.client.get(self.affiliation.get_absolute_url()).content.decode()
         self.assertIn('class="breadcrumb"', page)
-        self.assertIn(f'href="{reverse("home")}"', page)
+        self.assertNotIn(
+            '<i class="bi bi-house', page[page.index('class="breadcrumb"') :]
+        )
         self.assertIn('<li class="is-active">', page)

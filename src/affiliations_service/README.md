@@ -71,9 +71,9 @@ Configures the `affiliations_service` app.
 
 ### `breadcrumbs.py`
 
-Builds the breadcrumb trail at the top of each AS page, like the HCI's: Home (the
-ClinGen Tools landing page), the list page, the object's page, and the current action.
-Each view passes its trail to its template as `breadcrumbs`.
+Builds the breadcrumb trail at the top of each AS page, like the HCI's: the list page,
+the object's page, and the current action. There's no Home crumb, since the site navbar
+links home. Each view passes its trail to its template as `breadcrumbs`.
 
 ### `forms.py`
 

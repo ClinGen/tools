@@ -1,4 +1,8 @@
-"""Builds the breadcrumb trails at the top of the AS's pages, like the HCI's."""
+"""Builds the breadcrumb trails at the top of the AS's pages, like the HCI's.
+
+Unlike the HCI's, the trails don't start with Home, since the site navbar already
+links to the ClinGen Tools home page.
+"""
 
 from dataclasses import dataclass
 
@@ -21,15 +25,16 @@ class Crumb:
 
 
 def trail(*crumbs: Crumb) -> list[Crumb]:
-    """Returns a trail that starts at the ClinGen Tools home page.
+    """Returns a breadcrumb trail.
 
     Args:
-        *crumbs: The crumbs after Home. The last one is the current page.
+        *crumbs: The crumbs, starting with a list page. The last one is the current
+            page.
 
     Returns:
-        Home, then the given crumbs.
+        The crumbs, as a list.
     """
-    return [Crumb("Home", reverse("home"), "house"), *crumbs]
+    return list(crumbs)
 
 
 def search(text: str, url_name: str, *, current: bool = False) -> Crumb:
