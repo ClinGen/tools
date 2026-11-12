@@ -1,10 +1,12 @@
+"""Houses tests for the landing page and the error pages."""
+
 from django.http import HttpRequest, HttpResponse
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import include, path, reverse
 from django.views.defaults import server_error
 
 from config import urls as project_urls
-from core.tools import TOOLS, get_tool
+from core.tools import TOOLS
 
 
 def fake_ets_index(request: HttpRequest) -> HttpResponse:  # ruff: ignore[unused-function-argument]
@@ -23,6 +25,7 @@ shared_urlpatterns = [
     for pattern in project_urls.urlpatterns
     if getattr(pattern, "namespace", None) not in {tool.namespace for tool in TOOLS}
 ]
+
 
 # The shared URLconf with a fake ETS mounted.
 urlpatterns = [
@@ -52,14 +55,14 @@ class HomeViewTest(TestCase):
         for tool in TOOLS:
             self.assertNotContains(response, tool.name)
 
-    @override_settings(ROOT_URLCONF="core.tests")
+    @override_settings(ROOT_URLCONF="core.tests.test_views")
     def test_lists_a_mounted_tool_with_its_url(self):
         response = self.client.get(reverse("home"))
         self.assertContains(response, f'href="{reverse("ets:index")}"')
         self.assertContains(response, "Email Transfer Service (ETS)")
         self.assertNotContains(response, "No tools are available yet.")
 
-    @override_settings(ROOT_URLCONF="core.tests")
+    @override_settings(ROOT_URLCONF="core.tests.test_views")
     def test_leaves_out_unmounted_tools(self):
         response = self.client.get(reverse("home"))
         self.assertNotContains(response, "Affiliations Service")
@@ -78,12 +81,3 @@ class ErrorPageTest(TestCase):
         response = server_error(RequestFactory().get("/"))
         self.assertEqual(response.status_code, 500)
         self.assertIn(b"500 Internal Server Error", response.content)
-
-
-class GetToolTest(TestCase):
-    def test_returns_the_tool_with_the_namespace(self):
-        self.assertEqual(get_tool("ets").abbreviation, "ETS")
-
-    def test_unknown_namespace_is_an_error(self):
-        with self.assertRaises(LookupError):
-            get_tool("nope")

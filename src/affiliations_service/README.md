@@ -255,11 +255,16 @@ Marks `tests` as a Python package.
 Helpers shared by the AS's tests: `make_staff`, which makes a staff user with or without
 `has_as_permissions`, and `FLAVOR_TEXT`, the AS's description.
 
+### `tests/test_admin.py`
+
+Tests the AS's admin pages: showing a new API key once, membership inlines, user search,
+and which affiliation fields are locked for non-superusers.
+
 ### `tests/test_affiliation_forms.py`
 
 Tests creating, editing, and deleting affiliations on the AS's pages, including locked
-fields, submitter IDs, plain-language errors, permissions, and the Add Another button on
-the affiliation and user forms, and picking coordinators on the new-affiliation form.
+fields, submitter IDs, plain-language errors, permissions, and picking coordinators on
+the new-affiliation form.
 
 ### `tests/test_affiliation_pages.py`
 
@@ -276,16 +281,27 @@ business rules, locked fields, submitter IDs, soft deletion, and 404s.
 Tests the API's CDWG endpoints. Its `ApiTestCase` sends every request with an active API
 key; the other API tests extend it.
 
+### `tests/test_api_docs.py`
+
+Tests the AS API's docs: that records are addressed by `{id}` and lookups by their ID
+names, that titles and summaries capitalize acronyms, and that schema names capitalize
+CDWG.
+
+### `tests/test_api_gpm_uuids.py`
+
+Tests the API's GPM UUID endpoints: looking up, changing, and deleting affiliations,
+CDWGs, and users by GPM UUID, the 404 for an unknown one, that locked affiliation fields
+can't change, and that creating a record with a GPM UUID in use is refused.
+
 ### `tests/test_api_keys.py`
 
 Tests API keys: hashing, verification, the 401 for a missing, unknown, or inactive key,
-the public docs, and showing a new key once in the admin.
+and the public docs.
 
 ### `tests/test_api_lookups.py`
 
-Tests the lookups by affiliation ID, expert panel ID, and GPM UUID, and that creating a
-record with a GPM UUID in use is refused, changing and deleting records by GPM UUID, the
-path names in the docs, and that the docs capitalize acronyms.
+Tests the lookups by affiliation ID, which return every affiliation sharing it, and by
+expert panel ID, and that they're read-only.
 
 ### `tests/test_api_memberships.py`
 
@@ -299,14 +315,19 @@ ORCID iD checks, 404s, and that users can't be deleted.
 
 ### `tests/test_cdwg_pages.py`
 
-Tests the CDWG list's counts and links, adding and editing CDWGs, and the error for a
-name that differs from another only in case.
+Tests the CDWG list's counts, links, and search, adding and editing CDWGs, and the error
+for a name that differs from another only in case.
 
 ### `tests/test_deleting.py`
 
 Tests deleting through the API: CDWGs, users, and memberships are deleted and leave
 history, deleting a user deletes their memberships and emails, a CDWG with affiliations
 can't be deleted, and affiliations are still only marked deleted.
+
+### `tests/test_formsets.py`
+
+Tests the Add Another rows on the affiliation and user forms: that each form offers
+them, and that two new submitter IDs posted at once are both saved.
 
 ### `tests/test_index.py`
 
@@ -321,7 +342,7 @@ and the user search behind the add-member form.
 ### `tests/test_memberships.py`
 
 Tests membership roles, constraints, which memberships are current, ending a membership,
-history, and the admin inlines.
+and history.
 
 ### `tests/test_models.py`
 
@@ -330,7 +351,7 @@ Tests ID assignment, soft deletion, uniqueness constraints, and history.
 ### `tests/test_navigation.py`
 
 Tests that every AS page has the navbar's Search and Add links, that the current page's
-link is bold, the CDWG list's search, and the breadcrumb trails.
+link is bold, and the breadcrumb trails.
 
 ### `tests/test_old_as_import.py`
 
@@ -344,8 +365,8 @@ and that the user and CDWG lists page too.
 
 ### `tests/test_rules.py`
 
-Tests the business rules in `Affiliation.clean()`, the ID checks, the plain-language
-uniqueness errors, and which fields the admin locks for non-superusers.
+Tests the business rules in `Affiliation.clean()`, the ID checks, and the plain-language
+uniqueness errors.
 
 ### `tests/test_user_pages.py`
 
@@ -354,7 +375,7 @@ other emails, including duplicate emails and bad ORCID iDs.
 
 ### `tests/test_users.py`
 
-Tests users's email uniqueness, ORCID iD checks, GPM UUIDs, history, and admin search.
+Tests users's email uniqueness, ORCID iD checks, GPM UUIDs, and history.
 
 ### `urls.py`
 

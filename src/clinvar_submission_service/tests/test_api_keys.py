@@ -1,8 +1,6 @@
 import hashlib
 
-from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
-from django.urls import reverse
 
 from clinvar_submission_service.api.auth import API_KEY_HEADER, ApiKeyAuth
 from clinvar_submission_service.models import ApiKey
@@ -59,35 +57,3 @@ class ApiKeyAuthTest(TestCase):
         for headers in ({}, {API_KEY_HEADER: "nope"}, {API_KEY_HEADER: raw_key}):
             with self.subTest(headers=headers):
                 self.assertIsNone(self.auth(self.factory.get("/", headers=headers)))
-
-
-class ApiKeyAdminTest(TestCase):
-    def setUp(self):
-        self.client.force_login(User.objects.create_superuser(username="admin"))
-
-    def test_adding_a_key_shows_it_once(self):
-        response = self.client.post(
-            reverse("admin:clinvar_submission_service_apikey_add"),
-            {"name": "GCI", "is_active": "on"},
-            follow=True,
-        )
-        api_key = ApiKey.objects.get()
-        messages = [str(message) for message in response.context["messages"]]
-        raw_key = next(
-            word
-            for message in messages
-            for word in message.split()
-            if word.startswith(api_key.prefix)
-        )
-        self.assertEqual(ApiKey.objects.verify(raw_key), api_key)
-        change_url = reverse(
-            "admin:clinvar_submission_service_apikey_change", args=[api_key.pk]
-        )
-        self.assertNotContains(self.client.get(change_url), raw_key)
-
-    def test_list_page_renders(self):
-        ApiKey.objects.create_key(name="GCI")
-        response = self.client.get(
-            reverse("admin:clinvar_submission_service_apikey_changelist")
-        )
-        self.assertContains(response, "GCI")

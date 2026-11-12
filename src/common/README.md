@@ -60,13 +60,27 @@ is taken, `SlugModel` gives it a new UUID. `make_slug()` builds the slug, and
 `set_unique_slugs()` sets them for objects saved with `bulk_create()`, which skips
 `save()`.
 
-### `tests.py`
+### `tests/__init__.py`
 
-Tests that `ToolTagMiddleware` tags tool requests and leaves other requests untagged
-(through a test URLconf, defined in this file, that adds a fake ETS to the project's
-URLconf), that backups go to a local directory and are named with the subdomain, that
-`make_slug()` builds a slug, that `UserProfile` and its history rows have UUID IDs, that
-the tooltip template puts its text in a focusable tooltip, on an icon or a label, and
-the base layout loads Tippy.js, that every page has the confirmation modal and no
-template asks with `window.confirm`, and that breadcrumb trails link every crumb but the
-current page.
+Marks `tests` as a Python package.
+
+### `tests/test_breadcrumbs.py`
+
+Tests the crumb helpers in `breadcrumbs.py`, and that `common/breadcrumbs.html` links
+every crumb but the current page and renders nothing without a trail.
+
+### `tests/test_middleware.py`
+
+Tests that `ToolTagMiddleware` tags tool requests and leaves other requests untagged,
+through a test URLconf, defined in this file, that adds a fake ETS to the project's
+URLconf.
+
+### `tests/test_models.py`
+
+Tests that `make_slug()` builds a slug.
+
+### `tests/test_templates.py`
+
+Tests that the tooltip template puts its text in a focusable tooltip, on an icon or a
+label, and the base layout loads Tippy.js, and that every page has the confirmation
+modal and no template asks with `window.confirm`.

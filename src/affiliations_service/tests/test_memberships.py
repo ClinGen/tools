@@ -2,10 +2,8 @@
 
 import datetime
 
-from django.contrib.auth.models import User as StaffUser
 from django.db import IntegrityError, transaction
 from django.test import TestCase
-from django.urls import reverse
 from django.utils import timezone
 
 from affiliations_service.models import Affiliation, Membership, User
@@ -115,19 +113,3 @@ class MembershipTest(TestCase):
         membership = make_membership(self.user, self.affiliation)
         membership.end()
         self.assertEqual(membership.history.count(), 2)  # type: ignore
-
-
-class MembershipAdminTest(TestCase):
-    def test_memberships_show_inline_on_affiliations_and_users(self):
-        user = make_user()
-        affiliation = make_affiliation()
-        make_membership(user, affiliation)
-        self.client.force_login(
-            StaffUser.objects.create_superuser("root", "r@example.com", "pw")
-        )
-        for name, obj in [("affiliation", affiliation), ("user", user)]:
-            with self.subTest(page=name):
-                url = reverse(
-                    f"admin:affiliations_service_{name}_change", args=[obj.pk]
-                )
-                self.assertContains(self.client.get(url), "memberships-TOTAL_FORMS")

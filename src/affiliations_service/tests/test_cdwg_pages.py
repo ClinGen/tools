@@ -90,3 +90,13 @@ class CDWGPermissionTest(TestCase):
         ]:
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 403)
+
+
+class CDWGSearchTest(TestCase):
+    def test_q_narrows_the_cdwg_list(self):
+        make_cdwg("Cardiovascular")
+        make_cdwg("Kidney")
+        self.client.force_login(make_staff("as@example.com"))
+        page = self.client.get(reverse("as:cdwgs"), {"q": "kid"}).content.decode()
+        self.assertIn("Kidney", page)
+        self.assertNotIn("Cardiovascular", page)

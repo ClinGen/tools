@@ -16,11 +16,19 @@ Configures the `core` app.
 The landing page. Lists each mounted tool with its name, abbreviation, link, and
 description, or says that no tools are available yet.
 
-### `tests.py`
+### `tests/__init__.py`
+
+Marks `tests` as a Python package.
+
+### `tests/test_tools.py`
+
+Tests `get_tool()`.
+
+### `tests/test_views.py`
 
 Tests the landing page with no tools mounted and with a fake ETS mounted (through test
-URLconfs, defined in this file, that take the project's URLconf without its tools),
-tests `get_tool()`, and tests that the 404 and 500 pages render their templates.
+URLconfs, defined in this file, that take the project's URLconf without its tools), and
+that the 404 and 500 pages render their templates.
 
 ### `tools.py`
 

@@ -98,6 +98,11 @@ directory.
 
 - We strive for high test coverage, and when reasonable, we follow test-driven
   development.
+- Each app keeps its tests in a `tests/` package, with shared helpers in
+  `tests/helpers.py` and fakes in `tests/fakes.py`. A test module's name says truthfully
+  what kind of tests it holds: `test_models.py` holds only model tests, `test_admin.py`
+  only admin tests, `test_views.py` only view tests, and so on. When a test doesn't fit
+  any module's name, put it in a module that does, or make a new one.
 - We use Google docstrings.
 - We use American English.
 - Every model extends `common.models.UUIDModel` (a UUID primary key), or

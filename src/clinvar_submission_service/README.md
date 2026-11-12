@@ -288,8 +288,8 @@ replaced, and `make_content()` wraps records in content. `make_saved_record()` s
 
 ### `tests/test_admin.py`
 
-Tests the admin pages for batches and records, including a batch's records and a
-record's batches.
+Tests the admin pages for batches, records, and API keys, including a batch's records, a
+record's batches, and showing a new key once.
 
 ### `tests/test_api.py`
 
@@ -306,8 +306,7 @@ and that the old batch endpoints are gone.
 ### `tests/test_api_keys.py`
 
 Tests that an API key is stored only as a hash, verifies only while active, and records
-its last use; that `ApiKeyAuth` accepts and rejects the right headers; and that the
-admin shows a new key once.
+its last use, and that `ApiKeyAuth` accepts and rejects the right headers.
 
 ### `tests/test_clients.py`
 

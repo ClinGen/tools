@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from affiliations_service.tests.helpers import make_staff
-from affiliations_service.tests.test_models import make_affiliation, make_cdwg
+from affiliations_service.tests.test_models import make_affiliation
 from affiliations_service.tests.test_users import make_user
 
 NAVBAR_URLS = [
@@ -64,16 +64,6 @@ class NavbarTest(TestCase):
             page,
         )
         self.assertIn(f'href="{reverse("as:cdwgs")}" class="navbar-item"', page)
-
-
-class CDWGSearchTest(TestCase):
-    def test_q_narrows_the_cdwg_list(self):
-        make_cdwg("Cardiovascular")
-        make_cdwg("Kidney")
-        self.client.force_login(make_staff("as@example.com"))
-        page = self.client.get(reverse("as:cdwgs"), {"q": "kid"}).content.decode()
-        self.assertIn("Kidney", page)
-        self.assertNotIn("Cardiovascular", page)
 
 
 class BreadcrumbTest(TestCase):

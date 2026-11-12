@@ -1,3 +1,5 @@
+"""Houses tests for the settings."""
+
 import importlib
 import sys
 from io import StringIO
@@ -7,7 +9,7 @@ from unittest import mock
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
 
 
 class SettingsTest(SimpleTestCase):
@@ -64,3 +66,20 @@ class BackupSettingsTest(SimpleTestCase):
         assert self._load_base(ETS_DRY_RUN="0").ETS_DRY_RUN is False
         for value in ["", "1", "false", "off"]:
             assert self._load_base(ETS_DRY_RUN=value).ETS_DRY_RUN is True
+
+
+class BackupStorageTest(TestCase):
+    def test_backups_go_to_a_local_directory_without_a_bucket(self):
+        storage = settings.STORAGES["dbbackup"]
+        self.assertEqual(
+            storage["BACKEND"], "django.core.files.storage.FileSystemStorage"
+        )
+        self.assertEqual(
+            storage["OPTIONS"]["location"], settings.BASE_DIR.parent / "backups"
+        )
+
+    def test_backup_names_start_with_the_subdomain(self):
+        self.assertEqual(settings.DBBACKUP_HOSTNAME, settings.SUBDOMAIN)
+        self.assertTrue(
+            settings.DBBACKUP_FILENAME_TEMPLATE.startswith("daily/{servername}-")
+        )

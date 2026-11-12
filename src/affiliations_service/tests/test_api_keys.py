@@ -2,9 +2,7 @@
 
 import hashlib
 
-from django.contrib.auth.models import User as StaffUser
 from django.test import TestCase
-from django.urls import reverse
 
 from affiliations_service.models import ApiKey
 
@@ -55,19 +53,3 @@ class ApiAuthTest(TestCase):
     def test_the_docs_load_without_a_key(self):
         self.assertEqual(self.client.get("/as/api/v1/docs").status_code, 200)
         self.assertEqual(self.client.get("/as/api/v1/openapi.json").status_code, 200)
-
-
-class ApiKeyAdminTest(TestCase):
-    def test_creating_a_key_in_the_admin_shows_it_once(self):
-        self.client.force_login(
-            StaffUser.objects.create_superuser("root", "r@example.com", "pw")
-        )
-        response = self.client.post(
-            reverse("admin:affiliations_service_apikey_add"),
-            {"name": "GCI", "is_active": "on"},
-            follow=True,
-        )
-        api_key = ApiKey.objects.get()
-        self.assertContains(response, "be shown again")
-        self.assertContains(response, api_key.prefix)
-        self.assertEqual(len(api_key.key_hash), 64)

@@ -65,11 +65,32 @@ The sign-in page, which hosts Clerk's sign-in widget.
 The signed-in user's profile page, which lists each tool permission and whether it's
 granted.
 
-### `tests.py`
+### `tests/__init__.py`
 
-Tests the permission mixin and decorator, permission history, the Clerk backend, and the
-login, callback, logout, and profile views. Clerk is mocked; no test calls Clerk's
-servers.
+Marks `tests` as a Python package.
+
+### `tests/helpers.py`
+
+Helpers shared by the auth\_ app's tests: `make_user()`, which makes a user with the
+tool permissions given.
+
+### `tests/test_backends.py`
+
+Tests the Clerk backend. Clerk is mocked; no test calls Clerk's servers.
+
+### `tests/test_models.py`
+
+Tests that granting a permission is recorded in `UserProfile`'s history, and that a
+profile and its history rows have UUID IDs.
+
+### `tests/test_permissions.py`
+
+Tests the tool permission mixin and decorator, including the AS permission.
+
+### `tests/test_views.py`
+
+Tests the login, callback, logout, and profile views, and the landing page's sign-in
+links. Clerk is mocked.
 
 ### `urls.py`
 

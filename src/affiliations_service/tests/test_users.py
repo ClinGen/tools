@@ -1,9 +1,7 @@
 """Houses tests for the user model."""
 
-from django.contrib.auth.models import User as StaffUser
 from django.db import IntegrityError, transaction
 from django.test import TestCase
-from django.urls import reverse
 
 from affiliations_service.models import User, UserEmail
 from affiliations_service.tests.test_rules import errors_for
@@ -92,20 +90,6 @@ class UserTest(TestCase):
     def test_str_prefers_the_preferred_name(self):
         self.assertEqual(str(make_user(preferred_name="Ada L.")), "Ada L.")
         self.assertEqual(str(make_user("grace@example.org", name="Grace")), "Grace")
-
-
-class UserAdminTest(TestCase):
-    def test_search_finds_a_user_by_an_other_email(self):
-        ada = make_user()
-        UserEmail.objects.create(user=ada, email="countess@uni.edu")
-        make_user("grace@example.org", name="Grace Hopper")
-        self.client.force_login(
-            StaffUser.objects.create_superuser("root", "r@example.com", "pw")
-        )
-        url = reverse("admin:affiliations_service_user_changelist")
-        response = self.client.get(url, {"q": "countess"})
-        self.assertContains(response, "Ada Lovelace")
-        self.assertNotContains(response, "Grace Hopper")
 
 
 class OptionalEmailTest(TestCase):

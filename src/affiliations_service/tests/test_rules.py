@@ -1,17 +1,11 @@
-"""Houses tests for the AS's business rules and the admin's locked IDs."""
+"""Houses tests for the AS's business rules."""
 
-from django.contrib import admin
-from django.contrib.auth.models import Permission
-from django.contrib.auth.models import User as StaffUser
 from django.core.exceptions import ValidationError
-from django.forms import model_to_dict
-from django.test import RequestFactory, TestCase
-from django.urls import reverse
+from django.test import TestCase
 
 from affiliations_service.models import CDWG, Affiliation
 from affiliations_service.tests.test_models import make_affiliation, make_cdwg
 
-LOCKED_FIELDS = ["affiliation_id", "expert_panel_id", "type", "gpm_uuid"]
 GPM_UUID = "6a1b5f0e-8f0c-4d7e-9a43-2b0f5d3c1e9a"
 
 
@@ -128,51 +122,3 @@ class IdRuleTest(TestCase):
             "Another affiliation already has this expert panel ID.",
             str(errors_for(same_expert_panel_id)),
         )
-
-
-class AdminLockedFieldsTest(TestCase):
-    @classmethod
-    def setUpTestData(cls) -> None:
-        cls.affiliation = make_affiliation(Affiliation.Type.GCEP)
-        cls.superuser = StaffUser.objects.create_superuser(
-            "root", "root@example.com", "pw"
-        )
-        cls.staff = StaffUser.objects.create_user("staff", "staff@example.com", "pw")
-        cls.staff.is_staff = True
-        cls.staff.save()
-        cls.staff.user_permissions.add(
-            *Permission.objects.filter(
-                codename__in=["view_affiliation", "change_affiliation"]
-            )
-        )
-
-    def _change_page(self, user: StaffUser) -> str:
-        self.client.force_login(user)
-        url = reverse(
-            "admin:affiliations_service_affiliation_change", args=[self.affiliation.pk]
-        )
-        return self.client.get(url).content.decode()
-
-    def test_staff_see_the_locked_fields_read_only(self):
-        page = self._change_page(self.staff)
-        for field in LOCKED_FIELDS:
-            with self.subTest(field=field):
-                self.assertNotIn(f'name="{field}"', page)
-        self.assertIn('name="full_name"', page)
-
-    def test_superusers_can_edit_the_locked_fields(self):
-        page = self._change_page(self.superuser)
-        for field in LOCKED_FIELDS:
-            with self.subTest(field=field):
-                self.assertIn(f'name="{field}"', page)
-
-    def test_superuser_form_rejects_a_mismatched_edit_and_accepts_a_valid_one(self):
-        request = RequestFactory().get("/")
-        request.user = self.superuser
-        model_admin = admin.site._registry[Affiliation]  # ruff: ignore[private-member-access]
-        form_class = model_admin.get_form(request, self.affiliation)
-        data = model_to_dict(self.affiliation)
-        data["expert_panel_id"] = 40999
-        self.assertFalse(form_class(data, instance=self.affiliation).is_valid())
-        data["affiliation_id"] = 10999
-        self.assertTrue(form_class(data, instance=self.affiliation).is_valid())

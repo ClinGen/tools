@@ -55,11 +55,17 @@ endpoint, turns the simulated ClinVar off and keeps `base.py`'s poll delays even
 `.env` turns simulating on, and silences logging so pytest shows logs only for failing
 tests.
 
-### `tests.py`
+### `tests/__init__.py`
+
+Marks `tests` as a Python package.
+
+### `tests/test_settings.py`
 
 Checks that the test settings load, that Django's system check passes, that the
 production settings refuse to load without a `SECRET_KEY`, that backups go to S3 when a
-bucket is set, and that the subdomain defaults to `dev`.
+bucket is set and to a local directory otherwise, that backup names start with the
+subdomain, that the subdomain defaults to `dev`, that the ClinVar URL defaults to
+ClinVar's test endpoint, and that only `0` turns the ETS's dry run off.
 
 ### `urls.py`
 

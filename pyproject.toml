@@ -134,6 +134,12 @@ convention = "google"
     "mixed-case-variable-in-class-scope",
     "assert",
 ]
+"**/tests/*.py" = [  # Helpers and fakes beside the tests.
+    "missing-return-type-undocumented-public-function",
+    "undocumented-public-method",
+    "mixed-case-variable-in-class-scope",
+    "assert",
+]
 "views.py" = [
     "unused-function-argument", # Sometimes you need a default parameter that goes unused.
 ]
