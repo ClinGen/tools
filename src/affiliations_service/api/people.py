@@ -56,7 +56,7 @@ class PersonIn(Schema):
     model_config = ConfigDict(extra="forbid")
 
     name: str
-    email: str
+    email: str = ""
     preferred_name: str = ""
     institution: str = ""
     orcid: str = ""

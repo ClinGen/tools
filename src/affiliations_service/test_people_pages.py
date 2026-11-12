@@ -112,6 +112,13 @@ class PersonFormPageTest(TestCase):
         self.assertRedirects(response, ada.get_absolute_url())
         self.assertEqual([e.email for e in ada.other_emails.all()], ["ada@uni.edu"])  # type: ignore
 
+    def test_create_without_an_email(self):
+        response = self.client.post(
+            reverse("as:person-create"), self._fields(email="") | emails_formset()
+        )
+        person = Person.objects.get()
+        self.assertRedirects(response, person.get_absolute_url())
+
     def test_edit_adds_and_removes_other_emails(self):
         ada = make_person()
         old = PersonEmail.objects.create(person=ada, email="old@uni.edu")

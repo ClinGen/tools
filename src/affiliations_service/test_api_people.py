@@ -64,6 +64,11 @@ class PersonCreateUpdateTest(ApiTestCase):
         self.assertEqual(person.credentials, "PhD")
         self.assertEqual(response.json()["other_emails"], ["ada@uni.edu"])
 
+    def test_create_without_an_email(self):
+        response = self.post(URL, {"name": "Approver Only"})
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["email"], "")
+
     def test_update_replaces_other_emails(self):
         ada = make_person()
         PersonEmail.objects.create(person=ada, email="old@uni.edu")

@@ -213,8 +213,9 @@ and it drops out of lists.
 just their names. A person has a name, an optional preferred name, a primary email,
 other emails, an institution, an ORCID iD, credentials (such as "PhD, CGC"), and an
 optional GPM UUID. No two people share an email, ignoring case, whether it's their
-primary email or another one. People are never deleted. These fields are a starting
-point, and we expect to add more.
+primary email or another one. A person's primary email is optional, since some people,
+such as approvers in the old AS, are known only by name. People are never deleted. These
+fields are a starting point, and we expect to add more.
 
 A membership says that a person holds a role in an affiliation. The roles are
 coordinator, approver, and curator. A person who holds two roles in an affiliation has

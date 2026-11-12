@@ -103,11 +103,11 @@ business rules (an SC-VCEP's CDWG, an independent curation group's CDWG and GPM 
 and that hand-set IDs are in range and end in the same three digits. Constraint and
 uniqueness errors have plain-language messages, so forms can show them to staff.
 
-It also defines `Person` and `PersonEmail` (a person's other emails). No two people
-share an email, ignoring case, whether it's a primary or another email: constraints
-catch duplicates within each table, and `clean()` catches them across the two, and a
-person's other email that repeats their main one. ORCID iDs are checked for format and
-are unique when set.
+It also defines `Person` and `PersonEmail` (a person's other emails). A person's main
+email is optional, but no two people share an email, ignoring case, whether it's a
+primary or another email: constraints catch duplicates within each table, and `clean()`
+catches them across the two, and a person's other email that repeats their main one.
+ORCID iDs are checked for format and are unique when set.
 
 Finally, it defines `Membership`: a person's role (coordinator, approver, or curator) in
 an affiliation, with optional start and end dates. A person can't hold the same role in

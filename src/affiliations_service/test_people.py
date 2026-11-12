@@ -106,3 +106,15 @@ class PersonAdminTest(TestCase):
         response = self.client.get(url, {"q": "countess"})
         self.assertContains(response, "Ada Lovelace")
         self.assertNotContains(response, "Grace Hopper")
+
+
+class OptionalEmailTest(TestCase):
+    def test_people_without_emails_can_coexist(self):
+        make_person("", name="Approver One")
+        make_person("", name="Approver Two")
+        self.assertEqual(Person.objects.filter(email="").count(), 2)
+        self.assertEqual(errors_for(Person(name="Approver Three", email="")), {})
+
+    def test_set_emails_still_collide_ignoring_case(self):
+        make_person("ada@example.org")
+        self.assertIn("email", errors_for(Person(name="Ada", email="ADA@example.org")))

@@ -381,7 +381,9 @@ def email_is_taken(email: str, *, person: "Person | None" = None) -> bool:
 class Person(UUIDModel):
     """A person in ClinGen's affiliations, such as a coordinator or a curator.
 
-    People are never deleted. Their fields are a starting point; we expect to add more.
+    A person's email is optional, since some people, such as approvers carried over
+    from the old AS, have only a name. People are never deleted. Their fields are a
+    starting point; we expect to add more.
     """
 
     name = models.CharField(max_length=255, verbose_name="Name")
@@ -393,8 +395,10 @@ class Person(UUIDModel):
         help_text="What the person likes to be called, if it differs from their name.",
     )
     email = models.EmailField(
+        blank=True,
+        default="",
         verbose_name="Email",
-        help_text="The person's main email. No two people share an email.",
+        help_text=("The person's main email, if known. No two people share an email."),
     )
     institution = models.CharField(
         blank=True,
@@ -437,6 +441,7 @@ class Person(UUIDModel):
         constraints = [
             models.UniqueConstraint(
                 Lower("email"),
+                condition=~models.Q(email=""),
                 name="as_person_unique_email",
                 violation_error_message=DUPLICATE_EMAIL_MESSAGE,
             ),
