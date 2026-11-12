@@ -86,7 +86,7 @@ def _record_rows(batch: Batch) -> list[RecordRow]:
 
 
 @tool_permission_required("has_css_permissions")
-def index(request: HttpRequest) -> HttpResponse:
+def batches(request: HttpRequest) -> HttpResponse:
     """Lists batches, newest first.
 
     The status= filter narrows the list to one status, such as submitted_to_clinvar,
@@ -298,7 +298,7 @@ def affiliations(request: HttpRequest) -> HttpResponse:
                 record_counts.get(affiliation_id, {}),
             ),
             "batches": _pill_counts(
-                reverse("css:index"),
+                reverse("css:batches"),
                 affiliation_id,
                 Batch.Status.choices,
                 batch_counts.get(affiliation_id, {}),

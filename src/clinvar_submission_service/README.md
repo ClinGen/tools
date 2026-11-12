@@ -429,12 +429,13 @@ relative to ClinVar renames old rows and their history, and back. Also tests tha
 
 ### `urls.py`
 
-Routes the CSS's pages under the `css` namespace: the batch list at the root, the
-affiliations page at `affiliations/`, an affiliation's new batch at
-`affiliations/<id>/new-batch/`, each batch at `batches/<slug>/`, its resend at
-`batches/<slug>/resend/`, the records list at `records/`, each record at
-`records/<slug>/`, a record's withdraw at `records/<slug>/withdraw/`, and the API at
-`api/v1/` under `css:api-1`.
+Routes the CSS's pages under the `css` namespace. The root redirects to the records
+list at `records/`, since staff mostly work from records. Each record is at
+`records/<slug>/` and its withdraw at `records/<slug>/withdraw/`. The batch list is at
+`batches/`, each batch at `batches/<slug>/`, and its resend at
+`batches/<slug>/resend/`. The affiliations page is at `affiliations/` and an
+affiliation's new batch at `affiliations/<id>/new-batch/`. The API is at `api/v1/`
+under `css:api-1`.
 
 ### `views.py`
 

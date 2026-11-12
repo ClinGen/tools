@@ -14,17 +14,19 @@ class Tool:
         abbreviation: The tool's abbreviation, which is also its URL prefix.
         namespace: The URL namespace of the tool's URLconf.
         description: A one-sentence description of what the tool does.
+        home: The name, in the tool's namespace, of the page the landing page links to.
     """
 
     name: str
     abbreviation: str
     namespace: str
     description: str
+    home: str = "index"
 
     def url(self) -> str | None:
-        """Returns the URL of the tool's index page, or None if it isn't mounted."""
+        """Returns the URL of the tool's home page, or None if it isn't mounted."""
         try:
-            return reverse(f"{self.namespace}:index")
+            return reverse(f"{self.namespace}:{self.home}")
         except NoReverseMatch:
             return None
 
@@ -47,6 +49,7 @@ TOOLS = [
             "Forwards ClinVar submissions from ClinGen clients to ClinVar and tracks "
             "each one until ClinVar has processed it."
         ),
+        home="records",
     ),
     Tool(
         name="Email Transfer Service",
@@ -58,7 +61,7 @@ TOOLS = [
 
 
 def mounted_tools() -> list[tuple[Tool, str]]:
-    """Returns each tool whose URLconf is mounted, with its index URL."""
+    """Returns each tool whose URLconf is mounted, with its home page's URL."""
     return [(tool, url) for tool in TOOLS if (url := tool.url())]
 
 

@@ -107,7 +107,7 @@ class FixtureTest(TestCase):
         self.client.force_login(user)
         affiliation_ids = set(Record.objects.values_list("affiliation_id", flat=True))
         pages = [
-            reverse("css:index"),
+            reverse("css:batches"),
             reverse("css:records"),
             reverse("css:affiliations"),
             *(batch.get_absolute_url() for batch in Batch.objects.all()),

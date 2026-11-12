@@ -331,19 +331,30 @@ class BatchAdminTest(TestCase):
 
 
 class IndexViewTest(TestCase):
+    def test_redirects_to_the_records_list(self):
+        response = self.client.get(reverse("css:index"), {"affiliation": "10901"})
+        self.assertRedirects(
+            response,
+            reverse("css:records") + "?affiliation=10901",
+            fetch_redirect_response=False,
+        )
+
+    def test_batches_list_is_at_batches(self):
+        self.assertEqual(reverse("css:batches"), "/css/batches/")
+
     def test_anonymous_user_is_sent_to_sign_in(self):
-        response = self.client.get(reverse("css:index"))
+        response = self.client.get(reverse("css:batches"))
         self.assertEqual(response.status_code, 302)
         self.assertIn("/auth/login", response["Location"])
 
     def test_user_without_css_permissions_gets_403(self):
         self.client.force_login(_make_user("staff@example.com"))
-        response = self.client.get(reverse("css:index"))
+        response = self.client.get(reverse("css:batches"))
         self.assertEqual(response.status_code, 403)
 
     def test_user_with_css_permissions_gets_200(self):
         self.client.force_login(_make_user("staff@example.com", css=True))
-        response = self.client.get(reverse("css:index"))
+        response = self.client.get(reverse("css:batches"))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "clinvar_submission_service/list.html")
         self.assertContains(response, "ClinVar Submission Service")
@@ -351,7 +362,8 @@ class IndexViewTest(TestCase):
     def test_landing_page_lists_the_css(self):
         response = self.client.get(reverse("home"))
         self.assertContains(response, "ClinVar Submission Service")
-        self.assertContains(response, reverse("css:index"))
+        self.assertContains(response, f'href="{reverse("css:records")}"')
+        self.assertNotContains(response, f'href="{reverse("css:index")}"')
 
 
 class _RenamedModels:

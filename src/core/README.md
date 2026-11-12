@@ -24,8 +24,9 @@ tests `get_tool()`, and tests that the 404 and 500 pages render their templates.
 
 ### `tools.py`
 
-Lists every tool ClinGen Tools houses, with its name, abbreviation, URL namespace, and
-description. `get_tool()` returns one by its URL namespace, so a tool's pages can reuse
+Lists every tool ClinGen Tools houses, with its name, abbreviation, URL namespace,
+description, and the page the landing page links to (its `index` unless it names
+another, as the CSS names its records list). `get_tool()` returns one by its URL namespace, so a tool's pages can reuse
 its name and description. `mounted_tools()` returns only the tools whose URLconf is
 mounted, so the landing page never links to a page that doesn't exist. Add a tool here
 when you add its app.

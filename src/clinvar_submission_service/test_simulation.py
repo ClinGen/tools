@@ -190,7 +190,7 @@ class BannerTest(TestCase):
     def urls(self) -> list[str]:
         return [
             reverse("css:records"),
-            reverse("css:index"),
+            reverse("css:batches"),
             reverse("css:affiliations"),
             self.record.get_absolute_url(),
             self.batch.get_absolute_url(),

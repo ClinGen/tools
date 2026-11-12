@@ -84,7 +84,7 @@ class PermissionTest(CssViewTestCase):
         batch = self._make(make_record(), status=Batch.Status.SEND_TO_CLINVAR_FAILED)
         record = batch.records.get()
         pages = [
-            ("get", reverse("css:index")),
+            ("get", reverse("css:batches")),
             ("get", batch.get_absolute_url()),
             ("post", reverse("css:resend", kwargs={"slug": batch.slug})),
             ("post", reverse("css:withdraw", kwargs={"slug": record.slug})),
@@ -104,7 +104,7 @@ class PermissionTest(CssViewTestCase):
 class MadeByTest(CssViewTestCase):
     def test_a_batch_with_no_recorded_maker_shows_nothing(self):
         batch = self._make(made_by=None)
-        self.assertEqual(self.client.get(reverse("css:index")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("css:batches")).status_code, 200)
         response = self.client.get(batch.get_absolute_url())
         self.assertContains(response, "<td>Made By</td><td></td>")
 
@@ -113,7 +113,7 @@ class ListViewTest(CssViewTestCase):
     def test_lists_submissions_newest_first(self):
         older = self._make(clinvar_submission_id="SUB000001")
         newer = self._make(clinvar_submission_id="SUB000002")
-        response = self.client.get(reverse("css:index"))
+        response = self.client.get(reverse("css:batches"))
         self.assertTemplateUsed(response, "clinvar_submission_service/list.html")
         self.assertEqual(_listed(response), [newer, older])
         self.assertContains(response, newer.get_absolute_url())
@@ -126,16 +126,16 @@ class ListViewTest(CssViewTestCase):
         other = self._make(clinvar_submission_id="SUB999999")
         for query in ("SUB123456", "sub1234", match.slug):
             with self.subTest(query=query):
-                response = self.client.get(reverse("css:index"), {"q": query})
+                response = self.client.get(reverse("css:batches"), {"q": query})
                 self.assertEqual(_listed(response), [match])
         self.assertNotContains(
-            self.client.get(reverse("css:index"), {"q": "SUB123456"}), other.slug
+            self.client.get(reverse("css:batches"), {"q": "SUB123456"}), other.slug
         )
 
     def test_is_paginated(self):
         for _ in range(PAGE_SIZE + 1):
             self._make()
-        response = self.client.get(reverse("css:index"), {"page": 2})
+        response = self.client.get(reverse("css:batches"), {"page": 2})
         self.assertEqual(len(_listed(response)), 1)
 
     def test_shows_each_submissions_affiliation_and_variants(self):
@@ -153,7 +153,7 @@ class ListViewTest(CssViewTestCase):
                 },
             ),
         )
-        response = self.client.get(reverse("css:index"))
+        response = self.client.get(reverse("css:batches"))
         self.assertContains(response, "Hearing Loss VCEP")
         self.assertContains(response, "BRCA1")
         self.assertContains(response, "MYH7")
@@ -164,15 +164,15 @@ class ListViewTest(CssViewTestCase):
         }
         for status, batch in by_status.items():
             with self.subTest(status=status):
-                response = self.client.get(reverse("css:index"), {"status": status})
+                response = self.client.get(reverse("css:batches"), {"status": status})
                 self.assertEqual(_listed(response), [batch])
         for status in ("", "received", "unknown"):
             with self.subTest(status=status):
-                response = self.client.get(reverse("css:index"), {"status": status})
+                response = self.client.get(reverse("css:batches"), {"status": status})
                 self.assertEqual(set(_listed(response)), set(by_status.values()))
 
     def test_has_a_pill_for_all_and_each_status(self):
-        response = self.client.get(reverse("css:index"))
+        response = self.client.get(reverse("css:batches"))
         self.assertContains(
             response, '<a href="?" aria-current="page">All</a>', html=True
         )
@@ -184,7 +184,7 @@ class ListViewTest(CssViewTestCase):
 
     def test_the_active_filter_is_marked(self):
         response = self.client.get(
-            reverse("css:index"), {"status": "submitted_to_clinvar"}
+            reverse("css:batches"), {"status": "submitted_to_clinvar"}
         )
         self.assertContains(
             response,
@@ -209,7 +209,7 @@ class ListViewTest(CssViewTestCase):
         )
         for query in ("tp53 vcep", "BRCA1", "43045712T>C"):
             with self.subTest(query=query):
-                response = self.client.get(reverse("css:index"), {"q": query})
+                response = self.client.get(reverse("css:batches"), {"q": query})
                 self.assertEqual(_listed(response), [match])
 
     def test_search_keeps_the_filter(self):
@@ -217,7 +217,7 @@ class ListViewTest(CssViewTestCase):
             status=Batch.Status.SUBMITTED_TO_CLINVAR, clinvar_submission_id="SUB1"
         )
         response = self.client.get(
-            reverse("css:index"), {"q": "SUB1", "status": "not_sent_to_clinvar"}
+            reverse("css:batches"), {"q": "SUB1", "status": "not_sent_to_clinvar"}
         )
         self.assertEqual(_listed(response), [])
         self.assertContains(response, 'name="status" value="not_sent_to_clinvar"')
@@ -230,7 +230,7 @@ class ListViewTest(CssViewTestCase):
             ("-clinvar_submission_id", [second, first]),
         ):
             with self.subTest(sort=sort):
-                response = self.client.get(reverse("css:index"), {"sort": sort})
+                response = self.client.get(reverse("css:batches"), {"sort": sort})
                 self.assertEqual(_listed(response), expected)
 
     def test_page_links_keep_the_search_and_filters(self):
@@ -241,7 +241,7 @@ class ListViewTest(CssViewTestCase):
             "status": "not_sent_to_clinvar",
             "affiliation": "10007",
         }
-        response = self.client.get(reverse("css:index"), params)
+        response = self.client.get(reverse("css:batches"), params)
         self.assertContains(
             response,
             "?q=Hearing&amp;status=not_sent_to_clinvar&amp;affiliation=10007&amp;page=2",
@@ -249,7 +249,7 @@ class ListViewTest(CssViewTestCase):
 
     def test_an_htmx_request_gets_only_the_results(self):
         self._make()
-        response = self.client.get(reverse("css:index"), HTTP_HX_REQUEST="true")
+        response = self.client.get(reverse("css:batches"), HTTP_HX_REQUEST="true")
         self.assertTemplateUsed(
             response, "clinvar_submission_service/partials/results.html"
         )
@@ -258,7 +258,7 @@ class ListViewTest(CssViewTestCase):
 
     def test_the_search_box_sends_the_filters_as_you_type(self):
         self._make()
-        response = self.client.get(reverse("css:index"), {"affiliation": "10007"})
+        response = self.client.get(reverse("css:batches"), {"affiliation": "10007"})
         self.assertContains(response, 'hx-include="closest form"')
         self.assertContains(
             response, '<option value="10007" selected>Hearing Loss VCEP</option>'
@@ -266,10 +266,10 @@ class ListViewTest(CssViewTestCase):
 
     def test_says_when_the_css_received_each_batch(self):
         self._make()
-        self.assertContains(self.client.get(reverse("css:index")), "Received by CSS")
+        self.assertContains(self.client.get(reverse("css:batches")), "Received by CSS")
 
     def test_says_so_when_there_are_none(self):
-        response = self.client.get(reverse("css:index"))
+        response = self.client.get(reverse("css:batches"))
         self.assertContains(response, "No batches yet.")
 
 
@@ -313,13 +313,13 @@ class StatusTagTest(CssViewTestCase):
     def test_the_list_shows_each_status_tooltip(self):
         self._make(status=Batch.Status.SUBMITTED_TO_CLINVAR)
         help_text = Batch.STATUS_HELP[Batch.Status.SUBMITTED_TO_CLINVAR]
-        response = self.client.get(reverse("css:index"))
+        response = self.client.get(reverse("css:batches"))
         self.assertContains(response, f'data-tippy-content="{escape(help_text)}"')
 
     def test_each_tag_in_the_list_links_to_its_status(self):
         for status in Batch.Status.values:
             self._make(status=status)
-        html = self.client.get(reverse("css:index")).content.decode()
+        html = self.client.get(reverse("css:batches")).content.decode()
         for status in Batch.Status.values:
             with self.subTest(status=status):
                 help_text = escape(Batch.STATUS_HELP[status])
@@ -331,7 +331,7 @@ class StatusTagTest(CssViewTestCase):
 
     def test_a_tags_link_keeps_the_affiliation(self):
         self._make(status=Batch.Status.PROCESSED_BY_CLINVAR)
-        response = self.client.get(reverse("css:index"), {"affiliation": "10007"})
+        response = self.client.get(reverse("css:batches"), {"affiliation": "10007"})
         self.assertContains(
             response,
             '<a href="?affiliation=10007&amp;status=processed_by_clinvar" class="tag',
@@ -346,7 +346,7 @@ class StatusTagTest(CssViewTestCase):
     def test_no_page_uses_the_old_wording(self):
         for status in Batch.Status.values:
             self._make(make_record("var-1"), status=status)
-        pages = [reverse("css:index"), reverse("css:affiliations")]
+        pages = [reverse("css:batches"), reverse("css:affiliations")]
         pages += [s.get_absolute_url() for s in Batch.objects.all()]
         old = ["Not Sent Yet", "ClinVar Is Checking", "Has Errors", "Accepted<"]
         old += ["Not Accepted", "Waiting for ClinVar", ">Sent<", ">Sent to ClinVar<"]
@@ -963,7 +963,7 @@ class AffiliationSelectTest(CssViewTestCase):
     def test_each_list_offers_every_known_affiliation_by_name(self):
         self._waiting(10008, "TP53 VCEP")
         self._make()  # Hearing Loss VCEP, 10007, known from its batch.
-        for url in [reverse("css:records"), reverse("css:index")]:
+        for url in [reverse("css:records"), reverse("css:batches")]:
             with self.subTest(url):
                 html = self.client.get(url).content.decode()
                 self.assertIn(
@@ -978,7 +978,7 @@ class AffiliationSelectTest(CssViewTestCase):
         self._waiting(10007, "Hearing Loss VCEP")
         for url, status in [
             (reverse("css:records"), "withdrawn"),
-            (reverse("css:index"), "error_at_clinvar"),
+            (reverse("css:batches"), "error_at_clinvar"),
         ]:
             with self.subTest(url):
                 response = self.client.get(url, {"status": status, "q": "BRCA1"})
@@ -991,7 +991,7 @@ class AffiliationSelectTest(CssViewTestCase):
     def test_new_batch_shows_for_one_affiliation_with_waiting_records(self):
         self._waiting(10007, "Hearing Loss VCEP")
         self._waiting(10008, "TP53 VCEP", status=Record.Status.WITHDRAWN)
-        for url in [reverse("css:records"), reverse("css:index")]:
+        for url in [reverse("css:records"), reverse("css:batches")]:
             with self.subTest(url):
                 response = self.client.get(url, {"affiliation": "10007"})
                 self.assertContains(response, _new_batch_url(10007))
@@ -1010,7 +1010,7 @@ class AffiliationTestCase(TestCase):
 
 class AffiliationFilterTest(AffiliationTestCase):
     def test_filters_the_list_to_one_affiliation(self):
-        response = self.client.get(reverse("css:index"), {"affiliation": "10901"})
+        response = self.client.get(reverse("css:batches"), {"affiliation": "10901"})
         names = {s.affiliation_name for s in _listed(response)}
         self.assertEqual(names, {"Cardiomyopathy VCEP"})
         self.assertEqual(len(_listed(response)), 3)
@@ -1020,7 +1020,7 @@ class AffiliationFilterTest(AffiliationTestCase):
 
     def test_combines_with_the_status_filter(self):
         response = self.client.get(
-            reverse("css:index"),
+            reverse("css:batches"),
             {"affiliation": "10901", "status": "not_sent_to_clinvar"},
         )
         self.assertEqual(
@@ -1034,7 +1034,9 @@ class AffiliationFilterTest(AffiliationTestCase):
     def test_an_unknown_affiliation_shows_nothing(self):
         for value in ("99999", "not-a-number"):
             with self.subTest(value=value):
-                response = self.client.get(reverse("css:index"), {"affiliation": value})
+                response = self.client.get(
+                    reverse("css:batches"), {"affiliation": value}
+                )
                 self.assertEqual(_listed(response), [])
                 self.assertContains(response, "No affiliation has that ID.")
 
@@ -1109,7 +1111,7 @@ class AffiliationsViewTest(AffiliationTestCase):
 
     def test_each_count_links_to_its_filtered_list(self):
         response = self.client.get(reverse("css:affiliations"))
-        records, batches = reverse("css:records"), reverse("css:index")
+        records, batches = reverse("css:records"), reverse("css:batches")
         for href in [
             f"{records}?affiliation=10901",
             f"{records}?affiliation=10901&amp;status=waiting_for_batch",
@@ -1162,7 +1164,7 @@ class NavigationTest(CssViewTestCase):
 
     def pages(self) -> dict[str, tuple[str, str, list[tuple[str, str]]]]:
         """Returns each page's URL, section, and breadcrumbs, by name."""
-        records, batches = reverse("css:records"), reverse("css:index")
+        records, batches = reverse("css:records"), reverse("css:batches")
         affiliations = reverse("css:affiliations")
         return {
             "affiliations": (affiliations, "Affiliations", [("Affiliations", "")]),
@@ -1198,7 +1200,7 @@ class NavigationTest(CssViewTestCase):
     def test_the_navbar_links_to_each_section_and_marks_the_current_one(self):
         sections = {
             "Records": reverse("css:records"),
-            "Batches": reverse("css:index"),
+            "Batches": reverse("css:batches"),
             "Affiliations": reverse("css:affiliations"),
         }
         for name, (url, section, _) in self.pages().items():

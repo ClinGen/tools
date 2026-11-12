@@ -203,7 +203,7 @@ it's polling before it stops.
   batches is due to poll, so a local poller leaves them alone. The API key has no raw
   value, so it can't call the API; create a key in the Django admin for that.
 
-- Open `/css/` to see them. Loading the fixtures again resets them: it deletes every CSS
+- Open `/css/records/` or `/css/batches/` to see them. Loading the fixtures again resets them: it deletes every CSS
   batch, record, and affiliation setting first, including ones you made in the UI, but
   keeps API keys.
 

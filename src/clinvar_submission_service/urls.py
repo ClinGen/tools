@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import RedirectView
 
 from clinvar_submission_service import views
 from clinvar_submission_service.api import api
@@ -6,7 +7,13 @@ from clinvar_submission_service.api import api
 app_name = "css"
 
 urlpatterns = [
-    path("", views.index, name="index"),
+    # Staff mostly work from records, so the CSS opens on the records list.
+    path(
+        "",
+        RedirectView.as_view(pattern_name="css:records", query_string=True),
+        name="index",
+    ),
+    path("batches/", views.batches, name="batches"),
     path("records/", views.records, name="records"),
     path("records/<slug:slug>/", views.record_detail, name="record"),
     path("affiliations/", views.affiliations, name="affiliations"),

@@ -4,5 +4,5 @@
 {% elif section == "records" %}
     {% url 'css:records' as section_url %}{% with section_label="Records" section_icon="list-ul" %}{% include "clinvar_submission_service/partials/breadcrumb_trail.html" %}{% endwith %}
 {% else %}
-    {% url 'css:index' as section_url %}{% with section_label="Batches" section_icon="card-list" %}{% include "clinvar_submission_service/partials/breadcrumb_trail.html" %}{% endwith %}
+    {% url 'css:batches' as section_url %}{% with section_label="Batches" section_icon="card-list" %}{% include "clinvar_submission_service/partials/breadcrumb_trail.html" %}{% endwith %}
 {% endif %}
