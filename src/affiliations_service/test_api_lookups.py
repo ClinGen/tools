@@ -1,5 +1,6 @@
 """Houses tests for looking records up by their canonical IDs and GPM UUIDs."""
 
+import re
 import uuid
 
 from affiliations_service.models import CDWG, Affiliation
@@ -116,3 +117,17 @@ class PathNamesTest(ApiTestCase):
         ]:
             with self.subTest(path=path):
                 self.assertIn(path, paths)
+
+
+class ApiDocsWordingTest(ApiTestCase):
+    def test_titles_and_summaries_capitalize_acronyms(self):
+        schema = self.client.get(f"{URL}/openapi.json").content.decode()
+        labels = re.findall(r'"(?:title|summary)": ?"([^"]*)"', schema)
+        for word in ["Id", "Ids", "Gpm", "Uuid", "Cdwg", "Cdwgs", "Orcid", "Clinvar"]:
+            with self.subTest(word=word):
+                self.assertFalse(
+                    [label for label in labels if re.search(rf"\b{word}\b", label)]
+                )
+        for label in ["Get Affiliation By GPM UUID", "Affiliation ID", "List CDWGs"]:
+            with self.subTest(label=label):
+                self.assertIn(label, labels)

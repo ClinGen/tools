@@ -69,7 +69,9 @@ one user include their current memberships.
 Defines the AS's API, a Django Ninja `NinjaAPI` served at `/as/api/v1/`, with OpenAPI
 docs at `/as/api/v1/docs`. Every endpoint needs an API key. It adds each resource's
 router and turns a `ValidationError` (a broken business rule) into a 400 whose `detail`
-is the error's plain-language message.
+is the error's plain-language message. Its docs write acronyms such as ID, GPM, UUID,
+and CDWG in capitals, since Ninja would otherwise make titles like "Gpm Uuid" from
+Python names.
 
 ### `apps.py`
 
@@ -281,7 +283,8 @@ the public docs, and showing a new key once in the admin.
 ### `test_api_lookups.py`
 
 Tests the read-only lookups by affiliation ID, expert panel ID, and GPM UUID, and that
-creating a record with a GPM UUID in use is refused.
+creating a record with a GPM UUID in use is refused, the path names in the docs, and
+that the docs capitalize acronyms.
 
 ### `test_api_memberships.py`
 
