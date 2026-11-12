@@ -79,12 +79,6 @@ Python names.
 
 Configures the `affiliations_service` app.
 
-### `breadcrumbs.py`
-
-Builds the breadcrumb trail at the top of each AS page, like the HCI's: the list page,
-the object's page, and the current action. There's no Home crumb, since the site navbar
-links home. Each view passes its trail to its template as `breadcrumbs`.
-
 ### `forms.py`
 
 Defines the forms on the AS's pages: `AffiliationCreateForm` (which can also make picked
@@ -193,11 +187,6 @@ each one. CDWGs aren't deleted from the UI, since affiliations need them.
 
 The AS's home page, which lists affiliations. Its search box and filters update the list
 with HTMX as staff type, and work as a plain form without JavaScript.
-
-### `templates/affiliations_service/partials/breadcrumbs.html`
-
-Renders `breadcrumbs` as a Bulma breadcrumb, with the current page last, bold, and not a
-link elsewhere. `partials/header.html` includes it under the navbar.
 
 ### `templates/affiliations_service/partials/field.html`
 

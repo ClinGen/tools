@@ -530,6 +530,22 @@ submissions table, shows its solid color on hover or focus (dark grey for a grey
 from `static/tools/css/custom.css`. Don't use `is-primary`. The base layout sets
 `data-theme="light"`, so there is no dark theme to check.
 
+### Breadcrumbs
+
+Every tool's pages show breadcrumbs under the tool's navbar, as in the HCI, built one
+way. The view passes a list of crumbs as `breadcrumbs`, made with
+`common/breadcrumbs.py`, and the template includes `common/breadcrumbs.html`. A trail
+starts at the page's navbar section, such as Records or Affiliation Search, and ends at
+the current page, in bold. It has no Home crumb, since the site navbar already links
+home.
+
+```python
+"breadcrumbs": [
+    crumbs.section("Records", "css:records", "list-ul"),
+    crumbs.action("New Batch", "plus-circle"),
+],
+```
+
 ### Confirmations
 
 Before an action that's hard to undo, such as withdrawing a record or resending a batch,

@@ -5,7 +5,7 @@
     <div class="block mt-6 mb-6">
         {% include "clinvar_submission_service/partials/header.html" with section="records" %}
         <div class="box mt-4">
-            {% include "clinvar_submission_service/partials/breadcrumbs.html" with section="records" current="New Batch" current_icon="plus-circle" %}
+            {% include "common/breadcrumbs.html" %}
             <h2 class="title is-4">{% if reviewing %}Review the Batch{% else %}New Batch{% endif %} for {{ affiliation_name }}</h2>
             {% if reviewing %}
                 <p class="block">

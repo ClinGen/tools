@@ -13,11 +13,11 @@ Empty file that marks `clinvar_submission_service` as a Python package.
 ### `admin.py`
 
 Registers `Batch`, `Record`, `AffiliationSettings`, and `ApiKey` in the Django admin,
-with their history. A
-batch's ClinVar fields are read-only, since only ClinVar's responses should change them,
-and its records are listed read-only, in order, with each one's result, on its page. A
-record's page lists the batches it was sent in. Adding an API key generates its value
-and shows it once, in a warning message; after that, only its prefix is shown.
+with their history. A batch's ClinVar fields are read-only, since only ClinVar's
+responses should change them, and its records are listed read-only, in order, with each
+one's result, on its page. A record's page lists the batches it was sent in. Adding an
+API key generates its value and shows it once, in a warning message; after that, only
+its prefix is shown.
 
 ### `api.py`
 
@@ -25,11 +25,11 @@ Serves the CSS's API, version 1, as a Django Ninja `NinjaAPI` at `/css/api/v1/`,
 OpenAPI docs at `/css/api/v1/docs`. Every endpoint needs an API key (see `api_auth.py`),
 and a client sees only its own records. `POST /records` takes the client's affiliation
 and one germline record (`content.RecordRequest`) and saves it to wait for a batch,
-returning 201, or 200 if it replaced a waiting record with the same local ID. `GET
-/records` lists the client's records a page at a time, `GET /records/{slug}` reads one
-with its JSON, and `POST /records/{slug}/withdraw` withdraws a waiting one, or returns a
-409 for any other. A record that doesn't match, or a body with submission-level fields,
-gets a 422. Clients don't see batches, which staff make.
+returning 201, or 200 if it replaced a waiting record with the same local ID.
+`GET /records` lists the client's records a page at a time, `GET /records/{slug}` reads
+one with its JSON, and `POST /records/{slug}/withdraw` withdraws a waiting one, or
+returns a 409 for any other. A record that doesn't match, or a body with
+submission-level fields, gets a 422. Clients don't see batches, which staff make.
 
 ### `api_auth.py`
 
@@ -125,12 +125,11 @@ short prefix are stored, and each record notes the key that sent it.
 
 Polls ClinVar for batch statuses. `Poller.run_pass()` takes a batch of the batches that
 are due, oldest first, reads each one's status, and saves ClinVar's response. A batch
-that reaches processed or error gets its summary report, which
-`services.save_results()` copies onto its records, and stops being polled.
-Otherwise, `next_delay()` doubles the wait from `CSS_POLL_MIN_DELAY` up to
-`CSS_POLL_MAX_DELAY`, and waits at least as long as a 429's `Retry-After`. A failed
-poll, including a failed report download, is logged and sent to Sentry, leaves the
-status as it was, and doesn't stop the pass.
+that reaches processed or error gets its summary report, which `services.save_results()`
+copies onto its records, and stops being polled. Otherwise, `next_delay()` doubles the
+wait from `CSS_POLL_MIN_DELAY` up to `CSS_POLL_MAX_DELAY`, and waits at least as long as
+a 429's `Retry-After`. A failed poll, including a failed report download, is logged and
+sent to Sentry, leaves the status as it was, and doesn't stop the pass.
 
 ### `services.py`
 
@@ -232,24 +231,13 @@ The list's results: how many batches match and the `BatchTable`, or a line sayin
 do. The list page includes it, and the search box and the table's sort and page links
 fetch it alone with HTMX and swap it in.
 
-### `templates/clinvar_submission_service/partials/breadcrumb_trail.html`
-
-The breadcrumbs nav that `partials/breadcrumbs.html` fills in: a section crumb, linked
-when there's a page below it, and the current page, in bold and marked current.
-
-### `templates/clinvar_submission_service/partials/breadcrumbs.html`
-
-A page's breadcrumbs, as in the HCI. It starts at the page's section (Affiliations,
-Records, or Batches) and, below a section's list, ends with the current page, such as
-Records / R3f2a9c1e Details or Records / New Batch.
-
 ### `templates/clinvar_submission_service/partials/header.html`
 
 The top of every CSS page: a banner saying ClinVar is simulated while
 `CSS_SIMULATE_CLINVAR` is on, with buttons that delete every record or every batch after
-asking to confirm, the CSS's name and description from `core.tools`, then a
-navbar linking to the Records, Batches, and Affiliations sections, with the current
-section in bold.
+asking to confirm, the CSS's name and description from `core.tools`, then a navbar
+linking to the Records, Batches, and Affiliations sections, with the current section in
+bold.
 
 ### `templates/clinvar_submission_service/partials/status.html`
 
@@ -351,8 +339,8 @@ ClinVar's shape and is the same on every call; and that the poller and `save_res
 work against it end to end. Also tests that a sent batch's first poll waits
 `CSS_FIRST_POLL_DELAY`, that every CSS page shows the simulation banner only while the
 flag is on, and that the dev settings shorten the poll delays only while simulating.
-Also tests that the banner's delete buttons delete what they say, only while
-simulating, only on a POST, and only for staff with CSS permissions.
+Also tests that the banner's delete buttons delete what they say, only while simulating,
+only on a POST, and only for staff with CSS permissions.
 
 ### `test_views.py`
 
@@ -405,32 +393,33 @@ relative to ClinVar renames old rows and their history, and back. Also tests tha
 
 ### `urls.py`
 
-Routes the CSS's pages under the `css` namespace. The root redirects to the records
-list at `records/`, since staff mostly work from records. Each record is at
-`records/<slug>/` and its withdraw at `records/<slug>/withdraw/`. The batch list is at
-`batches/`, each batch at `batches/<slug>/`, and its resend at
-`batches/<slug>/resend/`. The affiliations page is at `affiliations/` and an
-affiliation's new batch at `affiliations/<id>/new-batch/`. While ClinVar is simulated,
-`records/delete-all/` and `batches/delete-all/` delete every record or batch. The API is
-at `api/v1/` under `css:api-1`.
+Routes the CSS's pages under the `css` namespace. The root redirects to the records list
+at `records/`, since staff mostly work from records. Each record is at `records/<slug>/`
+and its withdraw at `records/<slug>/withdraw/`. The batch list is at `batches/`, each
+batch at `batches/<slug>/`, and its resend at `batches/<slug>/resend/`. The affiliations
+page is at `affiliations/` and an affiliation's new batch at
+`affiliations/<id>/new-batch/`. While ClinVar is simulated, `records/delete-all/` and
+`batches/delete-all/` delete every record or batch. The API is at `api/v1/` under
+`css:api-1`.
 
 ### `views.py`
 
-Serves the CSS's pages to users with CSS permissions: the batch list, with its status
-and affiliation filters, search, sorting, and pagination, and just its results for an
-HTMX request; the Records page, with the same kinds of filters and search; on both
-lists, an affiliation select of every known affiliation, named from its newest record or
-batch, and a New Batch button for one affiliation with waiting records; the affiliations
-page, which counts each affiliation's records and batches like each list's pills, with
-links to the filtered lists; each affiliation's settings page, which shows and saves its
-`AffiliationSettings`; the new batch page, which lists an affiliation's waiting records,
-reviews the picked ones, and makes and sends the batch through `services.make_batch()`
-and `forward_batch()`, with a plain message when it can't; and each batch's page, which
-pairs each `Record` with its result in ClinVar's summary report. The resend view, which
-takes only POSTs, forwards a send_to_clinvar_failed batch again through
-`services.forward_batch()` and shows a plain error message if ClinVar still didn't get
-it. The withdraw view, also POST-only, withdraws a waiting record through
-`services.withdraw_record()` and returns to the record's page with a plain message.
-While ClinVar is simulated, the POST-only delete views delete every record or every
-batch through `simulation.py` and return to that list with a message; otherwise they're
-404, so real data can't be deleted.
+Serves the CSS's pages to users with CSS permissions, each with its breadcrumb trail
+from `common.breadcrumbs`, starting at its navbar section: the batch list, with its
+status and affiliation filters, search, sorting, and pagination, and just its results
+for an HTMX request; the Records page, with the same kinds of filters and search; on
+both lists, an affiliation select of every known affiliation, named from its newest
+record or batch, and a New Batch button for one affiliation with waiting records; the
+affiliations page, which counts each affiliation's records and batches like each list's
+pills, with links to the filtered lists; each affiliation's settings page, which shows
+and saves its `AffiliationSettings`; the new batch page, which lists an affiliation's
+waiting records, reviews the picked ones, and makes and sends the batch through
+`services.make_batch()` and `forward_batch()`, with a plain message when it can't; and
+each batch's page, which pairs each `Record` with its result in ClinVar's summary
+report. The resend view, which takes only POSTs, forwards a send_to_clinvar_failed batch
+again through `services.forward_batch()` and shows a plain error message if ClinVar
+still didn't get it. The withdraw view, also POST-only, withdraws a waiting record
+through `services.withdraw_record()` and returns to the record's page with a plain
+message. While ClinVar is simulated, the POST-only delete views delete every record or
+every batch through `simulation.py` and return to that list with a message; otherwise
+they're 404, so real data can't be deleted.

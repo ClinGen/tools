@@ -29,6 +29,7 @@ from clinvar_submission_service.simulation import (
     delete_all_records,
 )
 from clinvar_submission_service.tables import BatchTable, RecordTable
+from common import breadcrumbs as crumbs
 from core.tools import get_tool
 
 # How many batches the list shows on a page.
@@ -42,6 +43,26 @@ RESEND_FAILED_MESSAGE = (
 NOT_RESENDABLE_MESSAGE = "Only a batch ClinVar never got can be resent."
 
 WITHDRAWN_MESSAGE = "The record was withdrawn."
+
+# Each navbar section's list page, as its breadcrumb's text, URL name, and icon.
+SECTIONS = {
+    "records": ("Records", "css:records", "list-ul"),
+    "batches": ("Batches", "css:batches", "card-list"),
+    "affiliations": ("Affiliations", "css:affiliations", "people"),
+}
+
+
+def _section(name: str, *, current: bool = False) -> crumbs.Crumb:
+    """Returns the breadcrumb for a navbar section's list page.
+
+    Args:
+        name: The section's key in `SECTIONS`.
+        current: Whether the list page is the current page.
+
+    Returns:
+        The crumb.
+    """
+    return crumbs.section(*SECTIONS[name], current=current)
 
 
 def _query_string(**params: str) -> str:
@@ -143,6 +164,7 @@ def batches(request: HttpRequest) -> HttpResponse:
                 (label, value, _query_string(affiliation=affiliation, status=value))
                 for value, label in [("", "All"), *Batch.Status.choices]
             ],
+            "breadcrumbs": [_section("batches", current=True)],
         },
     )
 
@@ -240,6 +262,7 @@ def records(request: HttpRequest) -> HttpResponse:
                 (label, value, _query_string(affiliation=affiliation, status=value))
                 for value, label in [("", "All"), *Record.Status.choices]
             ],
+            "breadcrumbs": [_section("records", current=True)],
         },
     )
 
@@ -319,6 +342,7 @@ def affiliations(request: HttpRequest) -> HttpResponse:
             "record_pills": ["All", *Record.Status.labels],
             "batch_pills": ["All", *Batch.Status.labels],
             "affiliations": sorted(rows, key=lambda row: row["name"]),
+            "breadcrumbs": [_section("affiliations", current=True)],
         },
     )
 
@@ -338,6 +362,10 @@ def batch_detail(request: HttpRequest, slug: str) -> HttpResponse:
             "tool": get_tool("css"),
             "batch": batch,
             "rows": _record_rows(batch),
+            "breadcrumbs": [
+                _section("batches"),
+                crumbs.action(f"{batch.slug} Details", "journal-text"),
+            ],
         },
     )
 
@@ -416,6 +444,10 @@ def record_detail(request: HttpRequest, slug: str) -> HttpResponse:
             "record": record,
             "attempts": attempts,
             "history": _history_rows(record),
+            "breadcrumbs": [
+                _section("records"),
+                crumbs.action(f"{record.slug} Details", "journal-text"),
+            ],
         },
     )
 
@@ -519,7 +551,15 @@ def affiliation_settings(request: HttpRequest, affiliation_id: int) -> HttpRespo
     return render(
         request,
         "clinvar_submission_service/affiliation_settings.html",
-        {"tool": get_tool("css"), "affiliation_name": name, "form": form},
+        {
+            "tool": get_tool("css"),
+            "affiliation_name": name,
+            "form": form,
+            "breadcrumbs": [
+                _section("affiliations"),
+                crumbs.action(f"{name} Settings", "gear"),
+            ],
+        },
     )
 
 
@@ -577,5 +617,9 @@ def new_batch(request: HttpRequest, affiliation_id: int) -> HttpResponse:
             "affiliation_name": name,
             "records": chosen or waiting,
             "reviewing": bool(chosen),
+            "breadcrumbs": [
+                _section("records"),
+                crumbs.action("New Batch", "plus-circle"),
+            ],
         },
     )

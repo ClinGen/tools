@@ -1,8 +1,0 @@
-{# A page's breadcrumbs, as in the HCI: its section, then the page itself if it isn't the section's list. The last crumb is the current page. Takes section (affiliations, records, or batches) and, below a section's list, current and current_icon. #}
-{% if section == "affiliations" %}
-    {% url 'css:affiliations' as section_url %}{% with section_label="Affiliations" section_icon="people" %}{% include "clinvar_submission_service/partials/breadcrumb_trail.html" %}{% endwith %}
-{% elif section == "records" %}
-    {% url 'css:records' as section_url %}{% with section_label="Records" section_icon="list-ul" %}{% include "clinvar_submission_service/partials/breadcrumb_trail.html" %}{% endwith %}
-{% else %}
-    {% url 'css:batches' as section_url %}{% with section_label="Batches" section_icon="card-list" %}{% include "clinvar_submission_service/partials/breadcrumb_trail.html" %}{% endwith %}
-{% endif %}

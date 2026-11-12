@@ -5,7 +5,7 @@
     <div class="block mt-6 mb-6">
         {% include "clinvar_submission_service/partials/header.html" with section="affiliations" %}
         <div class="box mt-4">
-            {% include "clinvar_submission_service/partials/breadcrumbs.html" with section="affiliations" current=affiliation_name|add:" Settings" current_icon="gear" %}
+            {% include "common/breadcrumbs.html" %}
             <h2 class="title is-4">{{ affiliation_name }}</h2>
             <p class="block">ClinVar applies these to every record in a batch, so each of this affiliation's batches uses them.</p>
             <form method="post" class="block">{% csrf_token %}

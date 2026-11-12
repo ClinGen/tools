@@ -7,7 +7,6 @@ from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django_tables2 import RequestConfig, Table
 
-from affiliations_service import breadcrumbs as crumbs
 from affiliations_service.forms import (
     AffiliationCreateForm,
     AffiliationEditForm,
@@ -21,6 +20,7 @@ from affiliations_service.history import describe_history
 from affiliations_service.models import CDWG, Affiliation, Membership, User
 from affiliations_service.tables import PER_PAGE, AffiliationTable, CDWGTable, UserTable
 from auth_.permissions import tool_permission_required
+from common import breadcrumbs as crumbs
 from core.tools import get_tool
 
 
@@ -57,9 +57,9 @@ def index(request: HttpRequest) -> HttpResponse:
         "affiliations_service/index.html",
         {
             "tool": get_tool("as"),
-            "breadcrumbs": crumbs.trail(
-                crumbs.search("Affiliation Search", "as:index", current=True)
-            ),
+            "breadcrumbs": [
+                crumbs.section("Affiliation Search", "as:index", current=True)
+            ],
             "table": _paginated(request, AffiliationTable(affiliations)),
             "query": query,
             "filters": filters,
@@ -120,10 +120,10 @@ def _render_affiliation(
         "affiliations_service/affiliation_detail.html",
         {
             "tool": get_tool("as"),
-            "breadcrumbs": crumbs.trail(
-                crumbs.search("Affiliation Search", "as:index"),
+            "breadcrumbs": [
+                crumbs.section("Affiliation Search", "as:index"),
                 crumbs.detail(affiliation, current=True),
-            ),
+            ],
             "history": describe_history(affiliation, "the affiliation"),
             **_members_context(affiliation, member_form),
         },
@@ -285,14 +285,14 @@ def _affiliation_form(
         "affiliations_service/affiliation_form.html",
         {
             "tool": get_tool("as"),
-            "breadcrumbs": crumbs.trail(
-                crumbs.search("Affiliation Search", "as:index"),
+            "breadcrumbs": [
+                crumbs.section("Affiliation Search", "as:index"),
                 *(
                     [crumbs.detail(affiliation), crumbs.action("Edit", "pencil-square")]
                     if affiliation
                     else [crumbs.action("New Affiliation", "plus-circle")]
                 ),
-            ),
+            ],
             "form": form,
             "formset": formset,
             "affiliation": affiliation,
@@ -337,11 +337,11 @@ def affiliation_delete(request: HttpRequest, pk: str) -> HttpResponse:
         "affiliations_service/affiliation_delete.html",
         {
             "tool": get_tool("as"),
-            "breadcrumbs": crumbs.trail(
-                crumbs.search("Affiliation Search", "as:index"),
+            "breadcrumbs": [
+                crumbs.section("Affiliation Search", "as:index"),
                 crumbs.detail(affiliation),
                 crumbs.action("Delete", "trash"),
-            ),
+            ],
             "affiliation": affiliation,
         },
     )
@@ -368,9 +368,7 @@ def user_list(request: HttpRequest) -> HttpResponse:
         "affiliations_service/user_list.html",
         {
             "tool": get_tool("as"),
-            "breadcrumbs": crumbs.trail(
-                crumbs.search("User Search", "as:users", current=True)
-            ),
+            "breadcrumbs": [crumbs.section("User Search", "as:users", current=True)],
             "table": _paginated(request, UserTable(users)),
             "query": query,
         },
@@ -392,10 +390,10 @@ def user_detail(request: HttpRequest, pk: str) -> HttpResponse:
         "affiliations_service/user_detail.html",
         {
             "tool": get_tool("as"),
-            "breadcrumbs": crumbs.trail(
-                crumbs.search("User Search", "as:users"),
+            "breadcrumbs": [
+                crumbs.section("User Search", "as:users"),
                 crumbs.detail(user, current=True),
-            ),
+            ],
             "as_user": user,
             "current_memberships": current,
             "past_memberships": memberships.exclude(pk__in=current).order_by(
@@ -422,14 +420,14 @@ def _user_form(request: HttpRequest, user: User | None) -> HttpResponse:
         "affiliations_service/user_form.html",
         {
             "tool": get_tool("as"),
-            "breadcrumbs": crumbs.trail(
-                crumbs.search("User Search", "as:users"),
+            "breadcrumbs": [
+                crumbs.section("User Search", "as:users"),
                 *(
                     [crumbs.detail(user), crumbs.action("Edit", "pencil-square")]
                     if user
                     else [crumbs.action("New User", "plus-circle")]
                 ),
-            ),
+            ],
             "form": form,
             "formset": formset,
             "as_user": user,
@@ -479,9 +477,7 @@ def cdwg_list(request: HttpRequest) -> HttpResponse:
         "affiliations_service/cdwg_list.html",
         {
             "tool": get_tool("as"),
-            "breadcrumbs": crumbs.trail(
-                crumbs.search("CDWG Search", "as:cdwgs", current=True)
-            ),
+            "breadcrumbs": [crumbs.section("CDWG Search", "as:cdwgs", current=True)],
             "cdwgs": cdwgs,
             "table": _paginated(request, CDWGTable(cdwgs)),
             "query": query,
@@ -504,12 +500,12 @@ def _cdwg_form(request: HttpRequest, cdwg: CDWG | None) -> HttpResponse:
         "affiliations_service/cdwg_form.html",
         {
             "tool": get_tool("as"),
-            "breadcrumbs": crumbs.trail(
-                crumbs.search("CDWG Search", "as:cdwgs"),
+            "breadcrumbs": [
+                crumbs.section("CDWG Search", "as:cdwgs"),
                 crumbs.action(f"Edit {cdwg}", "pencil-square")
                 if cdwg
                 else crumbs.action("New CDWG", "plus-circle"),
-            ),
+            ],
             "form": form,
             "cdwg": cdwg,
         },
