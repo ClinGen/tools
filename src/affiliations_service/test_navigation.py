@@ -50,6 +50,13 @@ class NavbarTest(TestCase):
         self.assertLess(page.index('class="subtitle"'), page.index('id="as-navbar"'))
         self.assertNotIn('class="tabs', page)
 
+    def test_cdwgs_come_before_people(self):
+        page = self.client.get(reverse("as:index")).content.decode()
+        self.assertLess(
+            page.index('<a class="navbar-link">CDWGs</a>'),
+            page.index('<a class="navbar-link">People</a>'),
+        )
+
     def test_the_current_pages_link_is_bold(self):
         page = self.client.get(reverse("as:people")).content.decode()
         self.assertIn(

@@ -158,7 +158,7 @@ with HTMX as staff type, and work as a plain form without JavaScript.
 ### `templates/affiliations_service/partials/header.html`
 
 The AS's title and subtitle, then its navbar, copied from the HCI's: Affiliations,
-People, and CDWGs dropdowns, each with Search and Add links, and a burger menu on narrow
+CDWGs, and People dropdowns, each with Search and Add links, and a burger menu on narrow
 screens, then the page's breadcrumbs. Every AS page includes it.
 
 ### `test_affiliation_forms.py`
