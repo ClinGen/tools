@@ -3,6 +3,7 @@
 from typing import Any
 
 from django import forms
+from django.db.models import Q
 
 from affiliations_service.models import (
     CDWG,
@@ -30,7 +31,19 @@ class BulmaFormMixin:
                 widget.attrs.setdefault("class", "input")
 
 
-class AffiliationCreateForm(BulmaFormMixin, forms.ModelForm):
+class ActiveCDWGsMixin:
+    """Offers only CDWGs that aren't deleted, plus the affiliation's current one."""
+
+    def __init__(self, *args, **kwargs) -> None:
+        """Narrows the CDWG choices."""
+        super().__init__(*args, **kwargs)
+        current = self.instance.cdwg_id  # ty: ignore[unresolved-attribute] (The form this mixes into edits an affiliation.)
+        self.fields["cdwg"].queryset = CDWG.objects.filter(  # ty: ignore[unresolved-attribute] (The form this mixes into has fields.)
+            Q(is_deleted=False) | Q(pk=current)
+        )
+
+
+class AffiliationCreateForm(ActiveCDWGsMixin, BulmaFormMixin, forms.ModelForm):
     """The fields staff fill in for a new affiliation. The AS assigns its IDs.
 
     Staff can also pick the affiliation's coordinators, who get coordinator
@@ -38,7 +51,7 @@ class AffiliationCreateForm(BulmaFormMixin, forms.ModelForm):
     """
 
     coordinators = forms.ModelMultipleChoiceField(
-        queryset=User.objects.all(),
+        queryset=User.objects.active(),
         required=False,
         widget=forms.CheckboxSelectMultiple,
         label="Coordinators",
@@ -75,7 +88,7 @@ class AffiliationCreateForm(BulmaFormMixin, forms.ModelForm):
         return affiliation
 
 
-class AffiliationEditForm(BulmaFormMixin, forms.ModelForm):
+class AffiliationEditForm(ActiveCDWGsMixin, BulmaFormMixin, forms.ModelForm):
     """The fields staff can change on an affiliation.
 
     The IDs, type, and GPM UUID aren't here, since other systems refer to an
@@ -139,7 +152,7 @@ class MembershipAddForm(BulmaFormMixin, forms.ModelForm):
     """
 
     user = forms.ModelChoiceField(
-        queryset=User.objects.all(),
+        queryset=User.objects.active(),
         widget=forms.RadioSelect,
         error_messages={"required": "Search for a user, then pick them."},
     )

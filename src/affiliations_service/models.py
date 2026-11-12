@@ -8,9 +8,9 @@ import datetime
 import hashlib
 import secrets
 import uuid
-from typing import ClassVar
+from typing import ClassVar, Self
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.core.validators import RegexValidator
 from django.db import models, transaction
 from django.db.models.functions import Lower
@@ -30,7 +30,70 @@ SOMATIC_CANCER_CDWG = "Somatic Cancer"
 NO_CDWG = "None"
 
 
-class CDWG(UUIDModel):
+class SoftDeleteQuerySet(models.QuerySet):
+    """Adds soft deletion to a queryset."""
+
+    def active(self) -> Self:
+        """Returns the records that haven't been deleted."""
+        return self.filter(is_deleted=False)
+
+    def delete(self) -> tuple[int, dict[str, int]]:
+        """Marks each record deleted instead of deleting it.
+
+        Returns:
+            Zero rows deleted, as Django's delete() would report it.
+        """
+        for record in self:
+            record.delete()
+        return 0, {}
+
+
+class SoftDeleteManager(models.Manager):
+    """Returns querysets that delete softly. Subclasses can set `queryset_class`."""
+
+    queryset_class: type[SoftDeleteQuerySet] = SoftDeleteQuerySet
+
+    def get_queryset(self) -> SoftDeleteQuerySet:
+        """Returns all records, including deleted ones."""
+        return self.queryset_class(self.model, using=self._db)
+
+    def active(self) -> SoftDeleteQuerySet:
+        """Returns the records that haven't been deleted."""
+        return self.get_queryset().active()
+
+
+class SoftDeleteMixin:
+    """Makes a model's delete() mark the record deleted instead of deleting it.
+
+    The model needs an `is_deleted` field. Records are kept because other systems
+    may refer to them; deleted ones are left out of lists.
+    """
+
+    def delete(self, *_args: object, **_kwargs: object) -> tuple[int, dict[str, int]]:
+        """Marks the record deleted instead of deleting it.
+
+        Returns:
+            Zero rows deleted, as Django's delete() would report it.
+        """
+        self.is_deleted = True
+        self.save()  # ty: ignore[unresolved-attribute] (The model this mixes into has save.)
+        return 0, {}
+
+
+def deleted_field(noun: str) -> models.BooleanField:
+    """Returns the is_deleted field for a model that deletes softly.
+
+    Args:
+        noun: What the model calls a record, such as "affiliations".
+    """
+    return models.BooleanField(
+        default=False,
+        verbose_name="Deleted",
+        help_text=f"Deleted {noun} are kept, but left out of lists.",
+    )
+
+
+class CDWG(SoftDeleteMixin, UUIDModel):
     """A Clinical Domain Working Group, such as Cardiovascular or Hereditary Cancer."""
 
     name = models.CharField(
@@ -46,9 +109,12 @@ class CDWG(UUIDModel):
         verbose_name="GPM UUID",
         help_text="The UUID the GPM uses for this CDWG, if it has one.",
     )
+    is_deleted = deleted_field("CDWGs")
     added_at = models.DateTimeField(auto_now_add=True, verbose_name="Added At")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
     history = HistoricalRecords()
+
+    objects: ClassVar[SoftDeleteManager] = SoftDeleteManager()
 
     class Meta:  # ty: ignore[invalid-attribute-override] (Each Django model declares its own Meta.)
         """Provides metadata."""
@@ -69,37 +135,7 @@ class CDWG(UUIDModel):
         return self.name
 
 
-class AffiliationQuerySet(models.QuerySet):
-    """Adds soft deletion to affiliation querysets."""
-
-    def active(self) -> "AffiliationQuerySet":
-        """Returns the affiliations that haven't been deleted."""
-        return self.filter(is_deleted=False)
-
-    def delete(self) -> tuple[int, dict[str, int]]:
-        """Marks each affiliation deleted instead of deleting it.
-
-        Returns:
-            Zero rows deleted, as Django's delete() would report it.
-        """
-        for affiliation in self:
-            affiliation.delete()
-        return 0, {}
-
-
-class AffiliationManager(models.Manager):
-    """Returns `AffiliationQuerySet`s, which delete softly."""
-
-    def get_queryset(self) -> AffiliationQuerySet:
-        """Returns all affiliations, including deleted ones."""
-        return AffiliationQuerySet(self.model, using=self._db)
-
-    def active(self) -> AffiliationQuerySet:
-        """Returns the affiliations that haven't been deleted."""
-        return self.get_queryset().active()
-
-
-class Affiliation(UUIDModel):
+class Affiliation(SoftDeleteMixin, UUIDModel):
     """A group that curates for ClinGen, such as a VCEP or a GCEP.
 
     The affiliation ID and the expert panel ID are assigned on creation. Affiliations
@@ -174,16 +210,12 @@ class Affiliation(UUIDModel):
         verbose_name="GPM UUID",
         help_text="The UUID the GPM uses for this affiliation, if it has one.",
     )
-    is_deleted = models.BooleanField(
-        default=False,
-        verbose_name="Deleted",
-        help_text="Deleted affiliations are kept, but left out of lists.",
-    )
+    is_deleted = deleted_field("affiliations")
     added_at = models.DateTimeField(auto_now_add=True, verbose_name="Added At")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
     history = HistoricalRecords()
 
-    objects: ClassVar[AffiliationManager] = AffiliationManager()
+    objects: ClassVar[SoftDeleteManager] = SoftDeleteManager()
     cdwg_id: uuid.UUID | None  # Django adds this for the cdwg foreign key.
 
     class Meta:  # ty: ignore[invalid-attribute-override] (Each Django model declares its own Meta.)
@@ -229,9 +261,25 @@ class Affiliation(UUIDModel):
                     "An independent curation group must be in the CDWG named "
                     f"{NO_CDWG}."
                 )
+        if self.cdwg_id is not None and self._cdwg_newly_set() and self.cdwg.is_deleted:
+            errors["cdwg"] = "That CDWG has been deleted."
         errors.update(self._id_errors())
         if errors:
             raise ValidationError(errors)
+
+    def _cdwg_newly_set(self) -> bool:
+        """Reports whether the affiliation is new or its CDWG is changing.
+
+        An affiliation whose CDWG was deleted later can still be saved, but no
+        affiliation can be put in a deleted CDWG.
+
+        Returns:
+            True if the CDWG is being set now.
+        """
+        if self._state.adding:  # ruff: ignore[private-member-access]
+            return True
+        saved = Affiliation.objects.filter(pk=self.pk).values_list("cdwg_id", flat=True)
+        return saved.first() != self.cdwg_id
 
     def _id_errors(self) -> dict[str, str]:
         """Checks that the affiliation's IDs are in range and go together.
@@ -282,16 +330,6 @@ class Affiliation(UUIDModel):
             if self._state.adding and self.expert_panel_id is None:
                 self.expert_panel_id = self._derived_expert_panel_id()
             super().save(*args, **kwargs)
-
-    def delete(self, *_args, **_kwargs) -> tuple[int, dict[str, int]]:
-        """Marks the affiliation deleted instead of deleting it.
-
-        Returns:
-            Zero rows deleted, as Django's delete() would report it.
-        """
-        self.is_deleted = True
-        self.save()
-        return 0, {}
 
     @staticmethod
     def _next_affiliation_id() -> int:
@@ -378,7 +416,7 @@ def email_is_taken(email: str, *, user: "User | None" = None) -> bool:
     return users.exists() or other_emails.exists()
 
 
-class User(UUIDModel):
+class User(SoftDeleteMixin, UUIDModel):
     """A user in ClinGen's affiliations, such as a coordinator or a curator.
 
     A user's email is optional, since some users, such as approvers carried over
@@ -429,9 +467,12 @@ class User(UUIDModel):
         verbose_name="GPM UUID",
         help_text="The UUID the GPM uses for this user, if it has one.",
     )
+    is_deleted = deleted_field("users")
     added_at = models.DateTimeField(auto_now_add=True, verbose_name="Added At")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
     history = HistoricalRecords()
+
+    objects: ClassVar[SoftDeleteManager] = SoftDeleteManager()
 
     class Meta:  # ty: ignore[invalid-attribute-override] (Each Django model declares its own Meta.)
         """Provides metadata."""
@@ -519,30 +560,32 @@ class UserEmail(UUIDModel):
             raise ValidationError({"email": DUPLICATE_EMAIL_MESSAGE})
 
 
-class MembershipQuerySet(models.QuerySet):
+class MembershipQuerySet(SoftDeleteQuerySet):
     """Adds a filter for current memberships."""
 
-    def current(self) -> "MembershipQuerySet":
-        """Returns the memberships with no end date or an end date in the future."""
+    def current(self) -> Self:
+        """Returns the memberships that aren't deleted and haven't ended."""
         today = timezone.localdate()
-        return self.filter(
+        return self.active().filter(
             models.Q(end_date__isnull=True) | models.Q(end_date__gt=today)
         )
 
 
-class MembershipManager(models.Manager):
+class MembershipManager(SoftDeleteManager):
     """Returns `MembershipQuerySet`s."""
 
+    queryset_class = MembershipQuerySet
+
     def get_queryset(self) -> MembershipQuerySet:
-        """Returns all memberships, including ended ones."""
+        """Returns all memberships, including ended and deleted ones."""
         return MembershipQuerySet(self.model, using=self._db)
 
     def current(self) -> MembershipQuerySet:
-        """Returns the memberships with no end date or an end date in the future."""
+        """Returns the memberships that aren't deleted and haven't ended."""
         return self.get_queryset().current()
 
 
-class Membership(UUIDModel):
+class Membership(SoftDeleteMixin, UUIDModel):
     """A role a user holds in an affiliation.
 
     A user who holds two roles in an affiliation has two memberships. Memberships
@@ -580,6 +623,7 @@ class Membership(UUIDModel):
         verbose_name="End Date",
         help_text="When the user's time in this role ends. Leave blank if it hasn't.",
     )
+    is_deleted = deleted_field("memberships")
     added_at = models.DateTimeField(auto_now_add=True, verbose_name="Added At")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated At")
     history = HistoricalRecords()
@@ -600,7 +644,7 @@ class Membership(UUIDModel):
             ),
             models.UniqueConstraint(
                 fields=["user", "affiliation", "role"],
-                condition=models.Q(end_date__isnull=True),
+                condition=models.Q(end_date__isnull=True, is_deleted=False),
                 name="as_membership_one_open_role",
                 violation_error_message=(
                     "This user already holds this role in this affiliation."
@@ -614,8 +658,28 @@ class Membership(UUIDModel):
 
     @property
     def is_current(self) -> bool:
-        """Whether the membership has no end date or ends in the future."""
+        """Whether the membership isn't deleted and hasn't ended."""
+        if self.is_deleted:
+            return False
         return self.end_date is None or self.end_date > timezone.localdate()
+
+    def clean(self) -> None:
+        """Checks that a new membership's user and affiliation aren't deleted.
+
+        Raises:
+            ValidationError: If either one is deleted.
+        """
+        if not self._state.adding:  # ruff: ignore[private-member-access]
+            return
+        errors = {}
+        if self.user_id is not None and self.user.is_deleted:  # ty: ignore[unresolved-attribute] (Django adds user_id.)
+            errors["user"] = "This user has been deleted."
+        if self.affiliation_id is not None and self.affiliation.is_deleted:  # ty: ignore[unresolved-attribute] (Django adds affiliation_id.)
+            # The affiliation is where the membership is added, not something staff
+            # pick, so this isn't tied to a field.
+            errors[NON_FIELD_ERRORS] = "This affiliation has been deleted."
+        if errors:
+            raise ValidationError(errors)
 
     def end(self, on: datetime.date | None = None) -> None:
         """Ends the membership by setting its end date.

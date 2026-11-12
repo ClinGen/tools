@@ -207,9 +207,16 @@ affiliation's ID, and the last three digits of the two IDs must still match: 100
 with 40042 or 50042.
 
 **Rules.** An SC-VCEP belongs to the Somatic Cancer CDWG. An independent curation group
-belongs to the CDWG named None and has no GPM UUID. Affiliations are never deleted,
-since curation records in other systems refer to them. Deleting one marks it as deleted,
-and it drops out of lists.
+belongs to the CDWG named None and has no GPM UUID.
+
+**Deleting.** Nothing in the AS is ever really deleted, since other systems, such as
+curation records and the GPM, may still refer to it. Deleting an affiliation, a CDWG, a
+user, or a membership marks it as deleted: it drops out of lists and searches, but it's
+still found by its ID, with its history. A deleted CDWG can't get new affiliations, and
+a deleted affiliation or user can't get new memberships. Deleting doesn't cascade: a
+deleted user's or affiliation's memberships stay as they were, but a deleted membership
+no longer counts as current. Deleted records still count for uniqueness, so a deleted
+user's email or GPM UUID can't be given to someone else.
 
 **Users and memberships.** The AS tracks each user in ClinGen's affiliations, not just
 their names. An AS user is a record of someone in ClinGen's groups; it isn't a sign-in
@@ -218,8 +225,7 @@ a name, an optional preferred name, a primary email, other emails, an institutio
 ORCID iD, credentials (such as "PhD, CGC"), and an optional GPM UUID. No two users share
 an email, ignoring case, whether it's their primary email or another one. A user's
 primary email is optional, since some users, such as approvers in the old AS, are known
-only by name. Users are never deleted. These fields are a starting point, and we expect
-to add more.
+only by name. These fields are a starting point, and we expect to add more.
 
 A membership says that a user holds a role in an affiliation. The roles are coordinator,
 approver, and curator. A user who holds two roles in an affiliation has two memberships,
@@ -238,9 +244,9 @@ Read-only lookups find affiliations by their canonical IDs:
 returns one. Affiliations, CDWGs, and users can also be looked up by GPM UUID, as
 `/{resource}/gpm-uuid/{gpm_uuid}`, and creating one with a GPM UUID that's in use is
 refused. Lists are paginated, and updates use `PATCH`. A request that fails validation
-gets a 422, and one that breaks a rule above gets a 400 with a `detail` message.
-Deleting an affiliation through the API marks it as deleted; users and memberships have
-no delete endpoint.
+gets a 422, and one that breaks a rule above gets a 400 with a `detail` message. Every
+resource has a `DELETE`, which marks the record as deleted; lists leave deleted records
+out unless they're asked for with `include_deleted=true`.
 
 Clients send an API key in the `X-Api-Key` header. Any active AS key can read and change
 everything in the AS; there are no read-only keys. Staff create and revoke keys in the

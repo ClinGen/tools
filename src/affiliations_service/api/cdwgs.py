@@ -21,6 +21,7 @@ class CDWGOut(Schema):
     id: uuid.UUID
     name: str
     gpm_uuid: uuid.UUID | None
+    is_deleted: bool
 
 
 class CDWGIn(Schema):
@@ -39,13 +40,16 @@ class CDWGPatch(Schema):
 
 @router.get("", response=list[CDWGOut])
 @paginate
-def list_cdwgs(request: HttpRequest) -> QuerySet[CDWG]:  # ruff: ignore[unused-function-argument] (Ninja's signature.)
-    """Lists the CDWGs by name.
+def list_cdwgs(
+    request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    include_deleted: bool = False,  # ruff: ignore[boolean-type-hint-positional-argument, boolean-default-value-positional-argument] (A query parameter.)
+) -> QuerySet[CDWG]:
+    """Lists the CDWGs by name, leaving out deleted ones unless include_deleted is true.
 
     Returns:
         The CDWGs.
     """
-    return CDWG.objects.all()
+    return CDWG.objects.all() if include_deleted else CDWG.objects.active()
 
 
 @router.get("/gpm-uuid/{gpm_uuid}", response=CDWGOut)
@@ -94,3 +98,17 @@ def update_cdwg(
     cdwg = get_object_or_404(CDWG, pk=id_)
     save_validated(cdwg, data.dict(exclude_unset=True))
     return cdwg
+
+
+@router.delete("/{id}", response={204: None})
+def delete_cdwg(
+    request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    id_: PathEx[uuid.UUID, P(alias="id")],
+) -> Status[None]:
+    """Marks a CDWG deleted. It's kept, but left out of lists.
+
+    Returns:
+        204.
+    """
+    get_object_or_404(CDWG, pk=id_).delete()
+    return Status(204, None)

@@ -31,6 +31,7 @@ class UserOut(Schema):
     orcid: str
     credentials: str
     gpm_uuid: uuid.UUID | None
+    is_deleted: bool
     added_at: datetime
     updated_at: datetime
 
@@ -88,6 +89,7 @@ class UserFilters(Schema):
     email: str | None = None
     orcid: str | None = None
     gpm_uuid: uuid.UUID | None = None
+    include_deleted: bool = False
 
 
 def _users() -> QuerySet[User]:
@@ -122,7 +124,7 @@ def list_users(
     Returns:
         The matching users.
     """
-    users = _users()
+    users = _users() if filters.include_deleted else _users().filter(is_deleted=False)
     if filters.q:
         users = users.filter(
             Q(name__icontains=filters.q)
@@ -195,3 +197,17 @@ def update_user(
     other_emails = changes.pop("other_emails", None)
     _save(user, changes, other_emails)
     return get_object_or_404(_users(), pk=user.pk)
+
+
+@router.delete("/{id}", response={204: None})
+def delete_user(
+    request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    id_: PathEx[uuid.UUID, P(alias="id")],
+) -> Status[None]:
+    """Marks a user deleted. It's kept, but left out of lists.
+
+    Returns:
+        204.
+    """
+    get_object_or_404(User, pk=id_).delete()
+    return Status(204, None)

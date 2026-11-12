@@ -28,6 +28,7 @@ class MembershipOut(Schema):
     start_date: date | None
     end_date: date | None
     is_current: bool
+    is_deleted: bool
     added_at: datetime
     updated_at: datetime
 
@@ -70,6 +71,7 @@ class MembershipFilters(Schema):
     user: uuid.UUID | None = None
     role: Membership.Role | None = None
     current: bool | None = None
+    include_deleted: bool = False
 
 
 def _get_or_400[T: (User, Affiliation)](model: type[T], pk: uuid.UUID) -> T:
@@ -96,7 +98,11 @@ def list_memberships(
     Returns:
         The matching memberships.
     """
-    memberships = Membership.objects.all()
+    memberships = (
+        Membership.objects.all()
+        if filters.include_deleted
+        else Membership.objects.active()
+    )
     if filters.current is not None:
         current = Membership.objects.current()
         memberships = (
@@ -161,7 +167,7 @@ def update_membership(
     id_: PathEx[uuid.UUID, P(alias="id")],
     data: MembershipPatch,
 ) -> Membership:
-    """Changes a membership's dates. Setting end_date ends it; it isn't deleted.
+    """Changes a membership's dates. Setting end_date ends it.
 
     Returns:
         The changed membership.
@@ -169,3 +175,17 @@ def update_membership(
     membership = get_object_or_404(Membership, pk=id_)
     save_validated(membership, data.dict(exclude_unset=True))
     return membership
+
+
+@router.delete("/{id}", response={204: None})
+def delete_membership(
+    request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    id_: PathEx[uuid.UUID, P(alias="id")],
+) -> Status[None]:
+    """Marks a membership deleted. It's kept, but left out of lists.
+
+    Returns:
+        204.
+    """
+    get_object_or_404(Membership, pk=id_).delete()
+    return Status(204, None)

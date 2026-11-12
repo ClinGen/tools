@@ -51,7 +51,13 @@ class CDWGApiTest(ApiTestCase):
         cdwg = CDWG.objects.create(name="Kidney", gpm_uuid=GPM_UUID)
         body = self.get(f"{URL}/{cdwg.pk}").json()
         self.assertEqual(
-            body, {"id": str(cdwg.pk), "name": "Kidney", "gpm_uuid": GPM_UUID}
+            body,
+            {
+                "id": str(cdwg.pk),
+                "name": "Kidney",
+                "gpm_uuid": GPM_UUID,
+                "is_deleted": False,
+            },
         )
 
     def test_create(self):

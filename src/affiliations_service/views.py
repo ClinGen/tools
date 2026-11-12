@@ -65,7 +65,7 @@ def index(request: HttpRequest) -> HttpResponse:
             "filters": filters,
             "types": Affiliation.Type.choices,
             "statuses": Affiliation.Status.choices,
-            "cdwgs": CDWG.objects.all(),
+            "cdwgs": CDWG.objects.active(),
         },
     )
 
@@ -92,7 +92,7 @@ def _members_context(
     Returns:
         The current members by role, the past memberships, and the add-member form.
     """
-    memberships = affiliation.memberships.select_related("user")  # ty: ignore[unresolved-attribute] (Django adds the reverse relation.)
+    memberships = affiliation.memberships.active().select_related("user")  # ty: ignore[unresolved-attribute] (Django adds the reverse relation.)
     current = memberships.current()
     return {
         "affiliation": affiliation,
@@ -181,9 +181,7 @@ def membership_add(request: HttpRequest, pk: str) -> HttpResponse:
         return HttpResponseNotAllowed(["POST"])
     affiliation = get_object_or_404(Affiliation, pk=pk)
     form = MembershipAddForm(request.POST, instance=Membership(affiliation=affiliation))
-    if affiliation.is_deleted:
-        form.add_error(None, "This affiliation has been deleted.")
-    elif form.is_valid():
+    if form.is_valid():
         form.save()
         return _members_response(request, affiliation)
     return _members_response(request, affiliation, form)
@@ -218,12 +216,16 @@ def user_search(request: HttpRequest) -> HttpResponse:
     query = request.GET.get("q", "").strip()
     users = User.objects.none()
     if query:
-        users = User.objects.filter(
-            Q(name__icontains=query)
-            | Q(preferred_name__icontains=query)
-            | Q(email__icontains=query)
-            | Q(other_emails__email__icontains=query)
-        ).distinct()[:10]
+        users = (
+            User.objects.active()
+            .filter(
+                Q(name__icontains=query)
+                | Q(preferred_name__icontains=query)
+                | Q(email__icontains=query)
+                | Q(other_emails__email__icontains=query)
+            )
+            .distinct()[:10]
+        )
     # The add-member form picks one user; the new-affiliation form picks coordinators.
     input_name = (
         "coordinators" if request.GET.get("input") == "coordinators" else "user"
@@ -356,7 +358,7 @@ def user_list(request: HttpRequest) -> HttpResponse:
     Returns:
         The users list.
     """
-    users = User.objects.all()
+    users = User.objects.active()
     query = request.GET.get("q", "").strip()
     if query:
         users = users.filter(
@@ -387,7 +389,7 @@ def user_detail(request: HttpRequest, pk: str) -> HttpResponse:
         The user's page.
     """
     user = get_object_or_404(User.objects.prefetch_related("other_emails"), pk=pk)
-    memberships = user.memberships.select_related("affiliation")  # ty: ignore[unresolved-attribute] (Django adds the reverse relation.)
+    memberships = user.memberships.active().select_related("affiliation")
     current = memberships.current()
     return render(
         request,
@@ -468,11 +470,15 @@ def cdwg_list(request: HttpRequest) -> HttpResponse:
     Returns:
         The CDWG list.
     """
-    cdwgs = CDWG.objects.annotate(
-        affiliation_count=Count(
-            "affiliations", filter=Q(affiliations__is_deleted=False)
+    cdwgs = (
+        CDWG.objects.active()
+        .annotate(
+            affiliation_count=Count(
+                "affiliations", filter=Q(affiliations__is_deleted=False)
+            )
         )
-    ).order_by("name")
+        .order_by("name")
+    )
     query = request.GET.get("q", "").strip()
     if query:
         cdwgs = cdwgs.filter(name__icontains=query)

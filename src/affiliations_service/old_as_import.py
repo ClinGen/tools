@@ -194,7 +194,11 @@ class _Importer:
 
     def _add_membership(self, user: User, affiliation: Affiliation, role: str) -> None:
         current = Membership.objects.filter(
-            user=user, affiliation=affiliation, role=role, end_date__isnull=True
+            user=user,
+            affiliation=affiliation,
+            role=role,
+            end_date__isnull=True,
+            is_deleted=False,
         )
         if not current.exists():
             Membership.objects.create(user=user, affiliation=affiliation, role=role)

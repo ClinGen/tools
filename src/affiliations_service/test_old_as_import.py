@@ -116,13 +116,13 @@ class ImportTest(TestCase):
         ada = User.objects.get(email__iexact="ada@example.org")
         self.assertEqual(ada.name, "Ada Lovelace")
         self.assertEqual(
-            set(ada.memberships.values_list("affiliation__type", "role")),  # type: ignore
+            set(ada.memberships.values_list("affiliation__type", "role")),
             {("GCEP", "COORDINATOR"), ("GCEP", "APPROVER"), ("VCEP", "COORDINATOR")},
         )
         self.assertEqual(User.objects.get(name="Grace Hopper").email, "")
         alan = User.objects.get(name="Alan Turing")
         self.assertEqual(alan.email, "")
-        self.assertEqual(alan.memberships.get().role, Membership.Role.APPROVER)  # type: ignore
+        self.assertEqual(alan.memberships.get().role, Membership.Role.APPROVER)
         self.assertEqual(User.objects.count(), 3)
 
     def test_a_second_run_creates_nothing_new(self):
