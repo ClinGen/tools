@@ -92,6 +92,19 @@ Describes an object's change history in plain language, such as "Changed Status 
 Applying to Active.", for the AS's pages. It shows choice labels instead of stored
 values and names instead of IDs.
 
+### `management/__init__.py`
+
+Marks `management` as a Python package.
+
+### `management/commands/__init__.py`
+
+Marks `commands` as a Python package.
+
+### `management/commands/import_old_as.py`
+
+Defines `import_old_as`, which copies CDWGs, affiliations, and people from the old AS
+using the key in `AS_API_KEY`. `--dry-run` shows what it would do without saving.
+
 ### `models.py`
 
 Defines `CDWG`, `Affiliation`, and `ClinVarSubmitterId`. An affiliation's IDs are
@@ -118,6 +131,14 @@ one by setting its end date instead of deleting it.
 `ApiKey` is the key a client system sends to use the API. Raw keys start with `as_`, and
 only their SHA-256 hash and first eight characters are stored. `ApiKey.objects.verify()`
 finds the active key for a raw value and records its use.
+
+### `old_as_import.py`
+
+Imports from the old AS's API (`cdwg_list/` and `database_list/`): CDWGs, affiliations
+with their IDs, deleted flags, and ClinVar submitter IDs, and coordinators and approvers
+as people with memberships. People are matched by email, then by name, so an approver
+who is also a coordinator becomes one person. Rerunning it updates only what changed.
+Records that break the AS's rules are imported anyway, with a warning.
 
 ### `static/affiliations_service/formset.js`
 
@@ -220,6 +241,11 @@ Tests ID assignment, soft deletion, uniqueness constraints, and history.
 
 Tests that every AS page has the navbar's Search and Add links, that the current page's
 link is bold, the CDWG list's search, and the breadcrumb trails.
+
+### `test_old_as_import.py`
+
+Tests the old AS import with a fake fetch: what it imports, how it matches people, that
+reruns change nothing, dry runs, and rule warnings.
 
 ### `test_people.py`
 

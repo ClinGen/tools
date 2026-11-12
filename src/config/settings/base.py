@@ -224,3 +224,8 @@ CSS_POLL_SLEEP_SECONDS = 60
 CSS_POLLS_PER_PASS = 25
 CSS_POLL_MIN_DELAY = timedelta(minutes=5)
 CSS_POLL_MAX_DELAY = timedelta(hours=6)
+
+# The old AS's API, which `import_old_as` reads to copy its affiliations and people into
+# the AS. AS_API_KEY is an old AS API key.
+AS_OLD_API_URL = "https://affils.clinicalgenome.org/api/"
+AS_OLD_API_KEY = os.getenv("AS_API_KEY", "")
