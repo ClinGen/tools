@@ -69,6 +69,12 @@ affiliation's IDs, type, and GPM UUID.
 
 Configures the `affiliations_service` app.
 
+### `breadcrumbs.py`
+
+Builds the breadcrumb trail at the top of each AS page, like the HCI's: Home (the
+ClinGen Tools landing page), the list page, the object's page, and the current action.
+Each view passes its trail to its template as `breadcrumbs`.
+
 ### `forms.py`
 
 Defines the forms on the AS's pages: `AffiliationCreateForm`, `AffiliationEditForm`
@@ -150,7 +156,7 @@ with HTMX as staff type, and work as a plain form without JavaScript.
 
 The AS's title and subtitle, then its navbar, copied from the HCI's: Affiliations,
 People, and CDWGs dropdowns, each with Search and Add links, and a burger menu on narrow
-screens. Every AS page includes it.
+screens, then the page's breadcrumbs. Every AS page includes it.
 
 ### `test_affiliation_forms.py`
 
@@ -210,7 +216,7 @@ Tests ID assignment, soft deletion, uniqueness constraints, and history.
 ### `test_navigation.py`
 
 Tests that every AS page has the navbar's Search and Add links, that the current page's
-link is bold, and the CDWG list's search.
+link is bold, the CDWG list's search, and the breadcrumb trails.
 
 ### `test_people.py`
 
@@ -238,6 +244,11 @@ The form for adding or editing a person, with their other emails.
 ### `templates/affiliations_service/person_list.html`
 
 Lists people, with a search box for names and emails that updates the list with HTMX.
+
+### `templates/affiliations_service/partials/breadcrumbs.html`
+
+Renders `breadcrumbs` as a Bulma breadcrumb, with the current page last, bold, and not a
+link elsewhere. `partials/header.html` includes it under the navbar.
 
 ### `templates/affiliations_service/partials/field.html`
 

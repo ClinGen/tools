@@ -6,6 +6,7 @@ from django.db.models import Count, Q
 from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 
+from affiliations_service import breadcrumbs as crumbs
 from affiliations_service.forms import (
     AffiliationCreateForm,
     AffiliationEditForm,
@@ -54,6 +55,9 @@ def index(request: HttpRequest) -> HttpResponse:
         "affiliations_service/index.html",
         {
             "tool": get_tool("as"),
+            "breadcrumbs": crumbs.trail(
+                crumbs.search("Affiliation Search", "as:index", current=True)
+            ),
             "affiliations": affiliations,
             "query": query,
             "filters": filters,
@@ -104,6 +108,10 @@ def _render_affiliation(
         "affiliations_service/affiliation_detail.html",
         {
             "tool": get_tool("as"),
+            "breadcrumbs": crumbs.trail(
+                crumbs.search("Affiliation Search", "as:index"),
+                crumbs.detail(affiliation, current=True),
+            ),
             "history": describe_history(affiliation, "the affiliation"),
             **_members_context(affiliation, member_form),
         },
@@ -260,6 +268,14 @@ def _affiliation_form(
         "affiliations_service/affiliation_form.html",
         {
             "tool": get_tool("as"),
+            "breadcrumbs": crumbs.trail(
+                crumbs.search("Affiliation Search", "as:index"),
+                *(
+                    [crumbs.detail(affiliation), crumbs.action("Edit", "pencil-square")]
+                    if affiliation
+                    else [crumbs.action("New Affiliation", "plus-circle")]
+                ),
+            ),
             "form": form,
             "formset": formset,
             "affiliation": affiliation,
@@ -302,7 +318,15 @@ def affiliation_delete(request: HttpRequest, pk: str) -> HttpResponse:
     return render(
         request,
         "affiliations_service/affiliation_delete.html",
-        {"tool": get_tool("as"), "affiliation": affiliation},
+        {
+            "tool": get_tool("as"),
+            "breadcrumbs": crumbs.trail(
+                crumbs.search("Affiliation Search", "as:index"),
+                crumbs.detail(affiliation),
+                crumbs.action("Delete", "trash"),
+            ),
+            "affiliation": affiliation,
+        },
     )
 
 
@@ -325,7 +349,14 @@ def person_list(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "affiliations_service/person_list.html",
-        {"tool": get_tool("as"), "people": people, "query": query},
+        {
+            "tool": get_tool("as"),
+            "breadcrumbs": crumbs.trail(
+                crumbs.search("People Search", "as:people", current=True)
+            ),
+            "people": people,
+            "query": query,
+        },
     )
 
 
@@ -344,6 +375,10 @@ def person_detail(request: HttpRequest, pk: str) -> HttpResponse:
         "affiliations_service/person_detail.html",
         {
             "tool": get_tool("as"),
+            "breadcrumbs": crumbs.trail(
+                crumbs.search("People Search", "as:people"),
+                crumbs.detail(person, current=True),
+            ),
             "person": person,
             "current_memberships": current,
             "past_memberships": memberships.exclude(pk__in=current).order_by(
@@ -368,7 +403,20 @@ def _person_form(request: HttpRequest, person: Person | None) -> HttpResponse:
     return render(
         request,
         "affiliations_service/person_form.html",
-        {"tool": get_tool("as"), "form": form, "formset": formset, "person": person},
+        {
+            "tool": get_tool("as"),
+            "breadcrumbs": crumbs.trail(
+                crumbs.search("People Search", "as:people"),
+                *(
+                    [crumbs.detail(person), crumbs.action("Edit", "pencil-square")]
+                    if person
+                    else [crumbs.action("New Person", "plus-circle")]
+                ),
+            ),
+            "form": form,
+            "formset": formset,
+            "person": person,
+        },
     )
 
 
@@ -412,7 +460,14 @@ def cdwg_list(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "affiliations_service/cdwg_list.html",
-        {"tool": get_tool("as"), "cdwgs": cdwgs, "query": query},
+        {
+            "tool": get_tool("as"),
+            "breadcrumbs": crumbs.trail(
+                crumbs.search("CDWG Search", "as:cdwgs", current=True)
+            ),
+            "cdwgs": cdwgs,
+            "query": query,
+        },
     )
 
 
@@ -429,7 +484,17 @@ def _cdwg_form(request: HttpRequest, cdwg: CDWG | None) -> HttpResponse:
     return render(
         request,
         "affiliations_service/cdwg_form.html",
-        {"tool": get_tool("as"), "form": form, "cdwg": cdwg},
+        {
+            "tool": get_tool("as"),
+            "breadcrumbs": crumbs.trail(
+                crumbs.search("CDWG Search", "as:cdwgs"),
+                crumbs.action(f"Edit {cdwg}", "pencil-square")
+                if cdwg
+                else crumbs.action("New CDWG", "plus-circle"),
+            ),
+            "form": form,
+            "cdwg": cdwg,
+        },
     )
 
 

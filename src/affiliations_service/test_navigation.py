@@ -67,3 +67,57 @@ class CdwgSearchTest(TestCase):
         page = self.client.get(reverse("as:cdwgs"), {"q": "kid"}).content.decode()
         self.assertIn("Kidney", page)
         self.assertNotIn("Cardiovascular", page)
+
+
+class BreadcrumbTest(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.affiliation = make_affiliation(full_name="Kidney Cystic GCEP")
+        cls.person = make_person(name="Ada Lovelace")
+
+    def setUp(self):
+        self.client.force_login(make_user("as@example.com"))
+
+    def _crumbs(self, url: str) -> list[tuple[str, str]]:
+        """Returns each breadcrumb's text and link on a page."""
+        crumbs = self.client.get(url).context["breadcrumbs"]
+        return [(crumb.text, crumb.url) for crumb in crumbs]
+
+    def test_edit_page_trail(self):
+        affiliation = self.affiliation
+        edit_url = reverse("as:affiliation-edit", kwargs={"pk": affiliation.pk})
+        self.assertEqual(
+            self._crumbs(edit_url),
+            [
+                ("Home", reverse("home")),
+                ("Affiliation Search", reverse("as:index")),
+                ("Kidney Cystic GCEP", affiliation.get_absolute_url()),
+                ("Edit", ""),
+            ],
+        )
+
+    def test_list_pages_end_at_their_search_crumb(self):
+        cases = [
+            ("as:index", "Affiliation Search"),
+            ("as:people", "People Search"),
+            ("as:cdwgs", "CDWG Search"),
+        ]
+        for name, text in cases:
+            with self.subTest(page=name):
+                self.assertEqual(self._crumbs(reverse(name))[-1], (text, ""))
+
+    def test_person_and_new_pages_trails(self):
+        self.assertEqual(
+            [text for text, _ in self._crumbs(self.person.get_absolute_url())],
+            ["Home", "People Search", "Ada Lovelace"],
+        )
+        self.assertEqual(
+            [text for text, _ in self._crumbs(reverse("as:affiliation-create"))],
+            ["Home", "Affiliation Search", "New Affiliation"],
+        )
+
+    def test_the_breadcrumbs_render_with_the_last_one_active(self):
+        page = self.client.get(self.affiliation.get_absolute_url()).content.decode()
+        self.assertIn('class="breadcrumb"', page)
+        self.assertIn(f'href="{reverse("home")}"', page)
+        self.assertIn('<li class="is-active">', page)
