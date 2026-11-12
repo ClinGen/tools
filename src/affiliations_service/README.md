@@ -1,9 +1,10 @@
 # `affiliations_service`
 
 This app is the Affiliations Service (AS), mounted at `/as/` with the URL namespace
-`as`. It's the source of truth for ClinGen affiliations, the CDWGs they belong to, and
-the people who hold roles in them. Only users with `has_as_permissions` can use its
-pages. "The Affiliations Service" in `docs/design.md` describes its design.
+`as`. It's the source of truth for users and groups inside and outside of ClinGen apps:
+the people in ClinGen's affiliations, the affiliations themselves, and the CDWGs they
+belong to. Only users with `has_as_permissions` can use its pages. "The Affiliations
+Service" in `docs/design.md` describes its design.
 
 ### `__init__.py`
 

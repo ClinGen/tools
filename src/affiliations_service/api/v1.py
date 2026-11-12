@@ -18,8 +18,7 @@ api = NinjaAPI(
     title="Affiliations Service API",
     version="1",
     description=(
-        "The source of truth for ClinGen affiliations, the CDWGs they belong to, and "
-        "the people who hold roles in them."
+        "The source of truth for users and groups inside and outside of ClinGen apps."
     ),
     auth=ApiKeyAuth(),
     # The API is mounted inside the AS's URLconf, so its namespace is nested in as.

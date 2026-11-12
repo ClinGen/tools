@@ -37,8 +37,8 @@ TOOLS = [
         abbreviation="AS",
         namespace="as",
         description=(
-            "The source of truth for ClinGen affiliations (expert panels and working "
-            "groups)."
+            "The source of truth for users and groups inside and outside of ClinGen "
+            "apps."
         ),
     ),
     Tool(

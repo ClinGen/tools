@@ -3,6 +3,7 @@
 
 [Production Site](https://tools.clinicalgenome.org/) |
 [Test Site](https://tools-test.clinicalgenome.org/)
+
 </div>
 
 ClinGen Tools is one Django web application that houses the internal tools the Stanford
@@ -11,8 +12,8 @@ codebase, one set of dependencies, one server, and one deployment to look after,
 of one of each per tool.
 
 - **Affiliations Service (AS)**, at [`/as/`](https://tools.clinicalgenome.org/as/): the
-  source of truth for ClinGen affiliations (expert panels and working groups), with a
-  REST API for other ClinGen tools and a UI for ClinGen staff.
+  source of truth for users and groups inside and outside of ClinGen apps, with a REST
+  API for other ClinGen tools and a UI for ClinGen staff.
 - **ClinVar Submission Service (CSS)**, at
   [`/css/`](https://tools.clinicalgenome.org/css/): accepts ClinVar submissions from
   ClinGen clients through an API, forwards them to ClinVar, and tracks each one until

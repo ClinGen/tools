@@ -73,7 +73,8 @@ just django-migrate    # Apply migrations
 This project is one Django web application that houses the Stanford ClinGen team's
 internal tools. Each tool is mounted under its own path on tools.clinicalgenome.org:
 
-- `/as/`: the Affiliations Service (AS), the source of truth for ClinGen affiliations.
+- `/as/`: the Affiliations Service (AS), the source of truth for users and groups
+  inside and outside of ClinGen apps.
 - `/css/`: the ClinVar Submission Service (CSS), which forwards submissions to ClinVar
   and tracks them.
 - `/ets/`: the Email Transfer Service (ETS), which moves a GCI or VCI user's account

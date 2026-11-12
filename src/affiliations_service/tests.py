@@ -6,6 +6,10 @@ from django.urls import reverse
 
 from auth_.models import UserProfile
 
+FLAVOR_TEXT = (
+    "The source of truth for users and groups inside and outside of ClinGen apps."
+)
+
 
 def make_user(username: str, *, as_: bool = True) -> User:
     """Returns a user whose profile has or lacks the AS permission.
@@ -39,11 +43,19 @@ class IndexViewTest(TestCase):
         response = self.client.get(reverse("as:index"))
         self.assertContains(response, "Affiliations Service")
 
+    def test_the_header_shows_the_as_description(self):
+        self.client.force_login(make_user("desc@example.com"))
+        response = self.client.get(reverse("as:index"))
+        self.assertContains(response, FLAVOR_TEXT)
+
     def test_index_is_mounted_at_as(self):
         self.assertEqual(reverse("as:index"), "/as/")
 
 
 class LandingPageTest(TestCase):
+    def test_landing_page_describes_the_as(self):
+        self.assertContains(self.client.get(reverse("home")), FLAVOR_TEXT)
+
     def test_landing_page_links_to_the_as(self):
         response = self.client.get(reverse("home"))
         self.assertContains(response, f'href="{reverse("as:index")}"')

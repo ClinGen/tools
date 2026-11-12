@@ -171,11 +171,12 @@ them in the Django admin.
 
 ### The Affiliations Service
 
-The AS is the source of truth for ClinGen affiliations and for the people in them. It
-replaces the standalone `affiliations-service`, but it isn't a port: it starts with an
-empty database, its own data model, and a new API. It doesn't keep the old service's
-URLs, response formats, legacy JSON format, or API keys. Moving the old service's
-clients and data to the AS is later work.
+The AS is the source of truth for users and groups inside and outside of ClinGen apps:
+the people in ClinGen's affiliations and the affiliations themselves. It replaces the
+standalone `affiliations-service`, but it isn't a port: it starts with an empty
+database, its own data model, and a new API. It doesn't keep the old service's URLs,
+response formats, legacy JSON format, or API keys. Moving the old service's clients and
+data to the AS is later work.
 
 **Affiliations.** An affiliation is a group that curates for ClinGen: a Variant Curation
 Expert Panel (VCEP), a Gene Curation Expert Panel (GCEP), a Somatic Cancer VCEP
