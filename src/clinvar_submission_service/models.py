@@ -304,7 +304,13 @@ class Batch(SlugModel):
     added_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name="Added At",
-        help_text="When the batch was received.",
+        help_text="When a staff member made the batch.",
+    )
+    sent_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name="Sent At",
+        help_text="When ClinVar accepted the batch. Empty until then.",
     )
     updated_at = models.DateTimeField(
         auto_now=True,

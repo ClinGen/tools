@@ -100,25 +100,26 @@ one pass and exits. Run it locally with `just django-poll-clinvar`.
 ### `models.py`
 
 Defines `Batch`, one request to ClinVar: its affiliation (its AS ID and name), the staff
-member who made it, its records, through `BatchRecord`, the ClinVar submission ID, its
-status (named relative to ClinVar, such as `submitted_to_clinvar`, and labeled in
-ClinVar's words, with `status_help` saying what it means), ClinVar's latest response,
-`updated` timestamp, error code, and summary report, any error message, and when it was
-last and will next be polled, plus the content's assertion criteria, the organization
-it's on behalf of, and its release status. It extends `common.models.SlugModel`, so its
-ID is a UUID and its slug is `B` and the first 8 hex characters of the UUID, such as
-`B3f2a9c1e`. It keeps its change history, and `get_absolute_url()` returns its page.
-`Batch.objects.due_to_poll()` returns the submitted and processing batches whose next
-poll time has passed, oldest first. Also defines `Record`, one germline variant
-classification a client sent, with slug `R` and the start of its UUID, its own ClinVar
-JSON, affiliation, client, its page from `get_absolute_url()`, a status relative to the
-CSS's batches and ClinVar with `status_help` for its tooltip, and a copy of its fields:
-the variant's HGVS and assembly, the condition, the classification, mode of inheritance,
-date last evaluated, comment, how the evidence was gathered, and the record's SCV for an
-update. Its choices, defined above the models, are ClinVar's terms, so a value is
-exactly what ClinVar expects; the classifications are the five ACMG terms the VCI uses.
-Also defines `BatchRecord`, one attempt to send a record in a batch: its position in the
-batch's `germlineSubmission` and ClinVar's result for it (Success or Error, the SCV, and
+member who made it, when ClinVar accepted it (`sent_at`), its records, through
+`BatchRecord`, the ClinVar submission ID, its status (named relative to ClinVar, such as
+`submitted_to_clinvar`, and labeled in ClinVar's words, with `status_help` saying what
+it means), ClinVar's latest response, `updated` timestamp, error code, and summary
+report, any error message, and when it was last and will next be polled, plus the
+content's assertion criteria, the organization it's on behalf of, and its release
+status. It extends `common.models.SlugModel`, so its ID is a UUID and its slug is `B`
+and the first 8 hex characters of the UUID, such as `B3f2a9c1e`. It keeps its change
+history, and `get_absolute_url()` returns its page. `Batch.objects.due_to_poll()`
+returns the submitted and processing batches whose next poll time has passed, oldest
+first. Also defines `Record`, one germline variant classification a client sent, with
+slug `R` and the start of its UUID, its own ClinVar JSON, affiliation, client, its page
+from `get_absolute_url()`, a status relative to the CSS's batches and ClinVar with
+`status_help` for its tooltip, and a copy of its fields: the variant's HGVS and
+assembly, the condition, the classification, mode of inheritance, date last evaluated,
+comment, how the evidence was gathered, and the record's SCV for an update. Its choices,
+defined above the models, are ClinVar's terms, so a value is exactly what ClinVar
+expects; the classifications are the five ACMG terms the VCI uses. Also defines
+`BatchRecord`, one attempt to send a record in a batch: its position in the batch's
+`germlineSubmission` and ClinVar's result for it (Success or Error, the SCV, and
 ClinVar's errors for developers). A record is in a batch at most once, and can be in
 several batches over time. Also defines `AffiliationSettings`, the submission-level
 values staff set once per affiliation, with history: its assertion criteria, the
@@ -153,9 +154,10 @@ report by tool ID, and `save_results()` saves them: a record ClinVar accepted ge
 SCV, and one that failed goes back to waiting, with ClinVar's errors kept on its
 attempt. Forwards a batch to ClinVar once with `forward_batch()`, which sends that built
 content and which the staff Resend button uses. If ClinVar accepts it, the batch is
-submitted, with its ClinVar ID and a first poll `CSS_FIRST_POLL_DELAY` out; if ClinVar
-rejects it, can't be reached, or the CSS has no ClinVar key, it's
-send_to_clinvar_failed, with the error, and its records stay in it. It never retries.
+submitted, with its ClinVar ID, when it was sent, and a first poll
+`CSS_FIRST_POLL_DELAY` out; if ClinVar rejects it, can't be reached, or the CSS has no
+ClinVar key, it's send_to_clinvar_failed, with the error, and its records stay in it. It
+never retries.
 
 ### `templatetags/__init__.py`
 
@@ -182,12 +184,12 @@ naming the affiliation, links to its settings.
 ### `templates/clinvar_submission_service/detail.html`
 
 A batch's page, in plain language: its status, affiliation, who sent it, its ClinVar ID,
-when it arrived and was last checked, and what its status means. Its records table shows
-each record's Record ID, linked to its page, variant, condition, classification,
-inheritance, date last evaluated, and whether it's new or an update, with its result and
-SCV once ClinVar has reported. A send_to_clinvar_failed batch's page has a Resend
-button. It never shows raw JSON or ClinVar's error text; developers see those in the
-Django admin.
+when it was made, sent to ClinVar, and last checked, and what its status means. Its
+records table shows each record's Record ID, linked to its page, variant, condition,
+classification, inheritance, date last evaluated, and whether it's new or an update,
+with its result and SCV once ClinVar has reported. A send_to_clinvar_failed batch's page
+has a Resend button. It never shows raw JSON or ClinVar's error text; developers see
+those in the Django admin.
 
 ### `templates/clinvar_submission_service/record.html`
 
@@ -277,12 +279,12 @@ its records back to waiting, so the simulated workflow can start over.
 `BatchTable`, the django-tables2 table on the list page: each batch's Batch ID, linked
 to its page, its affiliation, linked to the list of that affiliation's batches, its
 records' genes, the staff member who made it, its status tag, linked to the list
-filtered to that status (keeping the affiliation filter), its ClinVar ID, and when the
-CSS received it. It sorts by every column but the genes and status. `RecordTable`, on
-the Records page, shows each record's Record ID, linked to its page, Tool ID,
-affiliation, linked to the list of its records, gene and HGVS, classification, status
-tag, linked to the list filtered to that status (keeping the affiliation filter), and
-when the CSS received it.
+filtered to that status (keeping the affiliation filter), its ClinVar ID, and when it
+was made and sent to ClinVar (Not yet until it is). It sorts by every column but the
+genes and status. `RecordTable`, on the Records page, shows each record's Record ID,
+linked to its page, Tool ID, affiliation, linked to the list of its records, gene and
+HGVS, classification, status tag, linked to the list filtered to that status (keeping
+the affiliation filter), and when the CSS received it.
 
 ### `tests/__init__.py`
 
@@ -315,10 +317,10 @@ in order, with each batch's status and ClinVar's result, SCV, and errors, and it
 current batch, never names who made a batch, and takes the same number of queries for
 any number of attempts; that a client lists and reads only batches holding its records,
 each once, with only its own records, filters them by status and affiliation, and never
-sees who made one; that the record list filters by status, affiliation, and update time,
-alone or together, and counts a record as updated when it joins a batch, its batch
-changes, or its result arrives; the OpenAPI docs and endpoints; and that the old batch
-endpoints are gone.
+sees who made one, and says when each was made and sent; that the record list filters by
+status, affiliation, and update time, alone or together, and counts a record as updated
+when it joins a batch, its batch changes, or its result arrives; the OpenAPI docs and
+endpoints; and that the old batch endpoints are gone.
 
 ### `tests/test_api_keys.py`
 
@@ -370,10 +372,11 @@ Tests `make_batch()` and `forward_batch()` against `FakeClinVarClient`: that a b
 made from one affiliation's waiting records, in order, marks them as in a batch, and
 copies its affiliation's settings or, without any, leaves them out; that no records,
 mixed affiliations, withdrawn or batched records, and too many records are refused and
-save nothing; that a batch ClinVar accepts is submitted with its records' content; and
-that a rejected send, or a missing ClinVar key, leaves it send_to_clinvar_failed with
-its records in it, isn't retried, and can be resent. Also tests that `build_payload()`
-lists each record's JSON in order with the batch's fields, leaving out ones it lacks.
+save nothing; that a batch ClinVar accepts is submitted with its records' content and
+when it was sent; and that a rejected send, or a missing ClinVar key, leaves it
+send_to_clinvar_failed with its records in it and no sent time, isn't retried, and can
+be resent. Also tests that `build_payload()` lists each record's JSON in order with the
+batch's fields, leaving out ones it lacks.
 
 ### `tests/test_simulation.py`
 

@@ -276,9 +276,10 @@ def _save_result(attempt: BatchRecord, result: dict[str, Any]) -> None:
 def forward_batch(batch: Batch) -> Batch:
     """Sends a batch to ClinVar once and saves the result.
 
-    If ClinVar accepts it, the batch is submitted_to_clinvar, with its ClinVar ID
-    and a time for the poller's first check. Otherwise it's send_to_clinvar_failed,
-    with the error. It's never retried here; staff resend it from its page.
+    If ClinVar accepts it, the batch is submitted_to_clinvar, with its ClinVar ID,
+    when it was sent, and a time for the poller's first check. Otherwise it's
+    send_to_clinvar_failed, with the error. It's never retried here; staff resend it
+    from its page.
 
     Args:
         batch: A saved batch that hasn't reached ClinVar.
@@ -296,6 +297,7 @@ def forward_batch(batch: Batch) -> Batch:
         logger.info("Sent %s to ClinVar as %s.", batch.slug, clinvar_id)
         batch.status = Batch.Status.SUBMITTED_TO_CLINVAR
         batch.clinvar_submission_id = clinvar_id or ""
+        batch.sent_at = timezone.now()
         batch.error_message = ""
         batch.next_poll_at = timezone.now() + settings.CSS_FIRST_POLL_DELAY
     batch.save()

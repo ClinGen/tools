@@ -7,6 +7,7 @@ from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from clinvar_submission_service.api.auth import API_KEY_HEADER
 from clinvar_submission_service.models import ApiKey, Batch, BatchRecord, Record
@@ -449,6 +450,22 @@ class BatchesTest(ApiTestCase):
         self.assertEqual(record["tool_id"], "var-1")
         self.assertEqual(record["result"], "Error")
         self.assertEqual(record["errors"], [{"userMessage": "Bad HGVS."}])
+
+    def test_says_when_a_batch_was_made_and_sent(self):
+        sent = timezone.now()
+        batch = self._batch(self.mine, sent_at=sent)
+        unsent = self._batch(self.mine)
+        body = self.get(f"{BATCHES_URL}/{batch.slug}").json()
+        made_at = parse_datetime(body["made_at"])
+        assert made_at is not None
+        self.assertEqual(
+            made_at.replace(microsecond=0), batch.added_at.replace(microsecond=0)
+        )
+        self.assertIsNotNone(body["sent_at"])
+        self.assertIsNone(self.get(f"{BATCHES_URL}/{unsent.slug}").json()["sent_at"])
+        attempt = self.get(f"{RECORDS_URL}/{self.mine.slug}").json()["attempts"][0]
+        self.assertIn("sent_at", attempt["batch"])
+        self.assertIn("made_at", attempt["batch"])
 
     def test_shows_each_client_only_its_own_records_in_a_shared_batch(self):
         batch = self._batch(self.theirs, self.mine)

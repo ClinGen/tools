@@ -13,7 +13,8 @@
                         <tr><td>Affiliation</td><td>{{ batch.affiliation_name }}</td></tr>
                         <tr><td>Made By</td><td>{{ batch.made_by.email|default:"" }}</td></tr>
                         <tr><td>ClinVar ID</td><td>{{ batch.clinvar_submission_id }}</td></tr>
-                        <tr><td>Received by CSS</td><td>{{ batch.added_at|date:"Y-m-d H:i" }} UTC</td></tr>
+                        <tr><td>Made</td><td>{{ batch.added_at|date:"Y-m-d H:i" }} UTC</td></tr>
+                        <tr><td>Sent to ClinVar On</td><td>{% if batch.sent_at %}{{ batch.sent_at|date:"Y-m-d H:i" }} UTC{% else %}Not yet{% endif %}</td></tr>
                         <tr><td>Last Checked With ClinVar</td><td>{{ batch.last_polled_at|date:"Y-m-d H:i"|default:"Not yet" }}{% if batch.last_polled_at %} UTC{% endif %}</td></tr>
                     </tbody>
                 </table>

@@ -58,6 +58,9 @@ class BatchSummary(Schema):
     clinvar_submission_id: str
     clinvar_error_code: int | None
     made_at: datetime = Field(alias="added_at")
+    sent_at: datetime | None = Field(
+        description="When ClinVar accepted the batch, or null if it hasn't yet."
+    )
     clinvar_updated_at: datetime | None
     last_checked_at: datetime | None = Field(alias="last_polled_at")
 

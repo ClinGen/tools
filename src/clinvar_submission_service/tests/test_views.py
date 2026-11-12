@@ -5,6 +5,7 @@ from unittest import mock
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.html import escape
 
 from auth_.models import UserProfile
@@ -264,9 +265,15 @@ class ListViewTest(CssViewTestCase):
             response, '<option value="10007" selected>Hearing Loss VCEP</option>'
         )
 
-    def test_says_when_the_css_received_each_batch(self):
+    def test_says_when_each_batch_was_made_and_sent(self):
+        self._make(sent_at=timezone.now())
         self._make()
-        self.assertContains(self.client.get(reverse("css:batches")), "Received by CSS")
+        response = self.client.get(reverse("css:batches"))
+        headers = [column.header for column in response.context["table"].columns]
+        self.assertIn("Made", headers)
+        self.assertIn("Sent to ClinVar On", headers)
+        self.assertNotIn("Received by CSS", headers)
+        self.assertContains(response, "Not yet")
 
     def test_says_so_when_there_are_none(self):
         response = self.client.get(reverse("css:batches"))
@@ -1335,6 +1342,18 @@ class IdLabelTest(CssViewTestCase):
         self.assertContains(response, "<td>Tool ID</td>", html=True)
         self.assertContains(response, "<th>Batch ID</th>", html=True)
         self.assertNotContains(response, "Local ID")
+
+    def test_a_batchs_page_says_when_it_was_made_and_sent(self):
+        response = self.client.get(self.batch.get_absolute_url())
+        self.assertContains(response, "<td>Made</td>", html=True)
+        self.assertContains(
+            response, "<tr><td>Sent to ClinVar On</td><td>Not yet</td></tr>", html=True
+        )
+        self.assertNotContains(response, "Received by CSS")
+        self.batch.sent_at = timezone.now()
+        self.batch.save()
+        response = self.client.get(self.batch.get_absolute_url())
+        self.assertContains(response, self.batch.sent_at.strftime("%Y-%m-%d %H:%M"))
 
     def test_a_batchs_page_says_record_id(self):
         response = self.client.get(self.batch.get_absolute_url())

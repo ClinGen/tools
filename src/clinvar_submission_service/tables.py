@@ -17,8 +17,10 @@ class BatchTable(tables.Table):
     made_by__email = tables.Column(verbose_name="Made By")
     status = tables.Column(orderable=False)
     clinvar_submission_id = tables.Column(verbose_name="ClinVar ID")
-    # When the CSS got the batch. ClinVar gets it when it's forwarded.
-    added_at = tables.DateTimeColumn(verbose_name="Received by CSS", format="Y-m-d H:i")
+    added_at = tables.DateTimeColumn(verbose_name="Made", format="Y-m-d H:i")
+    sent_at = tables.DateTimeColumn(
+        verbose_name="Sent to ClinVar On", format="Y-m-d H:i", default="Not yet"
+    )
 
     class Meta:
         attrs = {"class": "table is-fullwidth is-hoverable"}

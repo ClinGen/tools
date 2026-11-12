@@ -297,9 +297,10 @@ requests.
 #### Batch Lifecycle
 
 A `Batch` is one submission to ClinVar. Its slug is `B` and the start of its UUID, such
-as `B3f2a9c1e`. It records its affiliation, the staff member who made it, its records,
-the ClinVar submission ID, its status, ClinVar's latest response and that response's
-`updated` timestamp and `errorCode`, the summary report, and any error message.
+as `B3f2a9c1e`. It records its affiliation, the staff member who made it and when, when
+ClinVar accepted it, its records, the ClinVar submission ID, its status, ClinVar's
+latest response and that response's `updated` timestamp and `errorCode`, the summary
+report, and any error message.
 
 Each of a batch's records is a `Record`: one germline variant classification, with its
 ClinVar JSON as the client sent it, one item of ClinVar's `germlineSubmission`. A record
@@ -323,10 +324,10 @@ record, and its history notes who did.
    are marked `in_batch`, so they can't join another batch. The CSS refuses records from
    more than one affiliation, records that aren't waiting, and more than 10,000.
 3. The CSS builds the batch's content from its records and sends it to ClinVar. If
-   ClinVar accepts it, the CSS saves the ClinVar submission ID, sets the status to
-   `submitted_to_clinvar`, and sets `next_poll_at`. If ClinVar rejects it or can't be
-   reached, the CSS sets the status to `send_to_clinvar_failed` and saves the error
-   message, and the records stay in the batch to be resent.
+   ClinVar accepts it, the CSS saves the ClinVar submission ID and when it sent the
+   batch, sets the status to `submitted_to_clinvar`, and sets `next_poll_at`. If ClinVar
+   rejects it or can't be reached, the CSS sets the status to `send_to_clinvar_failed`
+   and saves the error message, and the records stay in the batch to be resent.
 4. The poller checks ClinVar for each `submitted_to_clinvar` or `processing_at_clinvar`
    batch whose `next_poll_at` has passed, saves the response, and either records a final
    status or pushes `next_poll_at` further out. When a batch reaches a final status, the
@@ -390,9 +391,9 @@ go in a new version beside it. Ninja validates request bodies and serves OpenAPI
 - `GET /css/api/v1/batches`: list the batches that hold the calling client's records,
   newest first, filtered by status or affiliation if asked.
 - `GET /css/api/v1/batches/{slug}`: read one of those batches: its affiliation, status,
-  ClinVar ID, ClinVar's error code, and the client's records in it, in order, with
-  ClinVar's result, SCV, and errors for each. A batch with none of the client's records
-  is a 404.
+  ClinVar ID, ClinVar's error code, when it was made and sent, and the client's records
+  in it, in order, with ClinVar's result, SCV, and errors for each. A batch with none of
+  the client's records is a 404.
 
 Each client system has its own API key, which it sends in the `X-API-Key` header. The
 Django admin shows a new key once and stores only its hash. A client sees only its own

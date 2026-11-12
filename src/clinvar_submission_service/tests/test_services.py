@@ -3,6 +3,7 @@ from unittest import mock
 from django.contrib.auth.models import User
 from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase
+from django.utils import timezone
 
 from clinvar_submission_service.clients import ClinVarError
 from clinvar_submission_service.content import Affiliation
@@ -169,6 +170,25 @@ class ForwardBatchTest(ServicesTestCase):
             forward_batch(self.batch)
         self.batch.refresh_from_db()
         self.assertEqual(self.batch.status, Batch.Status.SEND_TO_CLINVAR_FAILED)
+
+    def test_a_new_batch_has_not_been_sent(self):
+        self.assertIsNone(self.batch.sent_at)
+
+    def test_sending_a_batch_records_when_it_was_sent(self):
+        before = timezone.now()
+        forward_batch(self.batch)
+        self.batch.refresh_from_db()
+        self.assertGreaterEqual(self.batch.sent_at, before)
+
+    def test_a_failed_send_leaves_sent_at_empty_and_a_resend_sets_it(self):
+        self.fake.submit_error = ClinVarError("ClinVar returned 400", retryable=False)
+        forward_batch(self.batch)
+        self.batch.refresh_from_db()
+        self.assertIsNone(self.batch.sent_at)
+        self.fake.submit_error = None
+        forward_batch(self.batch)
+        self.batch.refresh_from_db()
+        self.assertIsNotNone(self.batch.sent_at)
 
 
 class BuildPayloadTest(TestCase):
