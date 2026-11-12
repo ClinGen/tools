@@ -198,7 +198,6 @@ class _Importer:
             affiliation=affiliation,
             role=role,
             end_date__isnull=True,
-            is_deleted=False,
         )
         if not current.exists():
             Membership.objects.create(user=user, affiliation=affiliation, role=role)

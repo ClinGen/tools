@@ -31,7 +31,6 @@ class UserOut(Schema):
     orcid: str
     credentials: str
     gpm_uuid: uuid.UUID | None
-    is_deleted: bool
     added_at: datetime
     updated_at: datetime
 
@@ -89,7 +88,6 @@ class UserFilters(Schema):
     email: str | None = None
     orcid: str | None = None
     gpm_uuid: uuid.UUID | None = None
-    include_deleted: bool = False
 
 
 def _users() -> QuerySet[User]:
@@ -124,7 +122,7 @@ def list_users(
     Returns:
         The matching users.
     """
-    users = _users() if filters.include_deleted else _users().filter(is_deleted=False)
+    users = _users()
     if filters.q:
         users = users.filter(
             Q(name__icontains=filters.q)
@@ -212,9 +210,9 @@ def delete_user(
     request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     id_: PathEx[uuid.UUID, P(alias="id")],
 ) -> Status[None]:
-    """Marks a user deleted.
+    """Deletes a user, with their memberships and other emails.
 
-    It's kept, but left out of lists.
+    Its history keeps what it held.
 
     Returns:
         204.
@@ -242,9 +240,9 @@ def delete_user_by_gpm_uuid(
     request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     gpm_uuid: uuid.UUID,
 ) -> Status[None]:
-    """Marks the user with this GPM UUID deleted.
+    """Deletes the user with this GPM UUID, with their memberships and other emails.
 
-    It's kept, but left out of lists.
+    Its history keeps what it held.
 
     Returns:
         204.

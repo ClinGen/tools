@@ -43,9 +43,9 @@ API key.
 
 ### `api/cdwgs.py`
 
-Serves `/cdwgs`: list (paginated, without deleted CDWGs unless `include_deleted` is
-true), get, create, update (`PATCH`), and soft-delete CDWGs, and find, change, and
-delete one by GPM UUID (`/gpm-uuid/{gpm_uuid}`).
+Serves `/cdwgs`: list (paginated), get, create, update (`PATCH`), and delete CDWGs, and
+find, change, and delete one by GPM UUID (`/gpm-uuid/{gpm_uuid}`). A CDWG that any
+affiliation belongs to can't be deleted.
 
 ### `api/helpers.py`
 
@@ -56,17 +56,15 @@ and saves it, so every endpoint checks the same rules as the admin and the staff
 
 Serves `/memberships`: list (paginated, filtered by affiliation, user, role, and
 `current`), get, create, and `PATCH` for the dates. Setting `end_date` ends a
-membership; `DELETE` marks it deleted, and a deleted membership isn't current. A deleted
-affiliation or user can't get new members.
+membership, and `DELETE` deletes it. A deleted affiliation can't get new members.
 
 ### `api/users.py`
 
 Serves `/users`: list (paginated, with `q` searching names and every email, and exact
 filters for `email`, `orcid`, and `gpm_uuid`), get, create, and update (`PATCH`).
 Sending `other_emails` replaces the list. A user can also be found, changed, and deleted
-by GPM UUID (`/gpm-uuid/{gpm_uuid}`). `DELETE` marks a user deleted, and lists leave
-deleted users out unless `include_deleted` is true. Responses for one user include their
-current memberships.
+by GPM UUID (`/gpm-uuid/{gpm_uuid}`). `DELETE` deletes a user, with their memberships
+and other emails. Responses for one user include their current memberships.
 
 ### `api/v1.py`
 
@@ -121,14 +119,14 @@ using the key in `AS_API_KEY`. `--dry-run` shows what it would do without saving
 Defines `CDWG`, `Affiliation`, and `ClinVarSubmitterId`. An affiliation's IDs are
 assigned when it's created: the affiliation ID counts up from 10000, and the expert
 panel ID is the affiliation ID plus 30000 for a GCEP or 40000 for a VCEP or SC-VCEP.
-Affiliations, CDWGs, users, and memberships delete softly: `SoftDeleteMixin` and
-`SoftDeleteQuerySet` make deleting one, alone or in a queryset, mark it deleted instead,
-and `objects.active()` leaves deleted ones out. A new affiliation can't be put in a
-deleted CDWG, and a new membership can't go to a deleted user or affiliation.
-`Affiliation.clean()` checks the business rules (an SC-VCEP's CDWG, an independent
-curation group's CDWG and GPM UUID) and that hand-set IDs are in range and end in the
-same three digits. Constraint and uniqueness errors have plain-language messages, so
-forms can show them to staff.
+Affiliations delete softly: `SoftDeleteMixin` and `SoftDeleteQuerySet` make deleting
+one, alone or in a queryset, mark it deleted instead, and `objects.active()` leaves
+deleted ones out. A new membership can't go to a deleted affiliation. CDWGs, users, and
+memberships are really deleted, and their history keeps what they held; deleting a user
+deletes their memberships and other emails. `Affiliation.clean()` checks the business
+rules (an SC-VCEP's CDWG, an independent curation group's CDWG and GPM UUID) and that
+hand-set IDs are in range and end in the same three digits. Constraint and uniqueness
+errors have plain-language messages, so forms can show them to staff.
 
 It also defines `User` and `UserEmail` (a user's other emails). A user's main email is
 optional, but no two users share an email, ignoring case, whether it's a primary or
@@ -308,6 +306,12 @@ ORCID iD checks, 404s, and that users can't be deleted.
 Tests the CDWG list's counts and links, adding and editing CDWGs, and the error for a
 name that differs from another only in case.
 
+### `test_deleting.py`
+
+Tests deleting through the API: CDWGs, users, and memberships are deleted and leave
+history, deleting a user deletes their memberships and emails, a CDWG with affiliations
+can't be deleted, and affiliations are still only marked deleted.
+
 ### `test_member_pages.py`
 
 Tests adding and ending memberships from an affiliation's page, with and without HTMX,
@@ -346,12 +350,6 @@ uniqueness errors, and which fields the admin locks for non-superusers.
 
 Tests the users list's search, a user's page, and adding and editing users and their
 other emails, including duplicate emails and bad ORCID iDs.
-
-### `test_soft_delete.py`
-
-Tests soft-deleting CDWGs, users, and memberships through the API: the `DELETE`
-endpoints, hiding deleted records from lists and the staff pages, and the rules for
-deleted records.
 
 ### `test_users.py`
 

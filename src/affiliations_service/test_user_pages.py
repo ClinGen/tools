@@ -110,7 +110,7 @@ class UserFormPageTest(TestCase):
         )
         ada = User.objects.get()
         self.assertRedirects(response, ada.get_absolute_url())
-        self.assertEqual([e.email for e in ada.other_emails.all()], ["ada@uni.edu"])
+        self.assertEqual([e.email for e in ada.other_emails.all()], ["ada@uni.edu"])  # type: ignore
 
     def test_create_without_an_email(self):
         response = self.client.post(

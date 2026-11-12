@@ -5,12 +5,6 @@
     <div class="block mt-6 mb-6">
         {% include "affiliations_service/partials/header.html" %}
         <h2 class="title is-4">{{ as_user.name }}</h2>
-        {% if as_user.is_deleted %}
-            <div class="notification is-warning is-light block">
-                This user has been deleted. They're kept for the record, but left out of
-                lists.
-            </div>
-        {% endif %}
         <div class="buttons">
             <a class="button is-link" href="{% url 'as:user-edit' pk=as_user.pk %}">Edit</a>
         </div>

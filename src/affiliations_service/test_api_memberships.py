@@ -117,10 +117,10 @@ class MembershipChangeTest(ApiTestCase):
         response = self.patch(f"{URL}/{membership.pk}", {"role": "APPROVER"})
         self.assertEqual(response.status_code, 422)
 
-    def test_deleting_a_membership_keeps_it(self):
+    def test_deleting_a_membership_removes_it(self):
         membership = make_membership(self.ada, self.affiliation)
         self.assertEqual(self.delete(f"{URL}/{membership.pk}").status_code, 204)
-        self.assertTrue(Membership.objects.filter(pk=membership.pk).exists())
+        self.assertFalse(Membership.objects.filter(pk=membership.pk).exists())
 
     def test_unknown_id_returns_404(self):
         unknown = f"{URL}/{uuid.uuid4()}"

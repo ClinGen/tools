@@ -3,7 +3,7 @@
 import re
 import uuid
 
-from affiliations_service.models import CDWG, Affiliation
+from affiliations_service.models import CDWG, Affiliation, User
 from affiliations_service.test_api_cdwgs import ApiTestCase
 from affiliations_service.test_models import make_affiliation, make_cdwg
 from affiliations_service.test_users import make_user
@@ -162,17 +162,16 @@ class GpmUuidChangeTest(ApiTestCase):
                 obj.refresh_from_db()
                 self.assertEqual(getattr(obj, field), change[field])
 
-    def test_delete_by_gpm_uuid_soft_deletes_each_resource(self):
-        for resource, obj in [
-            ("affiliations", self.affiliation),
-            ("cdwgs", self.cdwg),
-            ("users", self.user),
-        ]:
+    def test_delete_by_gpm_uuid(self):
+        for resource in ["affiliations", "cdwgs", "users"]:
             with self.subTest(resource=resource):
                 response = self.delete(f"{URL}/{resource}/gpm-uuid/{GPM_UUID}")
                 self.assertEqual(response.status_code, 204)
-                obj.refresh_from_db()
-                self.assertTrue(obj.is_deleted)
+        # Affiliations are kept and marked deleted; CDWGs and users are deleted.
+        self.affiliation.refresh_from_db()
+        self.assertTrue(self.affiliation.is_deleted)
+        self.assertFalse(CDWG.objects.filter(pk=self.cdwg.pk).exists())
+        self.assertFalse(User.objects.filter(pk=self.user.pk).exists())
 
     def test_unknown_gpm_uuids_return_404(self):
         missing = uuid.uuid4()

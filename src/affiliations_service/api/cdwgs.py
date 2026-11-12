@@ -2,7 +2,8 @@
 
 import uuid
 
-from django.db.models import QuerySet
+from django.core.exceptions import ValidationError
+from django.db.models import ProtectedError, QuerySet
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from ninja import P, Router, Schema, Status
@@ -21,7 +22,6 @@ class CDWGOut(Schema):
     id: uuid.UUID
     name: str
     gpm_uuid: uuid.UUID | None
-    is_deleted: bool
 
 
 class CDWGIn(Schema):
@@ -38,18 +38,29 @@ class CDWGPatch(Schema):
     gpm_uuid: uuid.UUID | None = None
 
 
+def _delete(cdwg: CDWG) -> None:
+    """Deletes a CDWG that no affiliation belongs to.
+
+    Raises:
+        ValidationError: If an affiliation, even a deleted one, belongs to the CDWG,
+            so the API returns a 400.
+    """
+    try:
+        cdwg.delete()
+    except ProtectedError:
+        error_message = "This CDWG still has affiliations, so it can't be deleted."
+        raise ValidationError(error_message) from None
+
+
 @router.get("", response=list[CDWGOut])
 @paginate
-def list_cdwgs(
-    request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
-    include_deleted: bool = False,  # ruff: ignore[boolean-type-hint-positional-argument, boolean-default-value-positional-argument] (A query parameter.)
-) -> QuerySet[CDWG]:
-    """Lists the CDWGs by name, leaving out deleted ones unless include_deleted is true.
+def list_cdwgs(request: HttpRequest) -> QuerySet[CDWG]:  # ruff: ignore[unused-function-argument] (Ninja's signature.)
+    """Lists the CDWGs by name.
 
     Returns:
         The CDWGs.
     """
-    return CDWG.objects.all() if include_deleted else CDWG.objects.active()
+    return CDWG.objects.all()
 
 
 @router.get("/gpm-uuid/{gpm_uuid}", response=CDWGOut)
@@ -113,14 +124,14 @@ def delete_cdwg(
     request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     id_: PathEx[uuid.UUID, P(alias="id")],
 ) -> Status[None]:
-    """Marks a CDWG deleted.
+    """Deletes a CDWG.
 
-    It's kept, but left out of lists.
+    Its history keeps what it held.
 
     Returns:
         204.
     """
-    get_object_or_404(CDWG, pk=id_).delete()
+    _delete(get_object_or_404(CDWG, pk=id_))
     return Status(204, None)
 
 
@@ -143,12 +154,12 @@ def delete_cdwg_by_gpm_uuid(
     request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     gpm_uuid: uuid.UUID,
 ) -> Status[None]:
-    """Marks the CDWG with this GPM UUID deleted.
+    """Deletes the CDWG with this GPM UUID.
 
-    It's kept, but left out of lists.
+    Its history keeps what it held.
 
     Returns:
         204.
     """
-    get_object_or_404(CDWG, gpm_uuid=gpm_uuid).delete()
+    _delete(get_object_or_404(CDWG, gpm_uuid=gpm_uuid))
     return Status(204, None)

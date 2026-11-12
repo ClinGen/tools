@@ -56,7 +56,6 @@ class CDWGApiTest(ApiTestCase):
                 "id": str(cdwg.pk),
                 "name": "Kidney",
                 "gpm_uuid": GPM_UUID,
-                "is_deleted": False,
             },
         )
 

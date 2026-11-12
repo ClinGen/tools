@@ -120,10 +120,10 @@ class UserCreateUpdateTest(ApiTestCase):
         self.assertEqual(self.get(unknown).status_code, 404)
         self.assertEqual(self.patch(unknown, {"name": "X"}).status_code, 404)
 
-    def test_deleting_a_user_keeps_them(self):
+    def test_deleting_a_user_removes_them(self):
         ada = make_user()
         self.assertEqual(self.delete(f"{URL}/{ada.pk}").status_code, 204)
-        self.assertTrue(User.objects.filter(pk=ada.pk).exists())
+        self.assertFalse(User.objects.filter(pk=ada.pk).exists())
 
     def test_requests_without_a_key_get_401(self):
         self.assertEqual(self.client.get(URL).status_code, 401)

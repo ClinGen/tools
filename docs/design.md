@@ -209,14 +209,13 @@ with 40042 or 50042.
 **Rules.** An SC-VCEP belongs to the Somatic Cancer CDWG. An independent curation group
 belongs to the CDWG named None and has no GPM UUID.
 
-**Deleting.** Nothing in the AS is ever really deleted, since other systems, such as
-curation records and the GPM, may still refer to it. Deleting an affiliation, a CDWG, a
-user, or a membership marks it as deleted: it drops out of lists and searches, but it's
-still found by its ID, with its history. A deleted CDWG can't get new affiliations, and
-a deleted affiliation or user can't get new memberships. Deleting doesn't cascade: a
-deleted user's or affiliation's memberships stay as they were, but a deleted membership
-no longer counts as current. Deleted records still count for uniqueness, so a deleted
-user's email or GPM UUID can't be given to someone else.
+**Deleting.** Every model keeps its change history, and deleting a record saves a last
+history entry with everything it held, so CDWGs, users, and memberships are really
+deleted. Deleting a user also deletes their memberships and other emails, each with its
+own history. A CDWG can't be deleted while any affiliation belongs to it. Affiliations
+are the exception: they're never deleted, since curation records in other systems refer
+to them. Deleting one marks it as deleted: it drops out of lists and searches, but it's
+still found by its IDs, and it can't get new memberships.
 
 **Users and memberships.** The AS tracks each user in ClinGen's affiliations, not just
 their names. An AS user is a record of someone in ClinGen's groups; it isn't a sign-in
