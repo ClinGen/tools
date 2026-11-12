@@ -1,30 +1,9 @@
-"""Houses tests for the AS's pages."""
+"""Houses tests for the AS's home page and its place on the landing page."""
 
-from django.contrib.auth.models import User as StaffUser
 from django.test import TestCase
 from django.urls import reverse
 
-from auth_.models import UserProfile
-
-FLAVOR_TEXT = (
-    "The source of truth for ClinGen and non-ClinGen users and groups working in "
-    "ClinGen apps."
-)
-
-
-def make_staff(username: str, *, as_: bool = True) -> StaffUser:
-    """Returns a user whose profile has or lacks the AS permission.
-
-    Args:
-        username: The username and email of the new user.
-        as_: Whether the user has `has_as_permissions`.
-
-    Returns:
-        The new user.
-    """
-    user = StaffUser.objects.create_user(username=username, email=username)
-    UserProfile.objects.create(user=user, has_as_permissions=as_)
-    return user
+from affiliations_service.tests.helpers import FLAVOR_TEXT, make_staff
 
 
 class IndexViewTest(TestCase):

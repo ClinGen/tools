@@ -3,8 +3,8 @@
 import uuid
 
 from affiliations_service.models import Affiliation, ClinVarSubmitterId
-from affiliations_service.test_api_cdwgs import ApiTestCase
-from affiliations_service.test_models import make_affiliation, make_cdwg
+from affiliations_service.tests.test_api_cdwgs import ApiTestCase
+from affiliations_service.tests.test_models import make_affiliation, make_cdwg
 
 URL = "/as/api/v1/affiliations"
 GPM_UUID = "6a1b5f0e-8f0c-4d7e-9a43-2b0f5d3c1e9a"

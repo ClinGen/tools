@@ -114,6 +114,12 @@ Marks `commands` as a Python package.
 Defines `import_old_as`, which copies CDWGs, affiliations, and users from the old AS
 using the key in `AS_API_KEY`. `--dry-run` shows what it would do without saving.
 
+From the old AS's API (`cdwg_list/` and `database_list/`), it imports CDWGs,
+affiliations with their IDs, deleted flags, and ClinVar submitter IDs, and coordinators
+and approvers as users with memberships. Users are matched by email, then by name, so an
+approver who is also a coordinator becomes one user. Rerunning it updates only what
+changed. Records that break the AS's rules are imported anyway, with a warning.
+
 ### `models.py`
 
 Defines `CDWG`, `Affiliation`, and `ClinVarSubmitterId`. An affiliation's IDs are
@@ -143,14 +149,6 @@ one by setting its end date instead of deleting it.
 `ApiKey` is the key a client system sends to use the API. Raw keys start with `as_`, and
 only their SHA-256 hash and first eight characters are stored. `ApiKey.objects.verify()`
 finds the active key for a raw value and records its use.
-
-### `old_as_import.py`
-
-Imports from the old AS's API (`cdwg_list/` and `database_list/`): CDWGs, affiliations
-with their IDs, deleted flags, and ClinVar submitter IDs, and coordinators and approvers
-as users with memberships. Users are matched by email, then by name, so an approver who
-is also a coordinator becomes one user. Rerunning it updates only what changed. Records
-that break the AS's rules are imported anyway, with a warning.
 
 ### `static/affiliations_service/formset.js`
 
@@ -259,106 +257,115 @@ The form for adding or editing a user, with their other emails.
 
 Lists users, with a search box for names and emails that updates the list with HTMX.
 
-### `test_affiliation_forms.py`
+### `tests/__init__.py`
+
+Marks `tests` as a Python package.
+
+### `tests/helpers.py`
+
+Helpers shared by the AS's tests: `make_staff`, which makes a staff user with or without
+`has_as_permissions`, and `FLAVOR_TEXT`, the AS's description.
+
+### `tests/test_affiliation_forms.py`
 
 Tests creating, editing, and deleting affiliations on the AS's pages, including locked
 fields, submitter IDs, plain-language errors, permissions, and the Add Another button on
 the affiliation and user forms, and picking coordinators on the new-affiliation form.
 
-### `test_affiliation_pages.py`
+### `tests/test_affiliation_pages.py`
 
 Tests the affiliation list's search and filters and the affiliation page's members,
 history, and deleted notice, and that both need `has_as_permissions` and hide UUIDs.
 
-### `test_api_affiliations.py`
+### `tests/test_api_affiliations.py`
 
 Tests the API's affiliation endpoints: filters, deleted affiliations, ID assignment,
 business rules, locked fields, submitter IDs, soft deletion, and 404s.
 
-### `test_api_cdwgs.py`
+### `tests/test_api_cdwgs.py`
 
 Tests the API's CDWG endpoints. Its `ApiTestCase` sends every request with an active API
 key; the other API tests extend it.
 
-### `test_api_keys.py`
+### `tests/test_api_keys.py`
 
 Tests API keys: hashing, verification, the 401 for a missing, unknown, or inactive key,
 the public docs, and showing a new key once in the admin.
 
-### `test_api_lookups.py`
+### `tests/test_api_lookups.py`
 
 Tests the lookups by affiliation ID, expert panel ID, and GPM UUID, and that creating a
 record with a GPM UUID in use is refused, changing and deleting records by GPM UUID, the
 path names in the docs, and that the docs capitalize acronyms.
 
-### `test_api_memberships.py`
+### `tests/test_api_memberships.py`
 
 Tests the API's membership endpoints: filters, creating, ending, constraint errors, no
 delete, and the current memberships in affiliation and user responses.
 
-### `test_api_users.py`
+### `tests/test_api_users.py`
 
 Tests the API's user endpoints: search and filters, other emails, duplicate emails,
 ORCID iD checks, 404s, and that users can't be deleted.
 
-### `test_cdwg_pages.py`
+### `tests/test_cdwg_pages.py`
 
 Tests the CDWG list's counts and links, adding and editing CDWGs, and the error for a
 name that differs from another only in case.
 
-### `test_deleting.py`
+### `tests/test_deleting.py`
 
 Tests deleting through the API: CDWGs, users, and memberships are deleted and leave
 history, deleting a user deletes their memberships and emails, a CDWG with affiliations
 can't be deleted, and affiliations are still only marked deleted.
 
-### `test_member_pages.py`
+### `tests/test_index.py`
+
+Tests the AS's home page, including that it requires `has_as_permissions`, and that the
+landing page links to the AS.
+
+### `tests/test_member_pages.py`
 
 Tests adding and ending memberships from an affiliation's page, with and without HTMX,
 and the user search behind the add-member form.
 
-### `test_memberships.py`
+### `tests/test_memberships.py`
 
 Tests membership roles, constraints, which memberships are current, ending a membership,
 history, and the admin inlines.
 
-### `test_models.py`
+### `tests/test_models.py`
 
 Tests ID assignment, soft deletion, uniqueness constraints, and history.
 
-### `test_navigation.py`
+### `tests/test_navigation.py`
 
 Tests that every AS page has the navbar's Search and Add links, that the current page's
 link is bold, the CDWG list's search, and the breadcrumb trails.
 
-### `test_old_as_import.py`
+### `tests/test_old_as_import.py`
 
 Tests the old AS import with a fake fetch: what it imports, how it matches users, that
 reruns change nothing, dry runs, and rule warnings.
 
-### `test_pagination.py`
+### `tests/test_pagination.py`
 
 Tests paging and sorting the affiliation list, that paging keeps the search and filters,
 and that the user and CDWG lists page too.
 
-### `test_rules.py`
+### `tests/test_rules.py`
 
 Tests the business rules in `Affiliation.clean()`, the ID checks, the plain-language
 uniqueness errors, and which fields the admin locks for non-superusers.
 
-### `test_user_pages.py`
+### `tests/test_user_pages.py`
 
 Tests the users list's search, a user's page, and adding and editing users and their
 other emails, including duplicate emails and bad ORCID iDs.
 
-### `test_users.py`
+### `tests/test_users.py`
 
 Tests users's email uniqueness, ORCID iD checks, GPM UUIDs, history, and admin search.
-
-### `tests.py`
-
-Tests the AS's pages, including that they require `has_as_permissions`, and that the
-landing page links to the AS.
 
 ### `urls.py`
 

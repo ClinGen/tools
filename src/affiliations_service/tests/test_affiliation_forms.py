@@ -6,9 +6,9 @@ from django.test import TestCase
 from django.urls import reverse
 
 from affiliations_service.models import Affiliation, ClinVarSubmitterId, Membership
-from affiliations_service.test_models import make_affiliation, make_cdwg
-from affiliations_service.test_users import make_user
-from affiliations_service.tests import make_staff
+from affiliations_service.tests.helpers import make_staff
+from affiliations_service.tests.test_models import make_affiliation, make_cdwg
+from affiliations_service.tests.test_users import make_user
 
 if TYPE_CHECKING:
     # Django's stubs name the test client's response type only for type checkers.

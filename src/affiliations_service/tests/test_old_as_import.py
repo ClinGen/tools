@@ -5,6 +5,10 @@ import io
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 
+from affiliations_service.management.commands.import_old_as import (
+    ImportResult,
+    import_old_as,
+)
 from affiliations_service.models import (
     CDWG,
     Affiliation,
@@ -12,7 +16,6 @@ from affiliations_service.models import (
     Membership,
     User,
 )
-from affiliations_service.old_as_import import ImportResult, import_old_as
 
 GPM_UUID = "df296795-0043-4bc1-bc12-3a8309e3ebcb"
 

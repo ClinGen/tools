@@ -9,7 +9,7 @@ from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from affiliations_service.models import CDWG, Affiliation
-from affiliations_service.test_models import make_affiliation, make_cdwg
+from affiliations_service.tests.test_models import make_affiliation, make_cdwg
 
 LOCKED_FIELDS = ["affiliation_id", "expert_panel_id", "type", "gpm_uuid"]
 GPM_UUID = "6a1b5f0e-8f0c-4d7e-9a43-2b0f5d3c1e9a"

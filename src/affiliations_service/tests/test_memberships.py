@@ -9,9 +9,9 @@ from django.urls import reverse
 from django.utils import timezone
 
 from affiliations_service.models import Affiliation, Membership, User
-from affiliations_service.test_models import make_affiliation
-from affiliations_service.test_rules import errors_for
-from affiliations_service.test_users import make_user
+from affiliations_service.tests.test_models import make_affiliation
+from affiliations_service.tests.test_rules import errors_for
+from affiliations_service.tests.test_users import make_user
 
 TODAY = timezone.localdate()
 YESTERDAY = TODAY - datetime.timedelta(days=1)

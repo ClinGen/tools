@@ -4,8 +4,8 @@ from django.test import TestCase
 from django.urls import reverse
 
 from affiliations_service.models import CDWG
-from affiliations_service.test_models import make_affiliation, make_cdwg
-from affiliations_service.tests import make_staff
+from affiliations_service.tests.helpers import make_staff
+from affiliations_service.tests.test_models import make_affiliation, make_cdwg
 
 
 class CDWGListPageTest(TestCase):

@@ -5,9 +5,9 @@ from django.urls import reverse
 
 from affiliations_service.models import Affiliation
 from affiliations_service.tables import PER_PAGE
-from affiliations_service.test_models import make_affiliation, make_cdwg
-from affiliations_service.test_users import make_user
-from affiliations_service.tests import make_staff
+from affiliations_service.tests.helpers import make_staff
+from affiliations_service.tests.test_models import make_affiliation, make_cdwg
+from affiliations_service.tests.test_users import make_user
 
 # Enough rows for a second page with five on it.
 TOTAL = PER_PAGE + 5

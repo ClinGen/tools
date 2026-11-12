@@ -3,15 +3,15 @@
 import uuid
 
 from affiliations_service.models import Membership
-from affiliations_service.test_api_cdwgs import ApiTestCase
-from affiliations_service.test_memberships import (
+from affiliations_service.tests.test_api_cdwgs import ApiTestCase
+from affiliations_service.tests.test_memberships import (
     TODAY,
     TOMORROW,
     YESTERDAY,
     make_membership,
 )
-from affiliations_service.test_models import make_affiliation
-from affiliations_service.test_users import make_user
+from affiliations_service.tests.test_models import make_affiliation
+from affiliations_service.tests.test_users import make_user
 
 URL = "/as/api/v1/memberships"
 

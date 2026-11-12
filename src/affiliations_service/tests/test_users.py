@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from affiliations_service.models import User, UserEmail
-from affiliations_service.test_rules import errors_for
+from affiliations_service.tests.test_rules import errors_for
 
 GPM_UUID = "6a1b5f0e-8f0c-4d7e-9a43-2b0f5d3c1e9a"
 
