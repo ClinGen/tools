@@ -5,12 +5,12 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from clinvar_submission_service.api.auth import API_KEY_HEADER
-from clinvar_submission_service.fakes import (
+from clinvar_submission_service.models import ApiKey, Batch, Record
+from clinvar_submission_service.tests.fakes import (
     FakeClinVarClient,
     make_content,
     make_record,
 )
-from clinvar_submission_service.models import ApiKey, Batch, Record
 from common.models import make_slug
 
 CONTENT = make_content()

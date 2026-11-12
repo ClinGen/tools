@@ -6,7 +6,6 @@ from django.test import TestCase
 
 from clinvar_submission_service.clients import ClinVarError
 from clinvar_submission_service.content import Affiliation
-from clinvar_submission_service.fakes import FakeClinVarClient, make_record
 from clinvar_submission_service.models import AffiliationSettings, Batch, Record
 from clinvar_submission_service.services import (
     BatchNotMadeError,
@@ -15,6 +14,7 @@ from clinvar_submission_service.services import (
     make_batch,
     save_record,
 )
+from clinvar_submission_service.tests.fakes import FakeClinVarClient, make_record
 
 HEARING_LOSS = Affiliation(id=10007, name="Hearing Loss VCEP")
 

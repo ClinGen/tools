@@ -11,7 +11,7 @@ import unittest
 from django.test import SimpleTestCase
 
 from clinvar_submission_service.clients import CLINVAR_TEST_URL, ClinVarClient
-from clinvar_submission_service.fakes import make_content
+from clinvar_submission_service.tests.fakes import make_content
 
 API_KEY = os.getenv("CSS_CLINVAR_API_KEY", "")
 

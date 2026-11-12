@@ -8,10 +8,10 @@ from django.utils import timezone
 
 from clinvar_submission_service.clients import ClinVarError, ClinVarStatus
 from clinvar_submission_service.content import Affiliation
-from clinvar_submission_service.fakes import FakeClinVarClient, make_record
 from clinvar_submission_service.models import Batch, BatchRecord, Record
 from clinvar_submission_service.polling import Poller, next_delay
 from clinvar_submission_service.services import make_batch, save_record
+from clinvar_submission_service.tests.fakes import FakeClinVarClient, make_record
 
 MIN_DELAY = timedelta(minutes=5)
 MAX_DELAY = timedelta(hours=6)

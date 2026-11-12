@@ -10,11 +10,6 @@ from django.utils.html import escape
 from auth_.models import UserProfile
 from clinvar_submission_service.clients import ClinVarError
 from clinvar_submission_service.content import Content, record_fields
-from clinvar_submission_service.fakes import (
-    FakeClinVarClient,
-    make_content,
-    make_record,
-)
 from clinvar_submission_service.models import (
     AffiliationSettings,
     ApiKey,
@@ -23,6 +18,11 @@ from clinvar_submission_service.models import (
     Record,
 )
 from clinvar_submission_service.services import withdraw_record
+from clinvar_submission_service.tests.fakes import (
+    FakeClinVarClient,
+    make_content,
+    make_record,
+)
 from clinvar_submission_service.views import PAGE_SIZE
 
 if TYPE_CHECKING:

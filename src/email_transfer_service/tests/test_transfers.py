@@ -10,8 +10,8 @@ from django.utils.html import escape
 from auth_.models import UserProfile
 from core.tools import get_tool
 from email_transfer_service.clients import CognitoUser, UserRecord
-from email_transfer_service.fakes import FakeEtsClient
 from email_transfer_service.models import EmailTransfer
+from email_transfer_service.tests.fakes import FakeEtsClient
 from email_transfer_service.transfers import Plan, check_preconditions, run_transfer
 
 OLD = "old@example.com"

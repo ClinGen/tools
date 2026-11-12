@@ -13,7 +13,7 @@ from clinvar_submission_service.clients import (
     ClinVarClient,
     ClinVarError,
 )
-from clinvar_submission_service.fakes import FakeClinVarClient, make_content
+from clinvar_submission_service.tests.fakes import FakeClinVarClient, make_content
 
 BASE_URL = "https://clinvar.example.org/apitest/v1"
 API_KEY = "k" * 64

@@ -15,11 +15,11 @@ from auth_.models import UserProfile
 from clinvar_submission_service import simulation
 from clinvar_submission_service.clients import ClinVarClient, ClinVarError
 from clinvar_submission_service.content import Affiliation
-from clinvar_submission_service.fakes import make_record
 from clinvar_submission_service.models import Batch, BatchRecord, Record
 from clinvar_submission_service.polling import Poller
 from clinvar_submission_service.services import forward_batch, make_batch, save_record
 from clinvar_submission_service.simulation import SimulatedClinVarClient
+from clinvar_submission_service.tests.fakes import make_record
 
 
 def _batch(*local_ids: str) -> Batch:

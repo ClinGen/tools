@@ -67,13 +67,6 @@ doesn't model is rejected, and an update must name its SCV. `fields_of()` and
 `record_fields()` copy one record, or each of the content's records, into `Record`
 fields.
 
-### `fakes.py`
-
-Defines `FakeClinVarClient`, which holds ClinVar's submissions, statuses, and summary
-reports in memory, so tests never reach ClinVar. Each of its calls can be told to fail.
-Also builds sample content: `make_record()` returns a germline record, with any field
-replaced, and `make_content()` wraps records in content.
-
 ### `forms.py`
 
 Defines `AffiliationSettingsForm`, which edits an affiliation's `AffiliationSettings`.
@@ -284,6 +277,13 @@ that status (keeping the affiliation filter), and when the CSS received it.
 ### `tests/__init__.py`
 
 Marks `tests` as a Python package.
+
+### `tests/fakes.py`
+
+Defines `FakeClinVarClient`, which holds ClinVar's submissions, statuses, and summary
+reports in memory, so tests never reach ClinVar. Each of its calls can be told to fail.
+Also builds sample content: `make_record()` returns a germline record, with any field
+replaced, and `make_content()` wraps records in content.
 
 ### `tests/test_api.py`
 
