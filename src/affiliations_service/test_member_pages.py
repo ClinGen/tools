@@ -87,6 +87,11 @@ class EndMembershipTest(TestCase):
         page = response.content.decode()
         self.assertIn("Ada Lovelace", page[page.index("Past Members") :])
 
+    def test_ending_asks_in_the_confirm_modal(self):
+        page = self.client.get(self.affiliation.get_absolute_url()).content.decode()
+        self.assertIn('data-confirm="End Ada Lovelace', page)
+        self.assertNotIn("hx-confirm", page)
+
     def test_get_doesnt_end_a_membership(self):
         self.assertEqual(self.client.get(self.url).status_code, 405)
         self.membership.refresh_from_db()

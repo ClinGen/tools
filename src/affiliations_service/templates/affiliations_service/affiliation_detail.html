@@ -8,7 +8,12 @@
         <div class="buttons">
             <a class="button is-link" href="{% url 'as:affiliation-edit' pk=affiliation.pk %}">Edit</a>
             {% if not affiliation.is_deleted %}
-                <a class="button is-link is-light" href="{% url 'as:affiliation-delete' pk=affiliation.pk %}">Delete</a>
+                <form method="post"
+                      action="{% url 'as:affiliation-delete' pk=affiliation.pk %}"
+                      data-confirm="Delete {{ affiliation.full_name }}? It will be left out of lists, but the AS keeps it, its members, and its history.">
+                    {% csrf_token %}
+                    <button type="submit" class="button is-link is-light">Delete</button>
+                </form>
             {% endif %}
         </div>
         {% if affiliation.is_deleted %}

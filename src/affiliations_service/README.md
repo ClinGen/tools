@@ -147,13 +147,15 @@ formset's empty-form `<template>` and bumping its `TOTAL_FORMS`.
 
 ### `templates/affiliations_service/affiliation_delete.html`
 
-Asks staff to confirm deleting an affiliation, and explains that the AS keeps it.
+Asks staff to confirm deleting an affiliation, and explains that the AS keeps it. The
+affiliation's page asks in the confirmation modal instead; this page is for when
+JavaScript is off.
 
 ### `templates/affiliations_service/affiliation_detail.html`
 
 An affiliation's page: its fields, ClinVar submitter IDs, current members by role, past
-members, and history, with Edit and Delete buttons. It says so if the affiliation was
-deleted.
+members, and history, with Edit and Delete buttons. Delete asks in the confirmation
+modal, then posts to the delete page. It says so if the affiliation was deleted.
 
 ### `templates/affiliations_service/affiliation_form.html`
 
@@ -289,9 +291,9 @@ One navbar link, in bold when it's the current page. Pass `url` (a URL name) and
 
 ### `templates/affiliations_service/partials/members.html`
 
-An affiliation's members section: current members by role, each with an End button, the
-Add a Member form, and past members. HTMX swaps the whole section after adding or ending
-a membership.
+An affiliation's members section: current members by role, each with an End button that
+asks in the confirmation modal, the Add a Member form, and past members. HTMX swaps the
+whole section after adding or ending a membership.
 
 ### `templates/affiliations_service/partials/formset.html`
 

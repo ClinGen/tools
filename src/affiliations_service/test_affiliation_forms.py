@@ -163,6 +163,15 @@ class AffiliationDeletePageTest(TestCase):
         self.affiliation.refresh_from_db()
         self.assertFalse(self.affiliation.is_deleted)
 
+    def test_the_affiliation_page_deletes_through_the_confirm_modal(self):
+        page = self.client.get(self.affiliation.get_absolute_url()).content.decode()
+        form_start = page.index(f'action="{self.url}"')
+        form = page[
+            page.rindex("<form", 0, form_start) : page.index("</form>", form_start)
+        ]
+        self.assertIn('method="post"', form)
+        self.assertIn('data-confirm="Delete Doomed VCEP?', form)
+
     def test_post_soft_deletes_and_leaves_the_list(self):
         response = self.client.post(self.url)
         self.assertRedirects(response, reverse("as:index"))

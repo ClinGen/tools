@@ -21,7 +21,7 @@
                                           hx-post="{% url 'as:membership-end' pk=membership.pk %}"
                                           hx-target="#members"
                                           hx-swap="outerHTML"
-                                          hx-confirm="End {{ membership.person }}'s time as {{ membership.get_role_display|lower }} today?">
+                                          data-confirm="End {{ membership.person }}'s time as {{ membership.get_role_display|lower }} today?">
                                         {% csrf_token %}
                                         <button type="submit" class="button is-small is-link is-light">End</button>
                                     </form>
