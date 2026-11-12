@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
-from clinvar_submission_service.api_auth import API_KEY_HEADER, ApiKeyAuth
+from clinvar_submission_service.api.auth import API_KEY_HEADER, ApiKeyAuth
 from clinvar_submission_service.models import ApiKey
 
 

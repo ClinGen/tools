@@ -4,7 +4,7 @@ from unittest import mock
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from clinvar_submission_service.api_auth import API_KEY_HEADER
+from clinvar_submission_service.api.auth import API_KEY_HEADER
 from clinvar_submission_service.fakes import (
     FakeClinVarClient,
     make_content,

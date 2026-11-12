@@ -2,7 +2,7 @@ from django.urls import path
 from django.views.generic import RedirectView
 
 from clinvar_submission_service import views
-from clinvar_submission_service.api import api
+from clinvar_submission_service.api.v1 import api
 
 app_name = "css"
 

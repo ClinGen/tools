@@ -19,10 +19,20 @@ one's result, on its page. A record's page lists the batches it was sent in. Add
 API key generates its value and shows it once, in a warning message; after that, only
 its prefix is shown.
 
-### `api.py`
+### `api/__init__.py`
+
+Marks `api` as a Python package.
+
+### `api/auth.py`
+
+Defines `ApiKeyAuth`, the Ninja auth class for the CSS's API. It reads the key from the
+`X-API-Key` header and accepts it only if it's an active `ApiKey`, which becomes
+`request.auth`.
+
+### `api/v1.py`
 
 Serves the CSS's API, version 1, as a Django Ninja `NinjaAPI` at `/css/api/v1/`, with
-OpenAPI docs at `/css/api/v1/docs`. Every endpoint needs an API key (see `api_auth.py`),
+OpenAPI docs at `/css/api/v1/docs`. Every endpoint needs an API key (see `api/auth.py`),
 and a client sees only its own records. `POST /records` takes the client's affiliation
 and one germline record (`content.RecordRequest`) and saves it to wait for a batch,
 returning 201, or 200 if it replaced a waiting record with the same local ID.
@@ -30,12 +40,6 @@ returning 201, or 200 if it replaced a waiting record with the same local ID.
 one with its JSON, and `POST /records/{slug}/withdraw` withdraws a waiting one, or
 returns a 409 for any other. A record that doesn't match, or a body with
 submission-level fields, gets a 422. Clients don't see batches, which staff make.
-
-### `api_auth.py`
-
-Defines `ApiKeyAuth`, the Ninja auth class for the CSS's API. It reads the key from the
-`X-API-Key` header and accepts it only if it's an active `ApiKey`, which becomes
-`request.auth`.
 
 ### `apps.py`
 
@@ -277,7 +281,11 @@ shows each record's ID, linked to its page, local ID, affiliation, linked to the
 its records, gene and HGVS, classification, status tag, linked to the list filtered to
 that status (keeping the affiliation filter), and when the CSS received it.
 
-### `test_api.py`
+### `tests/__init__.py`
+
+Marks `tests` as a Python package.
+
+### `tests/test_api.py`
 
 Tests each API endpoint: that a posted record waits with its JSON, fields, affiliation,
 and client, that re-posting a waiting record with the same local ID replaces it and
@@ -289,26 +297,39 @@ for any other; 401s for missing, unknown, and inactive keys; that a client can't
 list, or withdraw another client's records; pagination; the OpenAPI docs and endpoints;
 and that the old batch endpoints are gone.
 
-### `test_api_keys.py`
+### `tests/test_api_keys.py`
 
 Tests that an API key is stored only as a hash, verifies only while active, and records
 its last use; that `ApiKeyAuth` accepts and rejects the right headers; and that the
 admin shows a new key once.
 
-### `test_clients.py`
+### `tests/test_clients.py`
 
 Tests each `ClinVarClient` call against a mocked requests session: the request's
 envelope, headers, and timeout; parsing ClinVar's ID, status, update time, error code,
 and report URL; which failures are retryable; that the API key never appears in logs or
 errors; and `from_settings()`. Also tests `FakeClinVarClient`.
 
-### `test_contract.py`
+### `tests/test_contract.py`
 
 Checks `ClinVarClient` against ClinVar's real test endpoint with a dry run, which
 creates nothing. It's skipped unless `RUN_CONTRACT_TESTS=1` and `CSS_CLINVAR_API_KEY`
 are set in the environment.
 
-### `test_polling.py`
+### `tests/test_models.py`
+
+Tests the `Batch` slug, including a colliding one, its default status, and its history;
+a `Record`'s order, history, and classifications, and that it's deleted with its batch;
+which batches are due to poll; the admin pages, including a batch's records; and that
+only users with CSS permissions can open the home page, which the landing page links to.
+Also tests `BatchRecord`: a record's order in a batch, that it's in a batch once but can
+be tried in several, that deleting a batch keeps its records, and `build_payload()`.
+Also tests a standalone `Record`: its R slug, default status, history, status help, and
+bulk slugs that avoid taken ones. Also tests that the migration naming each status
+relative to ClinVar renames old rows and their history, and back. Also tests that
+`AffiliationSettings` keeps history and that an affiliation has one.
+
+### `tests/test_polling.py`
 
 Tests the poller against `FakeClinVarClient`: the backoff and its cap, that it maps each
 of ClinVar's statuses onto ours, each status change, storing the summary report,
@@ -319,7 +340,7 @@ batch accepts each record with its SCV, that a partly failed one returns its fai
 waiting with ClinVar's errors kept, and that a result for an unknown local ID is logged
 and skipped. Also tests the command's `--once` and that SIGTERM stops its loop.
 
-### `test_services.py`
+### `tests/test_services.py`
 
 Tests `make_batch()` and `forward_batch()` against `FakeClinVarClient`: that a batch is
 made from one affiliation's waiting records, in order, marks them as in a batch, and
@@ -329,7 +350,7 @@ save nothing; that a batch ClinVar accepts is submitted with its records' conten
 that a rejected send, or a missing ClinVar key, leaves it send_to_clinvar_failed with
 its records in it, isn't retried, and can be resent.
 
-### `test_simulation.py`
+### `tests/test_simulation.py`
 
 Tests the simulated ClinVar: that `from_settings()` returns it only when the flag is on
 and that the flag is off by default; that sending returns new IDs, sometimes fails, and
@@ -342,7 +363,7 @@ flag is on, and that the dev settings shorten the poll delays only while simulat
 Also tests that the banner's delete buttons delete what they say, only while simulating,
 only on a POST, and only for staff with CSS permissions.
 
-### `test_views.py`
+### `tests/test_views.py`
 
 Tests the staff pages: that each needs CSS permissions; the list's order, affiliations
 and variants, status filter and its pills, affiliation filter (alone, with the status
@@ -377,19 +398,6 @@ selection, that it keeps the status and search, and that New Batch shows only fo
 affiliation with waiting records. Also tests each page's breadcrumbs, that the navbar
 under the subtitle links to each section in order and bolds the current one, and that no
 page has the old tabs.
-
-### `tests.py`
-
-Tests the `Batch` slug, including a colliding one, its default status, and its history;
-a `Record`'s order, history, and classifications, and that it's deleted with its batch;
-which batches are due to poll; the admin pages, including a batch's records; and that
-only users with CSS permissions can open the home page, which the landing page links to.
-Also tests `BatchRecord`: a record's order in a batch, that it's in a batch once but can
-be tried in several, that deleting a batch keeps its records, and `build_payload()`.
-Also tests a standalone `Record`: its R slug, default status, history, status help, and
-bulk slugs that avoid taken ones. Also tests that the migration naming each status
-relative to ClinVar renames old rows and their history, and back. Also tests that
-`AffiliationSettings` keeps history and that an affiliation has one.
 
 ### `urls.py`
 

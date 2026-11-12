@@ -15,7 +15,7 @@ from django.shortcuts import get_object_or_404
 from ninja import Field, NinjaAPI, Schema, Status
 from ninja.pagination import paginate
 
-from clinvar_submission_service.api_auth import ApiKeyAuth
+from clinvar_submission_service.api.auth import ApiKeyAuth
 from clinvar_submission_service.content import Affiliation, RecordRequest
 from clinvar_submission_service.models import Record
 from clinvar_submission_service.services import (
