@@ -6,7 +6,7 @@ from io import StringIO
 from types import ModuleType
 from unittest import mock
 
-from django.conf import settings
+from django.conf import global_settings, settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase
@@ -24,6 +24,12 @@ class SettingsTest(SimpleTestCase):
         out = StringIO()
         call_command("check", stdout=out)
         assert "no issues" in out.getvalue()
+
+    def test_request_bodies_use_djangos_default_limit(self):
+        self.assertEqual(
+            settings.DATA_UPLOAD_MAX_MEMORY_SIZE,
+            global_settings.DATA_UPLOAD_MAX_MEMORY_SIZE,
+        )
 
     def test_prod_settings_require_a_secret_key(self):
         sys.modules.pop("config.settings.prod", None)

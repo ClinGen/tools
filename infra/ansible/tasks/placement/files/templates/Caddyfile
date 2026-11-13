@@ -13,13 +13,8 @@
         }
         respond @blocked 403
 
-        # Django reads bodies up to 64 MB, for the CSS's submissions. Every other path
-        # keeps Django's 2.5 MB default.
-        request_body /css/api/v1/submissions {
-                max_size 64MB
-        }
-        @not_submissions not path /css/api/v1/submissions
-        request_body @not_submissions {
+        # Django reads bodies up to its 2.5 MB default, so Caddy refuses bigger ones.
+        request_body {
                 max_size 2.5MB
         }
 

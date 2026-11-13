@@ -25,9 +25,8 @@ and the backup settings from the environment, and, as in the HCI, requires
 `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` in every environment. Also reads the
 ETS's AWS settings and `ETS_DRY_RUN`, which is on unless it's set to `0`, and the CSS's
 ClinVar key and endpoint, which defaults to ClinVar's test endpoint. Sets how often the
-CSS's poller checks ClinVar, and raises `DATA_UPLOAD_MAX_MEMORY_SIZE` to 64 MB for the
-CSS's largest submissions; Caddy keeps other paths at 2.5 MB. It also holds the old AS's
-API URL and key (`AS_API_KEY`), which `import_old_as` uses.
+CSS's poller checks ClinVar. It also holds the old AS's API URL and key (`AS_API_KEY`),
+which `import_old_as` uses.
 
 ### `settings/dev.py`
 
@@ -65,7 +64,8 @@ Checks that the test settings load, that Django's system check passes, that the
 production settings refuse to load without a `SECRET_KEY`, that backups go to S3 when a
 bucket is set and to a local directory otherwise, that backup names start with the
 subdomain, that the subdomain defaults to `dev`, that the ClinVar URL defaults to
-ClinVar's test endpoint, and that only `0` turns the ETS's dry run off.
+ClinVar's test endpoint, that only `0` turns the ETS's dry run off, and that request
+bodies keep Django's 2.5 MB default limit.
 
 ### `urls.py`
 
