@@ -41,8 +41,9 @@ signed in. `build.js` bundles it into `src/static/tools/js/sign-in.js`.
 ### `models.py`
 
 Defines `UserProfile`, which has a UUID primary key, links a Django user to a Clerk user
-ID, and holds one permission flag per tool, starting with `has_ets_permissions`. Add a
-flag here when you add a tool that needs one.
+ID, and holds one permission flag per tool: `has_as_permissions` for the AS,
+`has_css_permissions` for the CSS, and `has_ets_permissions` for the ETS. Add a flag
+here when you add a tool that needs one.
 
 ### `permissions.py`
 
@@ -62,13 +63,34 @@ The sign-in page, which hosts Clerk's sign-in widget.
 ### `templates/auth_/profile.html`
 
 The signed-in user's profile page, which lists each tool permission and whether it's
-granted.
+granted. It leaves out the ETS for users without ETS permissions.
 
-### `tests.py`
+### `tests/__init__.py`
 
-Tests the permission mixin and decorator, permission history, the Clerk backend, and the
-login, callback, logout, and profile views. Clerk is mocked; no test calls Clerk's
-servers.
+Marks `tests` as a Python package.
+
+### `tests/helpers.py`
+
+Helpers shared by the auth\_ app's tests: `make_user()`, which makes a user with the
+tool permissions given.
+
+### `tests/test_backends.py`
+
+Tests the Clerk backend. Clerk is mocked; no test calls Clerk's servers.
+
+### `tests/test_models.py`
+
+Tests that granting a permission is recorded in `UserProfile`'s history, and that a
+profile and its history rows have UUID IDs.
+
+### `tests/test_permissions.py`
+
+Tests the tool permission mixin and decorator, including the AS permission.
+
+### `tests/test_views.py`
+
+Tests the login, callback, logout, and profile views, and the landing page's sign-in
+links. Clerk is mocked.
 
 ### `urls.py`
 

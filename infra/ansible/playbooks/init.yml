@@ -20,6 +20,10 @@
       ansible.builtin.include_tasks: ../tasks/placement/gunicorn.yml
     - name: Admin | Gunicorn start
       ansible.builtin.include_tasks: ../tasks/admin/gunicorn_start.yml
+    - name: Placement | ClinVar poller files
+      ansible.builtin.include_tasks: ../tasks/placement/poll_clinvar.yml
+    - name: Admin | ClinVar poller start
+      ansible.builtin.include_tasks: ../tasks/admin/poll_clinvar_start.yml
     - name: Install | Caddy
       ansible.builtin.include_tasks: ../tasks/install/caddy.yml
     - name: Placement | Caddy files

@@ -4,9 +4,9 @@ beads by doing the following tasks.
 
 1. Run `bd prime` if you haven't already this session.
 2. Read `work`. Then read `docs/design.md`, and the READMEs and source files for the
-   parts of the codebase that `work` touches. Work on the AS or the CSS may port
-   behavior from the standalone `affiliations-service` or `clinvar-submission-service`
-   repositories; if `work` says so, read the relevant parts of that repository too.
+   parts of the codebase that `work` touches. Work on the AS may port behavior from the
+   standalone `affiliations-service` repository; if `work` says so, read the relevant
+   parts of that repository too.
 3. Check whether beads already exist for `work`: search with `bd search` and
    `bd list --all` for related titles and GitHub issue numbers. If they do, stop and
    tell me instead of creating duplicates.

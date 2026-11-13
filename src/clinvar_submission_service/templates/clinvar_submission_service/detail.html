@@ -1,0 +1,96 @@
+{% extends "layouts/base.html" %}
+{% block title %}{{ batch.slug }} Details{% endblock %}
+{% block description %}See the status of batch {{ batch.slug }}.{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        {% include "clinvar_submission_service/partials/header.html" with section="batches" %}
+        <div class="box mt-4">
+            {% include "common/breadcrumbs.html" %}
+            <div class="block table-container">
+                <table class="table">
+                    <tbody>
+                        <tr><td>Status</td><td>{% include "clinvar_submission_service/partials/status.html" %}</td></tr>
+                        <tr><td>Affiliation</td><td>{{ batch.affiliation_name }}</td></tr>
+                        <tr><td>Made By</td><td>{{ batch.made_by.email|default:"" }}</td></tr>
+                        <tr><td>ClinVar ID</td><td>{{ batch.clinvar_submission_id }}</td></tr>
+                        <tr><td>Made</td><td>{{ batch.added_at|date:"Y-m-d H:i" }} UTC</td></tr>
+                        <tr><td>Sent to ClinVar On</td><td>{% if batch.sent_at %}{{ batch.sent_at|date:"Y-m-d H:i" }} UTC{% else %}Not yet{% endif %}</td></tr>
+                        <tr><td>Last Checked With ClinVar</td><td>{{ batch.last_polled_at|date:"Y-m-d H:i"|default:"Not yet" }}{% if batch.last_polled_at %} UTC{% endif %}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            {% if batch.status == "send_to_clinvar_failed" %}
+                <div class="notification is-danger is-light block">
+                    <p class="has-text-weight-bold">ClinVar never got this batch.</p>
+                    <p class="block">You can send it again. If it still doesn't go through, ask a
+                        developer for help, and give them its batch ID, {{ batch.slug }}.</p>
+                    <form method="post"
+                          action="{% url 'css:resend' slug=batch.slug %}"
+                          data-confirm="Send {{ batch.slug }} to ClinVar again?">
+                        {% csrf_token %}
+                        <button type="submit" class="button is-link">Resend</button>
+                    </form>
+                </div>
+            {% elif batch.status == "not_sent_to_clinvar" %}
+                <p class="block">This batch hasn't been sent to ClinVar yet.</p>
+            {% elif batch.status == "submitted_to_clinvar" or batch.status == "processing_at_clinvar" %}
+                <p class="block">ClinVar has this batch and hasn't finished processing it. This can
+                    take a few days. The CSS checks with ClinVar regularly, so look back here later.</p>
+            {% elif batch.status == "error_at_clinvar" %}
+                <div class="notification is-danger is-light block">
+                    <p class="has-text-weight-bold">{{ batch.status_help }}</p>
+                    <p>The records marked Error below weren't accepted.</p>
+                </div>
+            {% elif batch.status == "processed_by_clinvar" %}
+                <p class="block">{{ batch.status_help }} ClinVar makes accepted records public in
+                    its next weekly release.</p>
+            {% endif %}
+            {% if rows %}
+                <h3 class="title is-5">Records</h3>
+                <div class="block table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Record ID</th>
+                                <th>Variant</th>
+                                <th>Condition</th>
+                                <th>Classification</th>
+                                <th>Inheritance</th>
+                                <th>Last Evaluated</th>
+                                <th>New or Update</th>
+                                <th>ClinVar Result</th>
+                                <th>ClinVar Accession</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in rows %}
+                                <tr>
+                                    <td><a href="{{ row.record.get_absolute_url }}">{{ row.record.slug }}</a></td>
+                                    <td>
+                                        {% if row.record.gene_symbol %}<strong>{{ row.record.gene_symbol }}</strong><br>{% endif %}
+                                        {{ row.record.hgvs }}
+                                    </td>
+                                    <td>{{ row.record.condition_id }}</td>
+                                    <td>{{ row.record.get_classification_display }}</td>
+                                    <td>{{ row.record.get_mode_of_inheritance_display }}</td>
+                                    <td>{{ row.record.date_last_evaluated|date:"Y-m-d"|default:"" }}</td>
+                                    <td>
+                                        {% if row.record.record_status == "update" %}
+                                            Update to {{ row.record.clinvar_accession }}
+                                        {% else %}
+                                            New
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% include "clinvar_submission_service/partials/record_result.html" %}
+                                    </td>
+                                    <td>{{ row.scv }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

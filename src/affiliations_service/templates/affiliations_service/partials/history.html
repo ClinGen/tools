@@ -1,0 +1,25 @@
+<h3 class="title is-5">History</h3>
+{% if history %}
+    <div class="block table-container">
+        <table class="table">
+            <thead>
+                <tr><th>When</th><th>Who</th><th>What Changed</th></tr>
+            </thead>
+            <tbody>
+                {% for entry in history %}
+                    <tr>
+                        <td>{{ entry.when|date:"Y-m-d H:i" }} UTC</td>
+                        <td>{{ entry.who|default:"Unknown" }}</td>
+                        <td>
+                            {% for change in entry.changes %}
+                                <p>{{ change }}</p>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <p class="block">No changes have been recorded.</p>
+{% endif %}

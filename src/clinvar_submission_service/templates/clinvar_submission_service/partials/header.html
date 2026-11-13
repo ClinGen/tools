@@ -1,0 +1,38 @@
+{# The top of every CSS page: a banner while ClinVar is simulated, with buttons that delete every record or batch, its name, description, and a navbar to each section, bold for the current section. Takes section: affiliations, records, or batches. #}
+{% load css_tags %}
+{% simulating_clinvar as simulating %}
+{% if simulating %}
+    <div class="notification is-warning is-light block">
+        <span class="has-text-weight-bold">ClinVar is simulated.</span>
+        Nothing is sent to ClinVar. Batches move through ClinVar's statuses each time the
+        CSS checks on them, and each record gets a made-up result.
+        <div class="buttons mt-3">
+            <form method="post" action="{% url 'css:delete_records' %}" data-confirm="Delete every record and batch?">
+                {% csrf_token %}
+                <button type="submit" class="button is-danger is-light is-small">{% include "common/icon.html" with icon_name="trash" %}Flush Records</button>
+            </form>
+            <form method="post" action="{% url 'css:delete_batches' %}" class="ml-2" data-confirm="Delete every batch? Their records will wait again.">
+                {% csrf_token %}
+                <button type="submit" class="button is-danger is-light is-small">{% include "common/icon.html" with icon_name="trash" %}Flush Batches</button>
+            </form>
+        </div>
+    </div>
+{% endif %}
+<h1 class="title">{{ tool.name }}</h1>
+<h2 class="subtitle">{{ tool.description }}</h2>
+<nav class="navbar" aria-label="CSS">
+    <div class="navbar-brand">
+        <a href="{% url 'css:records' %}" class="navbar-item{% if section == 'records' %} has-text-weight-bold{% endif %}">
+            {% include "common/icon.html" with icon_name="list-ul" %}
+            Records
+        </a>
+        <a href="{% url 'css:batches' %}" class="navbar-item{% if section == 'batches' %} has-text-weight-bold{% endif %}">
+            {% include "common/icon.html" with icon_name="card-list" %}
+            Batches
+        </a>
+        <a href="{% url 'css:affiliations' %}" class="navbar-item{% if section == 'affiliations' %} has-text-weight-bold{% endif %}">
+            {% include "common/icon.html" with icon_name="people" %}
+            Affiliations
+        </a>
+    </div>
+</nav>

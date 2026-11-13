@@ -1,5 +1,7 @@
 """Provides test settings."""
 
+from datetime import timedelta
+
 import sentry_sdk
 
 from .dev import *  # ruff: ignore[undefined-local-with-import-star]
@@ -12,6 +14,19 @@ sentry_sdk.init()
 # can't use WAL mode. A file-backed test database runs with the same journal mode as the
 # real one. pytest-django gives each xdist worker its own copy.
 DATABASES["default"]["TEST"] = {"NAME": BASE_DIR / "test_tools.db"}
+
+# Tests never use a real ClinVar key or the production endpoint, even if .env has them.
+# The contract tests read their key from the environment themselves.
+CSS_CLINVAR_API_URL = "https://submit.ncbi.nlm.nih.gov/apitest/v1"
+CSS_CLINVAR_API_KEY = ""
+
+# Tests turn the simulated ClinVar on themselves, even if .env turns it on for dev, and
+# keep base.py's poll delays, which dev.py shortens while simulating.
+CSS_SIMULATE_CLINVAR = False
+CSS_FIRST_POLL_DELAY = timedelta(minutes=5)
+CSS_POLL_SLEEP_SECONDS = 60
+CSS_POLL_MIN_DELAY = timedelta(minutes=5)
+CSS_POLL_MAX_DELAY = timedelta(hours=6)
 
 # Tests don't need the manifest that collectstatic builds.
 STORAGES = {

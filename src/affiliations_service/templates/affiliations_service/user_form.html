@@ -1,0 +1,38 @@
+{% extends "layouts/base.html" %}
+{% block title %}{% if as_user %}Edit {{ as_user.name }}{% else %}New User{% endif %}{% endblock %}
+{% block description %}{% if as_user %}Change {{ as_user.name }}'s details.{% else %}Add a user to the AS.{% endif %}{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        {% include "affiliations_service/partials/header.html" %}
+        <h2 class="title is-4">{% if as_user %}Edit {{ as_user.name }}{% else %}New User{% endif %}</h2>
+        <form method="post" class="block">{% csrf_token %}
+            {% for error in form.non_field_errors %}
+                <div class="notification is-danger is-light">{{ error }}</div>
+            {% endfor %}
+            {% if form.similar %}
+                <div class="notification is-warning is-light">
+                    <p class="mb-2">These users have similar names. If one of them is the person you're adding, cancel and edit them instead.</p>
+                    <ul class="mb-3">
+                        {% for match in form.similar %}
+                            <li>
+                                <a href="{{ match.get_absolute_url }}">{{ match.name }}</a>{% if match.preferred_name %} ({{ match.preferred_name }}){% endif %}{% if match.email %}, {{ match.email }}{% endif %}{% if match.institution %}, {{ match.institution }}{% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <button type="submit" name="allow_similar_name" value="1" class="button is-warning">Add Anyway</button>
+                </div>
+            {% endif %}
+            {% for field in form %}
+                {% include "affiliations_service/partials/field.html" %}
+            {% endfor %}
+
+            {% include "affiliations_service/partials/formset.html" with field_name="email" legend="Other Emails" label="Other Email" %}
+
+            <div class="buttons">
+                <button type="submit" class="button is-link">Save</button>
+                <a class="button is-link is-light"
+                   href="{% if as_user %}{{ as_user.get_absolute_url }}{% else %}{% url 'as:users' %}{% endif %}">Cancel</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

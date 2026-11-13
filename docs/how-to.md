@@ -138,6 +138,10 @@ the `prod` outputs when you set that check up.
 
 - Make sure to add the Ansible SSH key to the `authorized_keys` file.
 
+Initialization starts two systemd services: `gunicorn.service`, which serves every tool,
+and `poll-clinvar.service`, the CSS's ClinVar poller. To check on the poller, SSH in and
+run `systemctl status poll-clinvar` or `journalctl -u poll-clinvar`.
+
 ## How to Manually Deploy ClinGen Tools
 
 If you need to deploy ClinGen Tools by hand, follow the steps below. Every tool is
@@ -170,3 +174,91 @@ Pre-deployment backup: pre-deployment/tools-3f2a9c1-to-88c5e47-2026-09-25T180102
 The first SHA is the code the backup's data matches, and the second is the code being
 deployed. If the backup fails, the deploy stops before it migrates, so the server needs
 its backup credentials first (see How to Configure Backup Credentials).
+
+Every deploy restarts Gunicorn and the ClinVar poller. The poller finishes the batch
+it's polling before it stops.
+
+## How to Try the CSS Workflow Locally
+
+This sends dummy records to your local CSS, as the VCI would, and has a simulated
+ClinVar accept and process the batches you send, so nothing reaches the VCI or ClinVar.
+
+- Apply the migrations:
+
+  ```
+  just django-migrate
+  ```
+
+- Make an API key for the dummy records. Run `just django-runserver`, open
+  `/admin/clinvar_submission_service/apikey/add/`, name it `Dummy VCI`, and save. Copy
+  the key from the message at the top of the page; it's shown only once.
+
+- In `.env`, set:
+
+  ```
+  CSS_DUMMY_API_KEY=<the key>
+  CSS_SIMULATE_CLINVAR=1
+  ```
+
+- Restart the development server, so it reads `.env`:
+
+  ```
+  just django-runserver
+  ```
+
+  Every CSS page now says ClinVar is simulated.
+
+- In a second terminal, run the poller:
+
+  ```
+  just django-poll-clinvar
+  ```
+
+  While ClinVar is simulated, it checks every few seconds instead of every few minutes.
+
+- In a third terminal, send some dummy records:
+
+  ```
+  just django-send-dummy-records --count 10
+  ```
+
+  Add `--resend` to send about half of them again with a new classification, which
+  replaces the waiting records and keeps the old versions in their history.
+
+- Open `/css/records/` to see the records waiting for a batch.
+
+- Open `/css/affiliations/`, click an affiliation's gear, and set its assertion
+  criteria, such as PubMed 25741868. A batch takes these settings when it's made.
+
+- On `/css/records/`, pick that affiliation in the select and click **New Batch**. Pick
+  records, or click **Add Every Waiting Record**, review them, and click **Send to
+  ClinVar**.
+
+- On the batch's page, watch it move from Submitted to Processing to Processed or Error
+  as the poller checks on it. Reload to see each step. Most records get Success with a
+  made-up SCV; the rest get Error and go back to waiting, ready for a later batch.
+
+- About one send in ten fails on purpose, so the batch shows Send Failed. Click
+  **Resend** on its page to try again.
+
+- To stop simulating, empty `CSS_SIMULATE_CLINVAR` in `.env` and restart the server and
+  the poller.
+
+- To start over, click **Flush Records** in the banner, which deletes every record and
+  batch, or **Flush Batches**, which deletes every batch and puts its records back to
+  waiting. Affiliation settings and API keys stay.
+
+## How to Import Data from the Old AS
+
+The AS can copy CDWGs, affiliations, and users from the old AS
+(affils.clinicalgenome.org) with the `import_old_as` command.
+
+1. Put an old AS API key in `.env` as `AS_API_KEY`.
+2. See what the import would do without saving anything:
+   `uv run src/manage.py import_old_as --dry-run`.
+3. Run the import: `uv run src/manage.py import_old_as`.
+
+The command prints a warning for each record that breaks one of the AS's rules, such as
+an independent curation group outside the None CDWG. Those records are imported anyway,
+so staff can fix them in the AS. Running the import again updates only what changed in
+the old AS.

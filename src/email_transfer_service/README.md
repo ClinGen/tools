@@ -26,11 +26,6 @@ AWS call a transfer makes: find a Cognito user or a DynamoDB user record by emai
 retire a record, set a record's email, and disable or enable a Cognito user.
 `EtsClient.from_settings()` builds one from the `ETS_` settings.
 
-### `fakes.py`
-
-Defines `FakeEtsClient`, which holds Cognito users and DynamoDB records in memory and
-records each write, so tests never reach AWS. It can be told to fail a write.
-
 ### `forms.py`
 
 Defines `TransferForm`, which takes the old and new emails. They must be valid, must
@@ -74,21 +69,45 @@ transfer's page adds a third tab, named for the transfer, which is the active on
 
 A transfer's status tag, plus a Dry Run tag if it was one.
 
-### `test_transfers.py`
+### `tests/__init__.py`
 
-Tests the preconditions (each failure, the `requested activation` record, other
-statuses, and an already-enabled new user) and the preview page; running a transfer
-(full success, the `requested activation` path, a failure at each step, and a dry run);
-and confirming one, which re-checks the preconditions and records who ran it. Also
-checks that the summaries, failures, and pages name no Cognito users, DynamoDB records,
-or attribute names, while the saved transfer keeps them, and that every page has the
-header with the right tab active.
+Marks `tests` as a Python package.
 
-### `tests.py`
+### `tests/fakes.py`
+
+Defines `FakeEtsClient`, which holds Cognito users and DynamoDB records in memory and
+records each write, so tests never reach AWS. It can be told to fail a write.
+
+### `tests/helpers.py`
+
+Helpers shared by the ETS's tests: the example old and new emails, the technical words
+pages mustn't show, `make_client()`, which returns a `FakeEtsClient` set up for a
+transfer, and `make_plan()`, which returns that transfer's plan.
+
+### `tests/test_clients.py`
 
 Tests each `EtsClient` method against stubbed AWS clients, including DynamoDB pagination
-and users that aren't found; the `EmailTransfer` slug, including a colliding one, and
-history; and that only users with ETS permissions can open the home page.
+and users that aren't found.
+
+### `tests/test_models.py`
+
+Tests the `EmailTransfer` slug, including a colliding one, and its history.
+
+### `tests/test_transfers.py`
+
+Tests the preconditions (each failure, the `requested activation` record, other
+statuses, and an already-enabled new user) and running a transfer (full success, the
+`requested activation` path, a failure at each step, and a dry run). Also checks that
+the summaries and failures name no Cognito users, DynamoDB records, or attribute names,
+while the saved transfer keeps them.
+
+### `tests/test_views.py`
+
+Tests the ETS's pages: that only users with ETS permissions can open the home page,
+which the landing page links to for them; the preview page; confirming a transfer, which
+re-checks the preconditions and records who ran it; the failed transfer page; that no
+page names Cognito users, DynamoDB records, or attribute names; and that every page has
+the header with the right tab active.
 
 ### `transfers.py`
 

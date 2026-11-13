@@ -9,10 +9,13 @@ dependencies = [
     "clerk-backend-api==7.0.0",
     "django>=5.2",
     "django-dbbackup>=5.3",
+    "django-ninja>=1.7.1",
     "django-simple-history>=3.13.0",
     "django-storages[s3]>=1.14.6",
+    "django-tables2>=3.0.1",
     "gunicorn>=26.2.0",
     "python-dotenv>=1.2.4",
+    "requests>=2.32",
     "sentry-sdk[django]>=2.72.0",
     "whitenoise[brotli]>=6.12.0",
 ]
@@ -32,6 +35,7 @@ dev = [
     "pytest-xdist>=3.8.0",
     "ruff>=0.17.0",
     "ty>=0.0.87",
+    "types-requests>=2.33.0.20261006",
 ]
 
 [tool.ruff]
@@ -130,6 +134,12 @@ convention = "google"
     "mixed-case-variable-in-class-scope",
     "assert",
 ]
+"**/tests/*.py" = [  # Helpers and fakes beside the tests.
+    "missing-return-type-undocumented-public-function",
+    "undocumented-public-method",
+    "mixed-case-variable-in-class-scope",
+    "assert",
+]
 "views.py" = [
     "unused-function-argument", # Sometimes you need a default parameter that goes unused.
 ]
@@ -141,6 +151,10 @@ convention = "google"
 ]
 "scripts/env_check.py" = [
     "print", # CLI tool: print is the intended output mechanism.
+]
+"scripts/*send_dummy_records.py" = [
+    "print", # CLI tool: print is the intended output mechanism.
+    "suspicious-non-cryptographic-random-usage", # Dummy data, not secrets.
 ]
 
 [tool.coverage.run]

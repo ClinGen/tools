@@ -7,6 +7,7 @@ short Git hash.
 """
 
 import uuid
+from collections.abc import Sequence
 from typing import ClassVar
 
 from django.db import models
@@ -74,3 +75,33 @@ class SlugModel(UUIDModel):
                 self.id = uuid.uuid4()
                 self.slug = make_slug(self.slug_prefix, self.id)
         super().save(*args, **kwargs)
+
+    @classmethod
+    def set_unique_slugs(cls, objects: Sequence["SlugModel"]) -> None:
+        """Gives unsaved objects slugs that no other object has, for bulk_create().
+
+        bulk_create() skips save(), so it doesn't set slugs. An object whose slug is
+        taken, by a saved object or an earlier one in the list, gets a new UUID, as in
+        save(). Each round checks the database once.
+
+        Args:
+            objects: Unsaved objects of this model.
+        """
+        taken: set[str] = set()
+        pending = list(objects)
+        while pending:
+            for obj in pending:
+                obj.slug = make_slug(cls.slug_prefix, obj.id)
+            saved = set(
+                cls.objects.filter(slug__in=[obj.slug for obj in pending]).values_list(
+                    "slug", flat=True
+                )
+            )
+            retry = []
+            for obj in pending:
+                if obj.slug in saved or obj.slug in taken:
+                    obj.id = uuid.uuid4()
+                    retry.append(obj)
+                else:
+                    taken.add(obj.slug)
+            pending = retry

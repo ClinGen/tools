@@ -1,0 +1,16 @@
+[Unit]
+Description=The CSS's ClinVar poller
+After=network.target
+
+[Service]
+Type=simple
+User={{ ansible_user }}
+WorkingDirectory={{ repo_dir }}/src
+ExecStart={{ repo_dir }}/.venv/bin/python manage.py poll_clinvar
+Restart=on-failure
+RestartSec=30
+KillSignal=SIGTERM
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

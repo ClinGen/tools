@@ -1,0 +1,74 @@
+{% extends "layouts/base.html" %}
+{% block title %}New Batch for {{ affiliation_name }}{% endblock %}
+{% block description %}Send {{ affiliation_name }}'s waiting records to ClinVar as one batch.{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        {% include "clinvar_submission_service/partials/header.html" with section="records" %}
+        <div class="box mt-4">
+            {% include "common/breadcrumbs.html" %}
+            <h2 class="title is-4">{% if reviewing %}Review the Batch{% else %}New Batch{% endif %} for {{ affiliation_name }}</h2>
+            {% if reviewing %}
+                <p class="block">
+                    These {{ records|length }} record{{ records|length|pluralize }} will go to ClinVar as one batch, with
+                    {{ affiliation_name }}'s settings.
+                </p>
+            {% else %}
+                <p class="block">Pick the waiting records to send to ClinVar as one batch.</p>
+            {% endif %}
+            {% if records %}
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="block table-container">
+                        <table class="table is-fullwidth">
+                            <thead>
+                                <tr>
+                                    <th>{% if not reviewing %}<span class="is-sr-only">Pick</span>{% endif %}</th>
+                                    <th>Tool ID</th>
+                                    <th>Variant</th>
+                                    <th>Condition</th>
+                                    <th>Classification</th>
+                                    <th>Received by CSS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in records %}
+                                    <tr>
+                                        <td>
+                                            {% if reviewing %}
+                                                <input type="hidden" name="records" value="{{ record.slug }}">
+                                            {% else %}
+                                                <input type="checkbox"
+                                                       name="records"
+                                                       value="{{ record.slug }}"
+                                                       aria-label="Pick {{ record.tool_id|default:record.slug }}">
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ record.tool_id }}</td>
+                                        <td>
+                                            {% if record.gene_symbol %}<strong>{{ record.gene_symbol }}</strong><br>{% endif %}
+                                            {{ record.hgvs }}
+                                        </td>
+                                        <td>{{ record.condition_id }}</td>
+                                        <td>{{ record.get_classification_display }}</td>
+                                        <td>{{ record.added_at|date:"Y-m-d H:i" }} UTC</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="buttons">
+                        {% if reviewing %}
+                            <button type="submit" name="action" value="send" class="button is-link">Send to ClinVar</button>
+                            <a href="" class="button">Change the Records</a>
+                        {% else %}
+                            <button type="submit" name="action" value="review" class="button is-link">Review Picked Records</button>
+                            <button type="submit" name="action" value="review_all" class="button">Add Every Waiting Record</button>
+                        {% endif %}
+                    </div>
+                </form>
+            {% else %}
+                <p class="block">{{ affiliation_name }} has no records waiting for a batch.</p>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

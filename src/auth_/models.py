@@ -16,10 +16,20 @@ class UserProfile(UUIDModel):
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
 
+    has_css_permissions = models.BooleanField(
+        default=False,
+        verbose_name="CSS Permissions",
+        help_text="Whether the user can use the ClinVar Submission Service.",
+    )
     has_ets_permissions = models.BooleanField(
         default=False,
         verbose_name="ETS Permissions",
         help_text="Whether the user can use the Email Transfer Service.",
+    )
+    has_as_permissions = models.BooleanField(
+        default=False,
+        verbose_name="AS Permissions",
+        help_text="Whether the user can manage affiliations and people in the AS.",
     )
     clerk_user_id = models.CharField(
         max_length=255,

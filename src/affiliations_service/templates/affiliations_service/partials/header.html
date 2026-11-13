@@ -1,0 +1,48 @@
+<h1 class="title">{{ tool.name }}</h1>
+<h2 class="subtitle">{{ tool.description }}</h2>
+<nav id="as-navbar" class="navbar block" role="navigation" aria-label="Affiliations Service navigation">
+    <div class="navbar-brand">
+        <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="as-navbar-menu">
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+        </a>
+    </div>
+    <div id="as-navbar-menu" class="navbar-menu">
+        <div class="navbar-start">
+            <div class="navbar-item has-dropdown is-hoverable">
+                <a class="navbar-link">Affiliations</a>
+                <div class="navbar-dropdown">
+                    {% include "affiliations_service/partials/navbar_link.html" with url="as:index" text="Search" %}
+                    {% include "affiliations_service/partials/navbar_link.html" with url="as:affiliation-create" text="Add" %}
+                </div>
+            </div>
+            <div class="navbar-item has-dropdown is-hoverable">
+                <a class="navbar-link">CDWGs</a>
+                <div class="navbar-dropdown">
+                    {% include "affiliations_service/partials/navbar_link.html" with url="as:cdwgs" text="Search" %}
+                    {% include "affiliations_service/partials/navbar_link.html" with url="as:cdwg-create" text="Add" %}
+                </div>
+            </div>
+            <div class="navbar-item has-dropdown is-hoverable">
+                <a class="navbar-link">Users</a>
+                <div class="navbar-dropdown">
+                    {% include "affiliations_service/partials/navbar_link.html" with url="as:users" text="Search" %}
+                    {% include "affiliations_service/partials/navbar_link.html" with url="as:user-create" text="Add" %}
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+<script>
+    // Opens and closes the navbar on narrow screens. Copied from the Bulma docs, as in
+    // the HCI.
+    document.querySelectorAll(".navbar-burger").forEach((burger) => {
+        burger.addEventListener("click", () => {
+            burger.classList.toggle("is-active");
+            document.getElementById(burger.dataset.target).classList.toggle("is-active");
+        });
+    });
+</script>
+{% include "common/breadcrumbs.html" %}

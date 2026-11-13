@@ -10,9 +10,9 @@
                 <tbody>
 
                     <tr>
-                        <td>ETS Permissions</td>
+                        <td>AS Permissions</td>
                         <td>
-                            {% if request.user.profile.has_ets_permissions %}
+                            {% if request.user.profile.has_as_permissions %}
                                 <div class="has-text-success">
                                     {% include "common/icon.html" with icon_name="check-circle-fill" %}
                                     Granted
@@ -25,13 +25,50 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if request.user.profile.has_ets_permissions %}
-                                You can use the Email Transfer Service.
+                            {% if request.user.profile.has_as_permissions %}
+                                You can use the Affiliations Service.
                             {% else %}
-                                Ask an administrator to grant you ETS permissions.
+                                Ask an administrator to grant you AS permissions.
                             {% endif %}
                         </td>
                     </tr>
+
+                    <tr>
+                        <td>CSS Permissions</td>
+                        <td>
+                            {% if request.user.profile.has_css_permissions %}
+                                <div class="has-text-success">
+                                    {% include "common/icon.html" with icon_name="check-circle-fill" %}
+                                    Granted
+                                </div>
+                            {% else %}
+                                <div class="has-text-danger">
+                                    {% include "common/icon.html" with icon_name="x-circle-fill" %}
+                                    Not Granted
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if request.user.profile.has_css_permissions %}
+                                You can use the ClinVar Submission Service.
+                            {% else %}
+                                Ask an administrator to grant you CSS permissions.
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    {% if request.user.profile.has_ets_permissions %}
+                    <tr>
+                        <td>ETS Permissions</td>
+                        <td>
+                            <div class="has-text-success">
+                                {% include "common/icon.html" with icon_name="check-circle-fill" %}
+                                Granted
+                            </div>
+                        </td>
+                        <td>You can use the Email Transfer Service.</td>
+                    </tr>
+                    {% endif %}
 
                 </tbody>
             </table>

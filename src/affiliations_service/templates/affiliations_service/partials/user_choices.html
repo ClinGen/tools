@@ -1,0 +1,17 @@
+{% if as_users %}
+    {% for as_user in as_users %}
+        {% if input_name == "coordinators" %}
+            <label class="checkbox is-block mb-1">
+                <input type="checkbox" name="coordinators" value="{{ as_user.pk }}">
+                {{ as_user.name }} <span class="has-text-grey">{{ as_user.email }}</span>
+            </label>
+        {% else %}
+            <label class="radio is-block mb-1">
+                <input type="radio" name="user" value="{{ as_user.pk }}" required>
+                {{ as_user.name }} <span class="has-text-grey">{{ as_user.email }}</span>
+            </label>
+        {% endif %}
+    {% endfor %}
+{% elif query %}
+    <p>No one matches. <a href="{% url 'as:user-create' %}">Add a user</a>, then come back.</p>
+{% endif %}

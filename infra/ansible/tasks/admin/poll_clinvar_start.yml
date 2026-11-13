@@ -1,0 +1,7 @@
+- name: Ensure the ClinVar poller systemd service is enabled and started
+  become: true
+  ansible.builtin.systemd:
+    name: poll-clinvar.service
+    enabled: true
+    daemon_reload: true
+    state: started

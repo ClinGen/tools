@@ -51,3 +51,25 @@ await copyFile(
   `${bootstrapIconsFontsPath}/bootstrap-icons.woff2`,
   `${CSS_STATIC_DIR}/fonts/bootstrap-icons.woff2`,
 );
+
+// Copy Popper and Tippy.js into our Django static directory, with their source
+// maps, which collectstatic requires. Tippy needs Popper loaded first.
+const popperJsPath = "./node_modules/@popperjs/core/dist/umd";
+await copyFile(
+  `${popperJsPath}/popper.min.js`,
+  `${JS_STATIC_DIR}/popper.min.js`,
+);
+await copyFile(
+  `${popperJsPath}/popper.min.js.map`,
+  `${JS_STATIC_DIR}/popper.min.js.map`,
+);
+const tippyPath = "./node_modules/tippy.js/dist";
+await copyFile(
+  `${tippyPath}/tippy.umd.min.js`,
+  `${JS_STATIC_DIR}/tippy.umd.min.js`,
+);
+await copyFile(
+  `${tippyPath}/tippy.umd.min.js.map`,
+  `${JS_STATIC_DIR}/tippy.umd.min.js.map`,
+);
+await copyFile(`${tippyPath}/tippy.css`, `${CSS_STATIC_DIR}/tippy.css`);

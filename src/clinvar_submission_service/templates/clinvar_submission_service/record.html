@@ -1,0 +1,91 @@
+{% extends "layouts/base.html" %}
+{% block title %}{{ record.slug }} Details{% endblock %}
+{% block description %}See record {{ record.slug }} and the batches it was sent in.{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        {% include "clinvar_submission_service/partials/header.html" with section="records" %}
+        <div class="box mt-4">
+            {% include "common/breadcrumbs.html" %}
+            <div class="block table-container">
+                <table class="table">
+                    <tbody>
+                        <tr><td>Status</td><td>{% include "clinvar_submission_service/partials/record_status.html" %}</td></tr>
+                        <tr><td>Affiliation</td><td>{{ record.affiliation_name }}</td></tr>
+                        <tr><td>Sent By</td><td>{{ record.api_key.name|default:"" }}</td></tr>
+                        <tr><td>Tool ID</td><td>{{ record.tool_id }}</td></tr>
+                        <tr>
+                            <td>Variant</td>
+                            <td>
+                                {% if record.gene_symbol %}<strong>{{ record.gene_symbol }}</strong><br>{% endif %}
+                                {{ record.hgvs }} ({{ record.get_submitted_assembly_display }})
+                            </td>
+                        </tr>
+                        <tr><td>Condition</td><td>{{ record.condition_id }}</td></tr>
+                        <tr><td>Classification</td><td>{{ record.get_classification_display }}</td></tr>
+                        <tr><td>Inheritance</td><td>{{ record.get_mode_of_inheritance_display }}</td></tr>
+                        <tr><td>Last Evaluated</td><td>{{ record.date_last_evaluated|date:"Y-m-d"|default:"" }}</td></tr>
+                        <tr><td>Comment</td><td>{{ record.comment }}</td></tr>
+                        <tr>
+                            <td>New or Update</td>
+                            <td>{% if record.record_status == "update" %}Update{% else %}New{% endif %}</td>
+                        </tr>
+                        <tr><td>ClinVar Accession</td><td>{{ record.clinvar_accession }}</td></tr>
+                        <tr><td>Received by CSS</td><td>{{ record.added_at|date:"Y-m-d H:i" }} UTC</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            {% if record.status == "waiting_for_batch" %}
+                <form method="post"
+                      action="{% url 'css:withdraw' slug=record.slug %}"
+                      class="block"
+                      data-confirm="Withdraw {{ record.slug }}? It won't be sent to ClinVar.">
+                    {% csrf_token %}
+                    <button type="submit" class="button is-danger is-light">Withdraw</button>
+                </form>
+            {% endif %}
+            <h3 class="title is-5">Batches</h3>
+            {% if attempts %}
+                <div class="block table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Batch ID</th>
+                                <th>Batch Status</th>
+                                <th>ClinVar Result</th>
+                                <th>ClinVar Accession</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for attempt in attempts %}
+                                <tr>
+                                    <td><a href="{{ attempt.batch.get_absolute_url }}">{{ attempt.batch.slug }}</a></td>
+                                    <td>{% include "clinvar_submission_service/partials/status.html" with batch=attempt.batch %}</td>
+                                    <td>
+                                        {% if attempt.result == "Success" %}
+                                            {% include "common/tooltip.html" with label="Success" text="ClinVar accepted this record." classes="tag is-success is-light" %}
+                                        {% elif attempt.result == "Error" %}
+                                            {% include "common/tooltip.html" with label="Error" text="ClinVar didn't accept this record. A developer can see ClinVar's reason in the admin." classes="tag is-danger is-light" %}
+                                        {% else %}
+                                            {% include "common/tooltip.html" with label="No Result Yet" text="ClinVar reports each record's result when it finishes processing the batch." classes="tag is-light" %}
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ attempt.scv }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="block">This record hasn't been in a batch yet.</p>
+            {% endif %}
+            <h3 class="title is-5">History</h3>
+            <ul class="block">
+                {% for row in history %}
+                    <li>
+                        {{ row.when|date:"Y-m-d H:i" }} UTC: {{ row.what }}{% if row.who %} ({{ row.who }}){% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% endblock %}

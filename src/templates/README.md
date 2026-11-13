@@ -19,8 +19,16 @@ request context, so it must not depend on context processors.
 
 ### `layouts/base.html`
 
-The base layout. Loads Bulma, Bootstrap Icons, and HTMX, sends the CSRF token with every
-HTMX request, and lays out the header, messages, main content, and footer.
+The base layout. Loads Bulma, Bootstrap Icons, HTMX, Tippy.js, our `custom.css`, and the
+confirmation modal's script, sends the CSRF token with every HTMX request, and lays out
+the header, messages, main content, and footer, then the confirmation modal from
+`common/confirm_modal.html`.
+
+### `tables.html`
+
+The template django-tables2 renders every table with, from the HCI: a Bulma table whose
+orderable column headers sort it, and Bulma pagination. Its sort and page links keep the
+page's other query parameters, such as a search.
 
 ### `partials/env_banner.html`
 

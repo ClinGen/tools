@@ -1,5 +1,8 @@
 """Provides development settings."""
 
+import os
+from datetime import timedelta
+
 from django.contrib import messages
 
 from .base import *  # ruff: ignore[undefined-local-with-import-star] (We want to import everything.)
@@ -13,6 +16,16 @@ ALLOWED_HOSTS: list[str] = []
 SECRET_KEY = SECRET_KEY or "django-insecure-dev-key"  # ruff: ignore[hardcoded-password-string]
 
 MESSAGE_LEVEL = messages.DEBUG
+
+# Answer the CSS's ClinVar requests with a simulated ClinVar. See
+# clinvar_submission_service/simulation.py.
+CSS_SIMULATE_CLINVAR = os.getenv("CSS_SIMULATE_CLINVAR") == "1"
+if CSS_SIMULATE_CLINVAR:
+    # Poll often, so a simulated batch moves while you watch.
+    CSS_FIRST_POLL_DELAY = timedelta(seconds=10)
+    CSS_POLL_MIN_DELAY = timedelta(seconds=10)
+    CSS_POLL_MAX_DELAY = timedelta(minutes=1)
+    CSS_POLL_SLEEP_SECONDS = 5
 
 LOGGING = {
     "version": 1,

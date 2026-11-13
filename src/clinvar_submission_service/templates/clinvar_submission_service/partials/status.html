@@ -1,0 +1,8 @@
+{# A batch's status tag, in ClinVar's words, with what it means in a tooltip. With href, the tag is a link. #}
+{% if batch.status == "processed_by_clinvar" %}
+    {% include "common/tooltip.html" with label=batch.get_status_display text=batch.status_help classes="tag is-success is-light" %}
+{% elif batch.status == "error_at_clinvar" or batch.status == "send_to_clinvar_failed" %}
+    {% include "common/tooltip.html" with label=batch.get_status_display text=batch.status_help classes="tag is-danger is-light" %}
+{% else %}
+    {% include "common/tooltip.html" with label=batch.get_status_display text=batch.status_help classes="tag is-light" %}
+{% endif %}

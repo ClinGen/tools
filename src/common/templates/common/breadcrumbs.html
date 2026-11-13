@@ -1,0 +1,26 @@
+{# A page's breadcrumbs, as in the HCI. Takes breadcrumbs, the list of crumbs from common/breadcrumbs.py; the last is the current page. #}
+{% if breadcrumbs %}
+    <nav class="breadcrumb" aria-label="breadcrumbs">
+        <ul>
+            {% for crumb in breadcrumbs %}
+                {% if forloop.last %}
+                    <li class="is-active">
+                        <b>
+                            <a href="" aria-current="page">
+                                {% include "common/icon.html" with icon_name=crumb.icon %}
+                                {{ crumb.text }}
+                            </a>
+                        </b>
+                    </li>
+                {% else %}
+                    <li>
+                        <a href="{{ crumb.url }}">
+                            {% include "common/icon.html" with icon_name=crumb.icon %}
+                            {{ crumb.text }}
+                        </a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+    </nav>
+{% endif %}

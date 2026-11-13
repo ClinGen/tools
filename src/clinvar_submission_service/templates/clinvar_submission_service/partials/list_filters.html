@@ -1,0 +1,53 @@
+{# The filters above the Records and Batches lists: an affiliation select, status pills, a search box, and New Batch for one affiliation with waiting records. Takes search_label, the search box's description. #}
+{% if unknown_affiliation %}
+    <div class="notification is-light block">
+        No affiliation has that ID. <a href="{{ request.path }}">Show every affiliation</a>
+    </div>
+{% endif %}
+<form method="get" class="block">
+    {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+    <div class="field is-grouped is-grouped-multiline">
+        <div class="control">
+            <div class="select">
+                <select name="affiliation" aria-label="Affiliation" onchange="this.form.submit()">
+                    <option value=""{% if not affiliation %} selected{% endif %}>All affiliations</option>
+                    {% for affiliation_id, name in affiliations %}
+                        <option value="{{ affiliation_id }}"{% if affiliation == affiliation_id|stringformat:"d" %} selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        {% if new_batch_affiliation %}
+            <div class="control">
+                <a class="button is-link" href="{% url 'css:new_batch' affiliation_id=new_batch_affiliation %}">New Batch</a>
+            </div>
+        {% endif %}
+    </div>
+    <div class="tabs is-toggle is-small">
+        <ul>
+            {% for label, value, link in filter_links %}
+                <li{% if status == value %} class="is-active"{% endif %}>
+                    <a href="{{ link }}"{% if status == value %} aria-current="page"{% endif %}>{{ label }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="field mb-4">
+        <div class="control has-icons-left">
+            <input class="input"
+                   type="text"
+                   name="q"
+                   value="{{ query }}"
+                   aria-label="{{ search_label }}"
+                   placeholder="{{ search_label }}..."
+                   hx-get="{{ request.path }}"
+                   hx-include="closest form"
+                   hx-target="#search-results"
+                   hx-trigger="keyup changed delay:500ms"
+                   hx-push-url="true">
+            <span class="icon is-left">
+                <i class="bi bi-search"></i>
+            </span>
+        </div>
+    </div>
+</form>

@@ -1,7 +1,9 @@
 {
   "directories": [
     "scripts",
+    "src/affiliations_service",
     "src/auth_",
+    "src/clinvar_submission_service",
     "src/common",
     "src/config",
     "src/core",

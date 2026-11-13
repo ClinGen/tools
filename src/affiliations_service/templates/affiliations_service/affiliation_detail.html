@@ -1,0 +1,53 @@
+{% extends "layouts/base.html" %}
+{% block title %}{{ affiliation.full_name }}{% endblock %}
+{% block description %}See {{ affiliation.full_name }}'s details, members, and history.{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        {% include "affiliations_service/partials/header.html" %}
+        <h2 class="title is-4">{{ affiliation.full_name }}</h2>
+        <div class="buttons">
+            <a class="button is-link" href="{% url 'as:affiliation-edit' pk=affiliation.pk %}">Edit</a>
+            {% if not affiliation.is_deleted %}
+                <form method="post"
+                      action="{% url 'as:affiliation-delete' pk=affiliation.pk %}"
+                      data-confirm="Delete {{ affiliation.full_name }}? It will be left out of lists, but the AS keeps it, its members, and its history.">
+                    {% csrf_token %}
+                    <button type="submit" class="button is-link is-light">Delete</button>
+                </form>
+            {% endif %}
+        </div>
+        {% if affiliation.is_deleted %}
+            <div class="notification is-warning is-light block">
+                This affiliation has been deleted. It's kept for the record, but it's left
+                out of lists.
+            </div>
+        {% endif %}
+        <div class="block table-container">
+            <table class="table">
+                <tbody>
+                    <tr><td>Affiliation ID</td><td>{{ affiliation.affiliation_id }}</td></tr>
+                    <tr><td>Expert Panel ID</td><td>{{ affiliation.expert_panel_id|default:"None" }}</td></tr>
+                    <tr><td>Type</td><td>{{ affiliation.get_type_display }}</td></tr>
+                    <tr><td>Status</td><td>{% include "affiliations_service/partials/status.html" %}</td></tr>
+                    <tr><td>Short Name</td><td>{{ affiliation.short_name|default:"None" }}</td></tr>
+                    <tr><td>CDWG</td><td>{{ affiliation.cdwg.name }}</td></tr>
+                    <tr>
+                        <td>ClinVar Submitter IDs</td>
+                        <td>
+                            {% for submitter in affiliation.clinvar_submitter_ids.all %}
+                                {{ submitter.submitter_id }}{% if not forloop.last %}, {% endif %}
+                            {% empty %}
+                                None
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    <tr><td>Linked to the GPM</td><td>{{ affiliation.gpm_uuid|yesno:"Yes,No" }}</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        {% include "affiliations_service/partials/members.html" %}
+
+        {% include "affiliations_service/partials/history.html" %}
+    </div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "layouts/base.html" %}
+{% block title %}{{ affiliation_name }} Settings{% endblock %}
+{% block description %}Set the ClinVar values for {{ affiliation_name }}'s batches.{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        {% include "clinvar_submission_service/partials/header.html" with section="affiliations" %}
+        <div class="box mt-4">
+            {% include "common/breadcrumbs.html" %}
+            <h2 class="title is-4">{{ affiliation_name }}</h2>
+            <p class="block">ClinVar applies these to every record in a batch, so each of this affiliation's batches uses them.</p>
+            <form method="post" class="block">{% csrf_token %}
+                <div class="has-text-danger">{{ form.non_field_errors }}</div>
+                {% for field in form %}
+                    <div class="field">
+                        <label class="label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        <div class="has-text-danger">{{ field.errors }}</div>
+                        <p class="help">{{ field.help_text }}</p>
+                        <div class="control">
+                            {% if field.field.choices %}
+                                <div class="select">{{ field }}</div>
+                            {% else %}
+                                <input class="input column is-half"
+                                       id="{{ field.id_for_label }}"
+                                       name="{{ field.html_name }}"
+                                       type="text"
+                                       {% if field.name == 'behalf_org_id' %}inputmode="numeric"{% endif %}
+                                       {% if field.value is not None %}value="{{ field.value }}"{% endif %}>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+                <button type="submit" class="button is-link">Save Settings</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}

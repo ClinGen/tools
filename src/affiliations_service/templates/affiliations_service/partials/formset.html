@@ -1,0 +1,22 @@
+{% comment %}
+    Renders an inline formset with one text field per row, a Remove checkbox for saved
+    rows, and an Add Another button. Pass `formset`, `field_name`, `legend`, and `label`.
+{% endcomment %}
+{% load static %}
+<fieldset class="block">
+    <legend class="label">{{ legend }}</legend>
+    {{ formset.management_form }}
+    {% for error in formset.non_form_errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+    <div id="{{ formset.prefix }}-rows" class="mb-4">
+        {% for subform in formset %}
+            {% include "affiliations_service/partials/formset_row.html" %}
+        {% endfor %}
+    </div>
+    <template id="{{ formset.prefix }}-empty-form">
+        {% include "affiliations_service/partials/formset_row.html" with subform=formset.empty_form %}
+    </template>
+    <button type="button" class="button is-link is-light is-small" data-formset-add="{{ formset.prefix }}">
+        Add Another
+    </button>
+</fieldset>
+<script src="{% static 'affiliations_service/formset.js' %}" defer></script>

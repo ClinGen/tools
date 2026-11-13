@@ -13,5 +13,10 @@
         }
         respond @blocked 403
 
+        # Django reads bodies up to its 2.5 MB default, so Caddy refuses bigger ones.
+        request_body {
+                max_size 2.5MB
+        }
+
         reverse_proxy unix//run/gunicorn.sock
 }

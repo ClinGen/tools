@@ -1,0 +1,6 @@
+- name: Place the ClinVar poller service systemd file
+  become: true
+  ansible.builtin.template:
+    src: "files/templates/poll-clinvar.service"
+    dest: /etc/systemd/system/poll-clinvar.service
+    mode: "644"

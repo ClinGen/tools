@@ -230,6 +230,18 @@ django-runserver:
     cd src && uv run manage.py runserver
 alias djru := django-runserver
 
+# Run the CSS's ClinVar poller. ---------------------------------------
+[group('django')]
+django-poll-clinvar:
+    cd src && uv run manage.py poll_clinvar
+alias djpc := django-poll-clinvar
+
+# Send random dummy records to a local CSS, as the VCI would. -------
+[group('django')]
+django-send-dummy-records *args:
+    uv run scripts/send_dummy_records.py {{args}}
+alias djsd := django-send-dummy-records
+
 # Enter the shell. ---------------------------------------------------
 [group('django')]
 django-shell:

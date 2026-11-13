@@ -1,0 +1,48 @@
+{% extends "layouts/base.html" %}
+{% load django_tables2 %}
+{% block title %}Users{% endblock %}
+{% block description %}Find the users in ClinGen's affiliations.{% endblock %}
+{% block main %}
+    <div class="block mt-6 mb-6">
+        {% include "affiliations_service/partials/header.html" %}
+        <form method="get"
+              class="block"
+              hx-get="{% url 'as:users' %}"
+              hx-trigger="input changed delay:300ms from:#user-search, submit"
+              hx-target="#user-results"
+              hx-select="#user-results"
+              hx-swap="outerHTML"
+              hx-push-url="true">
+            <div class="field">
+                <label class="label" for="user-search">Search</label>
+                <div class="control">
+                    <input class="input"
+                           id="user-search"
+                           name="q"
+                           type="search"
+                           placeholder="Name or email"
+                           value="{{ query }}">
+                </div>
+            </div>
+            <noscript><button type="submit" class="button is-link">Search</button></noscript>
+        </form>
+        <div class="buttons">
+            <a href="{% url 'as:user-create' %}" class="button is-link">
+                {% include "common/icon.html" with icon_name="plus-circle" %}
+                Add User
+            </a>
+        </div>
+        <div id="user-results"
+             class="block"
+             hx-boost="true"
+             hx-target="#user-results"
+             hx-select="#user-results"
+             hx-swap="outerHTML">
+            {% if table.paginator.count %}
+                {% render_table table %}
+            {% else %}
+                <p>No users match.</p>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
