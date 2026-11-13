@@ -14,7 +14,8 @@ from pydantic import ConfigDict
 
 from affiliations_service.api.helpers import save_validated
 from affiliations_service.api.memberships import MembershipOut
-from affiliations_service.models import Membership, User, UserEmail
+from affiliations_service.duplicates import similar_users
+from affiliations_service.models import Membership, User, UserEmail, user_with_email
 
 router = Router()
 
@@ -51,8 +52,43 @@ class UserDetail(UserOut):
         return list(user.memberships.current())  # ty: ignore[unresolved-attribute] (Django adds the reverse relation.)
 
 
+class EmailTakenError(Exception):
+    """Raised for an email another user has, primary or other; the API sends a 400."""
+
+    def __init__(self, existing_user: User) -> None:
+        """Keeps the user who has the email.
+
+        Args:
+            existing_user: The user who has it.
+        """
+        self.existing_user = existing_user
+        super().__init__(
+            f"The user with AS ID {existing_user.pk} already has this email."
+        )
+
+
+class PossibleDuplicate(Schema):
+    """An existing user whose name is like a new user's."""
+
+    id: uuid.UUID
+    name: str
+    preferred_name: str
+    email: str
+
+
+class SimilarNameOut(Schema):
+    """Why a new user wasn't created, and the users who might be the same person."""
+
+    detail: str
+    possible_duplicates: list[PossibleDuplicate]
+
+
 class UserIn(Schema):
-    """The fields for a new user."""
+    """The fields for a new user.
+
+    Set allow_similar_name to create the user even if their name is like an existing
+    user's.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -64,6 +100,7 @@ class UserIn(Schema):
     credentials: str = ""
     gpm_uuid: uuid.UUID | None = None
     other_emails: list[str] = []
+    allow_similar_name: bool = False
 
 
 class UserPatch(Schema):
@@ -94,11 +131,24 @@ def _users() -> QuerySet[User]:
     return User.objects.prefetch_related("other_emails")
 
 
+def _check_emails(user: User, emails: list[str]) -> None:
+    """Checks that no other user has any of the emails, primary or other.
+
+    Raises:
+        EmailTakenError: If another user has one.
+    """
+    for email in filter(None, emails):
+        if other := user_with_email(email, user=user if user.pk else None):
+            raise EmailTakenError(other)
+
+
 def _save(user: User, changes: dict, other_emails: list[str] | None) -> None:
     """Saves a user and, if given, replaces their other emails.
 
-    Each other email is checked like the user, so a taken email is a 400.
+    Each other email is checked like the user, so a taken email is a 400:
+    `_check_emails()` raises EmailTakenError for an email another user has.
     """
+    _check_emails(user, [changes.get("email") or "", *(other_emails or [])])
     with transaction.atomic():
         save_validated(user, changes)
         if other_emails is not None:
@@ -162,19 +212,39 @@ def get_user(request: HttpRequest, id_: PathEx[uuid.UUID, P(alias="id")]) -> Use
     return get_object_or_404(_users(), pk=id_)
 
 
-@router.post("", response={201: UserDetail})
+@router.post("", response={201: UserDetail, 409: SimilarNameOut})
 def create_user(
     request: HttpRequest,  # ruff: ignore[unused-function-argument] (Ninja's signature.)
     data: UserIn,
-) -> Status[User]:
-    """Creates a user. No two users share an email, ignoring case.
+) -> Status[User] | Status[dict]:
+    """Creates a user, after checking whether they might already be in the AS.
+
+    No two users share an email, ignoring case: a taken email, primary or other, gets
+    a 400 whose existing_user_id is the AS ID of the user who has it. A name or
+    preferred name like an existing user's gets a 409 listing them in
+    possible_duplicates, and nothing is created. Names are compared ignoring case,
+    accents, punctuation, and word order, and nearly equal ones, such as one-letter
+    typos, match. If the user really is someone new, send the request again with
+    allow_similar_name set to true.
 
     Returns:
-        201 and the new user.
+        201 and the new user, or 409 and the possible duplicates.
     """
     changes = data.dict()
     other_emails = changes.pop("other_emails")
+    allow_similar_name = changes.pop("allow_similar_name")
     user = User()
+    _check_emails(user, [changes["email"], *other_emails])
+    if not allow_similar_name and (
+        matches := similar_users(
+            changes["name"], preferred_name=changes["preferred_name"]
+        )
+    ):
+        detail = (
+            "This user might already be in the AS. If they're someone new, send the "
+            "request again with allow_similar_name set to true."
+        )
+        return Status(409, {"detail": detail, "possible_duplicates": matches})
     _save(user, changes, other_emails)
     return Status(201, get_object_or_404(_users(), pk=user.pk))
 

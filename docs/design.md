@@ -256,7 +256,12 @@ UUIDs: it creates them with `POST` and a `gpm_uuid`, which is refused if the GPM
 in use, and gets, changes, and deletes them at `/{resource}/gpm-uuid/{gpm_uuid}`, which
 behaves like `/{resource}/{id}`. Lists are paginated, and updates use `PATCH`. A request
 that fails validation gets a 422, and one that breaks a rule above gets a 400 with a
-`detail` message. Every resource has a `DELETE`, which marks the record as deleted;
+`detail` message. Creating or changing a user with an email someone else has gets a 400
+whose `existing_user_id` is that user's AS ID. Creating a user whose name is like an
+existing user's, by the rules under Users and memberships, gets a 409 that lists the
+matches in `possible_duplicates` and creates nothing; the client sends the request
+again with `allow_similar_name=true` if the user is someone new. `PATCH` doesn't check
+names. Every resource has a `DELETE`, which marks the record as deleted;
 lists leave deleted records out unless they're asked for with `include_deleted=true`.
 
 Clients send an API key in the `X-Api-Key` header. Any active AS key can read and change

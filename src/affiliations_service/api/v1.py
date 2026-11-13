@@ -15,6 +15,7 @@ from affiliations_service.api.affiliations import router as affiliations_router
 from affiliations_service.api.auth import ApiKeyAuth
 from affiliations_service.api.cdwgs import router as cdwgs_router
 from affiliations_service.api.memberships import router as memberships_router
+from affiliations_service.api.users import EmailTakenError
 from affiliations_service.api.users import router as users_router
 
 # Ninja and pydantic make the docs' titles and summaries from Python names, so
@@ -87,6 +88,20 @@ def validation_error(request: HttpRequest, error: ValidationError) -> HttpRespon
     """
     return api.create_response(
         request, {"detail": " ".join(error.messages)}, status=400
+    )
+
+
+@api.exception_handler(EmailTakenError)
+def email_taken(request: HttpRequest, error: EmailTakenError) -> HttpResponse:
+    """Turns a taken email into a 400 that gives the AS ID of the user who has it.
+
+    Returns:
+        A 400 response with the detail and existing_user_id.
+    """
+    return api.create_response(
+        request,
+        {"detail": str(error), "existing_user_id": str(error.existing_user.pk)},
+        status=400,
     )
 
 

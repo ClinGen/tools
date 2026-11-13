@@ -62,8 +62,11 @@ membership, and `DELETE` deletes it. A deleted affiliation can't get new members
 
 Serves `/users`: list (paginated, with `q` searching names and every email, and exact
 filters for `email`, `orcid`, and `gpm_uuid`), get, create, and update (`PATCH`).
-Sending `other_emails` replaces the list. A user can also be found, changed, and deleted
-by GPM UUID (`/gpm-uuid/{gpm_uuid}`). `DELETE` deletes a user, with their memberships
+Sending `other_emails` replaces the list. A taken email, primary or other, raises
+`EmailTakenError`, which carries the user who has it. Creating a user whose name is like
+an existing user's returns a 409 with the matches in `possible_duplicates`, unless the
+body sets `allow_similar_name`. A user can also be found, changed, and deleted by GPM
+UUID (`/gpm-uuid/{gpm_uuid}`). `DELETE` deletes a user, with their memberships
 and other emails. Responses for one user include their current memberships.
 
 ### `api/v1.py`
@@ -71,7 +74,8 @@ and other emails. Responses for one user include their current memberships.
 Defines the AS's API, a Django Ninja `NinjaAPI` served at `/as/api/v1/`, with OpenAPI
 docs at `/as/api/v1/docs`. Every endpoint needs an API key. It adds each resource's
 router and turns a `ValidationError` (a broken business rule) into a 400 whose `detail`
-is the error's plain-language message. Its docs write acronyms such as ID, GPM, UUID,
+is the error's plain-language message, and an `EmailTakenError` into a 400 that also
+gives the other user's AS ID as `existing_user_id`. Its docs write acronyms such as ID, GPM, UUID,
 and CDWG in capitals, since Ninja would otherwise make titles like "Gpm Uuid" from
 Python names.
 
@@ -324,8 +328,10 @@ delete, and the current memberships in affiliation and user responses.
 
 ### `tests/test_api_users.py`
 
-Tests the API's user endpoints: search and filters, other emails, duplicate emails,
-ORCID iD checks, 404s, and that users can't be deleted.
+Tests the API's user endpoints: search and filters, other emails, duplicate emails and
+the other user's AS ID, ORCID iD checks, 404s, and that users can't be deleted. Also
+tests the 409 for a similar name, `allow_similar_name`, and that `PATCH` doesn't check
+names.
 
 ### `tests/test_cdwg_pages.py`
 

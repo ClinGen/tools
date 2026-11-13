@@ -88,26 +88,42 @@ class UserCreateUpdateTest(ApiTestCase):
         self.patch(f"{URL}/{ada.pk}", {"name": "Augusta Ada King"})
         self.assertEqual(ada.other_emails.count(), 1)  # type: ignore
 
-    def test_duplicate_emails_return_400(self):
-        make_user("ada@example.org")
-        UserEmail.objects.create(user=make_user("grace@example.org"), email="g@uni.edu")
+    def test_duplicate_emails_return_400_with_the_other_users_id(self):
+        ada = make_user("ada@example.org")
+        grace = make_user("grace@example.org", name="Grace Hopper")
+        UserEmail.objects.create(user=grace, email="g@uni.edu")
         cases = [
-            {"name": "Imposter", "email": "ADA@example.org"},
-            {"name": "Imposter", "email": "g@UNI.edu"},
-            {
-                "name": "Imposter",
-                "email": "new@example.org",
-                "other_emails": ["ada@example.org"],
-            },
+            ({"name": "Imposter", "email": "ADA@example.org"}, ada),
+            ({"name": "Imposter", "email": "g@UNI.edu"}, grace),
+            (
+                {
+                    "name": "Imposter",
+                    "email": "new@example.org",
+                    "other_emails": ["ada@example.org"],
+                },
+                ada,
+            ),
         ]
-        for body in cases:
+        for body, owner in cases:
             with self.subTest(body=body):
                 response = self.post(URL, body)
                 self.assertEqual(response.status_code, 400)
                 self.assertEqual(
-                    response.json(), {"detail": "Someone already has this email."}
+                    response.json(),
+                    {
+                        "detail": f"The user with AS ID {owner.pk} already has this "
+                        "email.",
+                        "existing_user_id": str(owner.pk),
+                    },
                 )
         self.assertEqual(User.objects.count(), 2)
+
+    def test_patching_in_a_taken_email_returns_400_with_the_other_users_id(self):
+        ada = make_user("ada@example.org")
+        grace = make_user("grace@example.org", name="Grace Hopper")
+        response = self.patch(f"{URL}/{grace.pk}", {"email": "ada@example.org"})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["existing_user_id"], str(ada.pk))
 
     def test_bad_orcid_returns_400(self):
         response = self.post(
@@ -127,3 +143,49 @@ class UserCreateUpdateTest(ApiTestCase):
 
     def test_requests_without_a_key_get_401(self):
         self.assertEqual(self.client.get(URL).status_code, 401)
+
+
+class SimilarNameTest(ApiTestCase):
+    def setUp(self):
+        super().setUp()
+        self.jane = make_user(
+            "jane@example.org", name="Jane Smith", preferred_name="Janie"
+        )
+
+    def test_a_similar_name_returns_409_with_the_matches(self):
+        response = self.post(URL, {"name": "Smith, Jane", "email": "js@uni.edu"})
+        self.assertEqual(response.status_code, 409)
+        body = response.json()
+        self.assertIn("allow_similar_name", body["detail"])
+        self.assertEqual(
+            body["possible_duplicates"],
+            [
+                {
+                    "id": str(self.jane.pk),
+                    "name": "Jane Smith",
+                    "preferred_name": "Janie",
+                    "email": "jane@example.org",
+                }
+            ],
+        )
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_allow_similar_name_creates_the_user(self):
+        response = self.post(
+            URL,
+            {"name": "Smith, Jane", "email": "js@uni.edu", "allow_similar_name": True},
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(User.objects.count(), 2)
+        self.assertNotIn("allow_similar_name", response.json())
+
+    def test_a_distinct_name_creates_the_user(self):
+        response = self.post(URL, {"name": "Grace Hopper"})
+        self.assertEqual(response.status_code, 201)
+
+    def test_patching_in_a_similar_name_succeeds(self):
+        grace = make_user("grace@example.org", name="Grace Hopper")
+        response = self.patch(f"{URL}/{grace.pk}", {"name": "Jane Smyth"})
+        self.assertEqual(response.status_code, 200)
+        grace.refresh_from_db()
+        self.assertEqual(grace.name, "Jane Smyth")
