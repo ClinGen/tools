@@ -481,9 +481,10 @@ The CSS reads the ClinVar API key and base from the environment. It never logs t
 ClinVar API key or a client's API key.
 
 To try the workflow locally, `scripts/send_dummy_records.py` POSTs random records to a
-running CSS, as the VCI would, and `CSS_SIMULATE_CLINVAR=1`, read only by the dev
-settings, swaps in a simulated ClinVar. The simulator reads each batch from the
-database, since the web server and the poller are separate processes. Each poll moves a
+running CSS, as the VCI would, naming the local AS's VCEPs as their affiliations, and
+`CSS_SIMULATE_CLINVAR=1`, read only by the dev settings, swaps in a simulated ClinVar.
+The simulator reads each batch from the database, since the web server and the poller
+are separate processes. Each poll moves a
 batch one step toward processed or error, and each record's result comes from a hash of
 the ClinVar ID and tool ID, so most records succeed and the rest fail with plausible
 messages. While simulating, the dev settings shorten the poll delays to seconds, and

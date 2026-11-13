@@ -1,8 +1,10 @@
 """Sends random dummy records to a running CSS, as the VCI would.
 
-Each record is different every run but valid for the CSS's API. The script POSTs them
-to /css/api/v1/records with the API key in CSS_DUMMY_API_KEY, read from .env, and
-prints what the CSS did with each one. With --resend, it then sends some of them again
+Each record is different every run but valid for the CSS's API. Its affiliation is one
+of the AS's VCEPs, read from the AS's API with the key in AS_DUMMY_API_KEY, or one of a
+few made-up ones if the AS can't supply them. The script POSTs the records to
+/css/api/v1/records with the API key in CSS_DUMMY_API_KEY, read from .env, and prints
+what the CSS did with each one. With --resend, it then sends some of them again
 with a new classification, so you can watch a waiting record get replaced.
 
 Usage:
@@ -22,7 +24,7 @@ from typing import Any
 import requests
 from dotenv import load_dotenv
 
-# Made-up affiliations, until the AS can supply its VCEPs. IDs are AS-style.
+# Made-up affiliations, for when the AS can't supply its VCEPs. IDs are AS-style.
 AFFILIATIONS = [
     {"id": 10901, "name": "Cardiomyopathy VCEP"},
     {"id": 10902, "name": "TP53 VCEP"},
@@ -59,15 +61,22 @@ INHERITANCE = [
 CRITERIA = ["PVS1", "PS3", "PM1", "PM2", "PP3", "BS1", "BP4"]
 
 API_KEY_VARIABLE = "CSS_DUMMY_API_KEY"
+AS_API_KEY_VARIABLE = "AS_DUMMY_API_KEY"
+
+# How many affiliations to ask the AS for at a time.
+AS_PAGE_SIZE = 100
 
 TIMEOUT_SECONDS = 30
 
 
-def dummy_body(rng: random.Random) -> dict[str, Any]:
+def dummy_body(
+    rng: random.Random, affiliations: list[dict[str, Any]] = AFFILIATIONS
+) -> dict[str, Any]:
     """Returns a random request body: an affiliation and one germline record.
 
     Args:
         rng: Where the randomness comes from, so tests can seed it.
+        affiliations: The affiliations to pick from, each with an id and a name.
 
     Returns:
         The body, as the VCI would send it.
@@ -99,7 +108,7 @@ def dummy_body(rng: random.Random) -> dict[str, Any]:
     if rng.random() < 0.2:
         record["recordStatus"] = "update"
         record["clinvarAccession"] = f"SCV{rng.randrange(10**9):09d}"
-    return {"affiliation": rng.choice(AFFILIATIONS), "record": record}
+    return {"affiliation": rng.choice(affiliations), "record": record}
 
 
 def resent(body: dict[str, Any], rng: random.Random) -> dict[str, Any]:
@@ -155,6 +164,65 @@ def send(url: str, key: str, body: dict[str, Any]) -> str:
     )
 
 
+def vceps_from_as(url: str, key: str) -> list[dict[str, Any]]:
+    """Returns the AS's VCEPs, as the affiliations a record names.
+
+    Args:
+        url: Where ClinGen Tools is running.
+        key: An AS API key.
+
+    Returns:
+        Each VCEP's affiliation ID and full name, as id and name.
+
+    Raises:
+        SendError: If the AS can't be reached or refuses the request.
+    """
+    vceps: list[dict[str, Any]] = []
+    while True:
+        try:
+            response = requests.get(
+                f"{url.rstrip('/')}/as/api/v1/affiliations",
+                params={"type": "VCEP", "limit": AS_PAGE_SIZE, "offset": len(vceps)},
+                headers={"X-Api-Key": key},
+                timeout=TIMEOUT_SECONDS,
+            )
+        except requests.RequestException as error:
+            message = f"Couldn't reach the AS at {url}. ({error})"
+            raise SendError(message) from error
+        if response.status_code != HTTPStatus.OK:
+            message = f"The AS returned {response.status_code}."
+            raise SendError(message)
+        page = response.json()
+        vceps += [
+            {"id": item["affiliation_id"], "name": item["full_name"]}
+            for item in page["items"]
+        ]
+        if not page["items"] or len(vceps) >= page["count"]:
+            return vceps
+
+
+def pick_affiliations(url: str) -> list[dict[str, Any]]:
+    """Returns the AS's VCEPs, or the made-up ones, with a warning, if it fails.
+
+    Returns:
+        The affiliations to pick from.
+    """
+    key = os.environ.get(AS_API_KEY_VARIABLE, "")
+    if not key:
+        problem = f"{AS_API_KEY_VARIABLE} isn't set in .env."
+    else:
+        try:
+            vceps = vceps_from_as(url, key)
+        except SendError as error:
+            problem = str(error)
+        else:
+            if vceps:
+                return vceps
+            problem = "The AS has no VCEPs."
+    print(f"{problem} Using made-up affiliations instead.", file=sys.stderr)
+    return AFFILIATIONS
+
+
 def main(argv: list[str] | None = None) -> int:
     """Sends the dummy records.
 
@@ -181,8 +249,9 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 1
+    affiliations = pick_affiliations(args.url)
     rng = random.Random()
-    bodies = [dummy_body(rng) for _ in range(args.count)]
+    bodies = [dummy_body(rng, affiliations) for _ in range(args.count)]
     if args.resend:
         bodies += [resent(body, rng) for body in bodies[: max(1, args.count // 2)]]
     try:
