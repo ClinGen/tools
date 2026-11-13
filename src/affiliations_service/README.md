@@ -79,6 +79,14 @@ Python names.
 
 Configures the `affiliations_service` app.
 
+### `duplicates.py`
+
+Finds users who may be the same person as a new one. `similar_users()` compares a new
+user's name and preferred name with every user's, after lowercasing them and removing
+accents and punctuation. Names match if they're equal, the same names in another order
+(Smith, Jane and Jane Smith), or at least as alike as `SIMILARITY_THRESHOLD` by
+difflib's ratio. Matches come back most similar first.
+
 ### `forms.py`
 
 Defines the forms on the AS's pages: `AffiliationCreateForm` (which can also make picked
@@ -131,8 +139,9 @@ errors have plain-language messages, so forms can show them to staff.
 It also defines `User` and `UserEmail` (a user's other emails). A user's main email is
 optional, but no two users share an email, ignoring case, whether it's a primary or
 another email: constraints catch duplicates within each table, and `clean()` catches
-them across the two, and a user's other email that repeats their main one. ORCID iDs are
-checked for format and are unique when set.
+them across the two, and a user's other email that repeats their main one.
+`user_with_email()` returns the user who has an email, so a refusal can say who. ORCID
+iDs are checked for format and are unique when set.
 
 Finally, it defines `Membership`: a user's role (coordinator, approver, or curator) in
 an affiliation, with optional start and end dates. A user can't hold the same role in
@@ -323,6 +332,12 @@ for a name that differs from another only in case.
 Tests deleting through the API: CDWGs, users, and memberships are deleted and leave
 history, deleting a user deletes their memberships and emails, a CDWG with affiliations
 can't be deleted, and affiliations are still only marked deleted.
+
+### `tests/test_duplicates.py`
+
+Tests finding similar users: case, accents, punctuation, name order, typos, and
+preferred names; that different names don't match; and that the best match comes first.
+Also tests finding the user who has an email, main or other.
 
 ### `tests/test_formsets.py`
 

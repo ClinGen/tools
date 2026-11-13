@@ -377,6 +377,27 @@ ORCID_VALIDATOR = RegexValidator(
 DUPLICATE_EMAIL_MESSAGE = "Someone already has this email."
 
 
+def user_with_email(email: str, *, user: "User | None" = None) -> "User | None":
+    """Returns the user other than the given one who has an email.
+
+    Emails are compared ignoring case, and both primary and other emails count.
+
+    Args:
+        email: The email to look for.
+        user: The user who may already have the email, if any.
+
+    Returns:
+        The user who has the email, or None if no one else has it.
+    """
+    users = User.objects.all()
+    if user is not None and user.pk is not None:
+        users = users.exclude(pk=user.pk)
+    return (
+        users.filter(email__iexact=email).first()
+        or users.filter(other_emails__email__iexact=email).first()
+    )
+
+
 def email_is_taken(email: str, *, user: "User | None" = None) -> bool:
     """Reports whether a user other than the given one has an email.
 
@@ -389,12 +410,7 @@ def email_is_taken(email: str, *, user: "User | None" = None) -> bool:
     Returns:
         True if someone else has the email.
     """
-    users = User.objects.filter(email__iexact=email)
-    other_emails = UserEmail.objects.filter(email__iexact=email)
-    if user is not None and user.pk is not None:
-        users = users.exclude(pk=user.pk)
-        other_emails = other_emails.exclude(user=user)
-    return users.exists() or other_emails.exists()
+    return user_with_email(email, user=user) is not None
 
 
 class User(UUIDModel):
