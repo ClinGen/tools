@@ -3,7 +3,10 @@
 from typing import Any
 
 from django import forms
+from django.core.exceptions import ValidationError
+from django.utils.html import format_html
 
+from affiliations_service.duplicates import similar_users
 from affiliations_service.models import (
     CDWG,
     Affiliation,
@@ -11,6 +14,7 @@ from affiliations_service.models import (
     Membership,
     User,
     UserEmail,
+    user_with_email,
 )
 
 
@@ -101,8 +105,43 @@ SubmitterIdFormSet.form = type(
 )
 
 
-class UserForm(BulmaFormMixin, forms.ModelForm):
-    """The fields staff fill in for a user."""
+class TakenEmailMixin:
+    """Refuses an email someone else has, naming and linking the user who has it."""
+
+    def owner(self) -> User | None:
+        """Returns the user whose email this form's email may already be.
+
+        Returns:
+            The user, or None if there's no one to leave out.
+        """
+        return None
+
+    def clean_email(self) -> str:
+        """Checks that no one else has the email, primary or other.
+
+        Returns:
+            The email.
+
+        Raises:
+            ValidationError: If someone else has it, with a link to them.
+        """
+        email = self.cleaned_data["email"]  # ty: ignore[unresolved-attribute] (The class this mixes into has cleaned_data.)
+        if email and (other := user_with_email(email, user=self.owner())):
+            message = format_html(
+                '<a href="{}">{}</a> already has this email.',
+                other.get_absolute_url(),
+                other.name,
+            )
+            raise ValidationError(message)
+        return email
+
+
+class UserForm(TakenEmailMixin, BulmaFormMixin, forms.ModelForm):
+    """The fields staff fill in for a user.
+
+    A new user whose name is like an existing user's isn't saved unless staff
+    confirm with Add Anyway; `similar` holds the possible matches.
+    """
 
     class Meta:
         """Provides metadata."""
@@ -118,16 +157,68 @@ class UserForm(BulmaFormMixin, forms.ModelForm):
             "gpm_uuid",
         ]
 
+    def __init__(self, *args, allow_similar_name: bool = False, **kwargs) -> None:
+        """Sets whether a new user may have a name like an existing user's.
+
+        Args:
+            *args: The form's arguments.
+            allow_similar_name: Whether staff chose Add Anyway.
+            **kwargs: The form's keyword arguments.
+        """
+        super().__init__(*args, **kwargs)
+        self.allow_similar_name = allow_similar_name
+        self.similar: list[User] = []
+
+    def owner(self) -> User | None:
+        """Returns the user being edited, if any.
+
+        Returns:
+            The user, or None for a new one.
+        """
+        return self.instance if self.instance.pk else None
+
+    def clean(self) -> dict[str, Any]:
+        """Checks that a new user's name isn't like an existing user's.
+
+        Returns:
+            The cleaned data.
+
+        Raises:
+            ValidationError: If the name is like someone's and staff haven't chosen
+                Add Anyway.
+        """
+        cleaned_data = super().clean() or {}
+        if self.instance._state.adding and not self.allow_similar_name:  # ruff: ignore[private-member-access]
+            self.similar = similar_users(
+                cleaned_data.get("name", ""),
+                preferred_name=cleaned_data.get("preferred_name", ""),
+            )
+            if self.similar:
+                message = "This user might already be in the AS. Check the users below."
+                raise ValidationError(message)
+        return cleaned_data
+
+
+class OtherEmailForm(TakenEmailMixin, BulmaFormMixin, forms.ModelForm):
+    """One of a user's other emails."""
+
+    def owner(self) -> User | None:
+        """Returns the user whose email this is, if they've been saved.
+
+        Returns:
+            The user, or None for a new one.
+        """
+        user_id = self.instance.user_id
+        return self.instance.user if user_id is not None else None
+
 
 OtherEmailFormSet = forms.inlineformset_factory(
     User,
     UserEmail,
+    form=OtherEmailForm,
     fields=["email"],
     extra=1,
     can_delete=True,
-)
-OtherEmailFormSet.form = type(
-    "OtherEmailForm", (BulmaFormMixin, OtherEmailFormSet.form), {}
 )
 
 

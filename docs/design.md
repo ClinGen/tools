@@ -228,6 +228,15 @@ an email, ignoring case, whether it's their primary email or another one. A user
 primary email is optional, since some users, such as approvers in the old AS, are known
 only by name. These fields are a starting point, and we expect to add more.
 
+Adding a user checks whether the person might already be in the AS. A taken email is
+refused, and the refusal names the user who has it, with a link on staff pages. A name
+like an existing user's is only a warning, since two real people can share a name.
+Names are compared after lowercasing them and removing accents and punctuation, and
+they match if they're equal, the same names in another order, or nearly the same, such
+as a one-letter typo. Preferred names count too. The add-user page lists the possible
+matches, linked to their pages, and saves only after staff choose Add Anyway. Editing a
+user doesn't check names.
+
 A membership says that a user holds a role in an affiliation. The roles are coordinator,
 approver, and curator. A user who holds two roles in an affiliation has two memberships,
 one per role. A membership may have a start date and an end date. It stops being current

@@ -95,7 +95,10 @@ IDs, type, and GPM UUID, so posting them changes nothing), and `SubmitterIdFormS
 an affiliation's ClinVar submitter IDs, `UserForm`, and `OtherEmailFormSet` for a user's
 other emails, and `MembershipAddForm`, which also checks the membership constraints that
 Django would skip because the affiliation isn't a form field, and `CDWGForm`.
-`BulmaFormMixin` gives text inputs Bulma's classes.
+`BulmaFormMixin` gives text inputs Bulma's classes. `TakenEmailMixin` refuses a user's
+email, main or other, that someone else has, and links the user who has it. `UserForm`
+won't add a user whose name is like an existing user's unless staff choose Add Anyway,
+and keeps the matches in `similar` for the page to list.
 
 ### `history.py`
 
@@ -249,7 +252,9 @@ each), and history.
 
 ### `templates/affiliations_service/user_form.html`
 
-The form for adding or editing a user, with their other emails.
+The form for adding or editing a user, with their other emails. When a new user's name
+is like existing users', it lists them, each linked to their page, with an Add Anyway
+button.
 
 ### `templates/affiliations_service/user_list.html`
 
@@ -386,7 +391,9 @@ uniqueness errors.
 ### `tests/test_user_pages.py`
 
 Tests the users list's search, a user's page, and adding and editing users and their
-other emails, including duplicate emails and bad ORCID iDs.
+other emails, including duplicate emails and bad ORCID iDs. Also tests the similar-user
+warning on the add-user page, Add Anyway, and that a taken email's error links the user
+who has it.
 
 ### `tests/test_users.py`
 

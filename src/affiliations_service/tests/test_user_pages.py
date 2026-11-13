@@ -1,5 +1,7 @@
 """Houses tests for the users pages."""
 
+from typing import TYPE_CHECKING
+
 from django.test import TestCase
 from django.urls import reverse
 
@@ -8,6 +10,10 @@ from affiliations_service.tests.helpers import make_staff
 from affiliations_service.tests.test_memberships import YESTERDAY, make_membership
 from affiliations_service.tests.test_models import make_affiliation
 from affiliations_service.tests.test_users import make_user
+
+if TYPE_CHECKING:
+    # Django's stubs name the test client's response type only for type checkers.
+    from django.test.client import _MonkeyPatchedWSGIResponse as Response  # ruff: ignore[import-private-name]
 
 
 def emails_formset(*emails: str, existing: tuple[UserEmail, ...] = ()) -> dict:
@@ -144,7 +150,7 @@ class UserFormPageTest(TestCase):
                 response = self.client.post(reverse("as:user-create"), data)
                 self.assertEqual(response.status_code, 200)
                 self.assertTrue(
-                    "Someone already has this email." in response.content.decode()
+                    "already has this email." in response.content.decode()
                     or "This is already the user&#x27;s main email."
                     in response.content.decode()
                 )
@@ -156,6 +162,87 @@ class UserFormPageTest(TestCase):
         )
         self.assertContains(response, "Enter an ORCID iD like 0000-0002-1825-0097.")
         self.assertFalse(User.objects.exists())
+
+
+class SimilarUserWarningTest(TestCase):
+    def setUp(self):
+        self.client.force_login(make_staff("as@example.com"))
+        self.jane = make_user(
+            "jane@example.org", name="Jane Smith", institution="Stanford"
+        )
+
+    def _post(self, url: str, **fields: str) -> "Response":
+        data = {
+            "name": "Jane Smyth",
+            "preferred_name": "",
+            "email": "smyth@example.org",
+            "institution": "",
+            "orcid": "",
+            "credentials": "",
+            "gpm_uuid": "",
+        } | fields
+        return self.client.post(url, data | emails_formset())
+
+    def test_a_similar_name_isnt_saved_and_lists_the_match(self):
+        response = self._post(reverse("as:user-create"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "might already be in the AS")
+        self.assertContains(response, f'href="{self.jane.get_absolute_url()}"')
+        self.assertContains(response, "jane@example.org")
+        self.assertContains(response, "Stanford")
+        self.assertContains(response, "Add Anyway")
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_add_anyway_saves_the_user(self):
+        response = self._post(reverse("as:user-create"), allow_similar_name="1")
+        smyth = User.objects.get(name="Jane Smyth")
+        self.assertRedirects(response, smyth.get_absolute_url())
+
+    def test_a_name_with_no_match_saves_at_once(self):
+        response = self._post(reverse("as:user-create"), name="Grace Hopper")
+        grace = User.objects.get(name="Grace Hopper")
+        self.assertRedirects(response, grace.get_absolute_url())
+
+    def test_editing_a_user_doesnt_warn(self):
+        smyth = make_user("smyth@example.org", name="Grace Hopper")
+        url = reverse("as:user-edit", kwargs={"pk": smyth.pk})
+        response = self._post(url)
+        self.assertRedirects(response, smyth.get_absolute_url())
+        smyth.refresh_from_db()
+        self.assertEqual(smyth.name, "Jane Smyth")
+
+    def test_a_taken_emails_error_links_the_user_who_has_it(self):
+        UserEmail.objects.create(user=self.jane, email="js@uni.edu")
+        for email in ["JANE@example.org", "js@uni.edu"]:
+            with self.subTest(email=email):
+                response = self._post(
+                    reverse("as:user-create"), name="Grace Hopper", email=email
+                )
+                self.assertContains(
+                    response,
+                    f'<a href="{self.jane.get_absolute_url()}">Jane Smith</a> '
+                    "already has this email.",
+                    html=False,
+                )
+                self.assertNotContains(response, "Someone already has this email.")
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_a_taken_other_emails_error_links_the_user_who_has_it(self):
+        data = {
+            "name": "Grace Hopper",
+            "preferred_name": "",
+            "email": "",
+            "institution": "",
+            "orcid": "",
+            "credentials": "",
+            "gpm_uuid": "",
+        } | emails_formset("jane@example.org")
+        response = self.client.post(reverse("as:user-create"), data)
+        self.assertContains(
+            response,
+            f'<a href="{self.jane.get_absolute_url()}">Jane Smith</a> '
+            "already has this email.",
+        )
 
 
 class UsersPermissionTest(TestCase):

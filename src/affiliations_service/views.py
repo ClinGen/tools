@@ -1,5 +1,7 @@
 """Houses the AS's pages."""
 
+from typing import Any
+
 from django import forms
 from django.db import transaction
 from django.db.models import Count, Q
@@ -234,7 +236,7 @@ def user_search(request: HttpRequest) -> HttpResponse:
 
 
 def _save_form_and_formset(
-    form: forms.ModelForm, formset: forms.BaseInlineFormSet
+    form: forms.ModelForm, formset: "forms.BaseInlineFormSet[Any, Any, Any]"
 ) -> str | None:
     """Saves an object and its inline formset if both are valid.
 
@@ -411,7 +413,11 @@ def _user_form(request: HttpRequest, user: User | None) -> HttpResponse:
         The form page, or a redirect to the user's page once they're saved.
     """
     data = request.POST if request.method == "POST" else None
-    form = UserForm(data, instance=user)
+    form = UserForm(
+        data,
+        instance=user,
+        allow_similar_name=data is not None and "allow_similar_name" in data,
+    )
     formset = OtherEmailFormSet(data, instance=user)
     if data is not None and (url := _save_form_and_formset(form, formset)):
         return redirect(url)

@@ -61,7 +61,7 @@ def similar_users(name: str, *, preferred_name: str = "") -> list[User]:
     if not new_names:
         return []
     scored = []
-    for user in User.objects.only("name", "preferred_name"):
+    for user in User.objects.all():
         old_names = [normalize(user.name), normalize(user.preferred_name)]
         score = max(similarity(new, old) for new in new_names for old in old_names)
         if score >= SIMILARITY_THRESHOLD:

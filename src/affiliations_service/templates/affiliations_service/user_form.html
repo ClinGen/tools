@@ -9,6 +9,19 @@
             {% for error in form.non_field_errors %}
                 <div class="notification is-danger is-light">{{ error }}</div>
             {% endfor %}
+            {% if form.similar %}
+                <div class="notification is-warning is-light">
+                    <p class="mb-2">These users have similar names. If one of them is the person you're adding, cancel and edit them instead.</p>
+                    <ul class="mb-3">
+                        {% for match in form.similar %}
+                            <li>
+                                <a href="{{ match.get_absolute_url }}">{{ match.name }}</a>{% if match.preferred_name %} ({{ match.preferred_name }}){% endif %}{% if match.email %}, {{ match.email }}{% endif %}{% if match.institution %}, {{ match.institution }}{% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <button type="submit" name="allow_similar_name" value="1" class="button is-warning">Add Anyway</button>
+                </div>
+            {% endif %}
             {% for field in form %}
                 {% include "affiliations_service/partials/field.html" %}
             {% endfor %}
